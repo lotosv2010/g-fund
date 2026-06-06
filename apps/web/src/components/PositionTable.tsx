@@ -1,0 +1,1 @@
+// PositionTable component placeholder

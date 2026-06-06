@@ -1,0 +1,21 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: g-fund-db
+    environment:
+      POSTGRES_DB: gfund
+      POSTGRES_USER: gfund
+      POSTGRES_PASSWORD: gfund123
+    ports:
+      - "5432:5432"
+    volumes:
+      - g-fund-pgdata:/var/lib/postgresql/data
+      - ./packages/db/src/migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gfund"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  g-fund-pgdata:

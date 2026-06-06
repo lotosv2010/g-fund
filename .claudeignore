@@ -1,0 +1,21 @@
+# Claude 不应读取的文件/目录
+
+# 依赖
+node_modules/
+.pnpm-store/
+
+# 构建产物
+dist/
+build/
+.next/
+.turbo/
+
+# 运行时数据
+*.log
+*.pid
+
+# 数据库数据
+.langgraph_api/
+
+# 个人配置
+.claude/settings.local.json

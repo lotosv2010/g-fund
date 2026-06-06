@@ -1,0 +1,1 @@
+// AnalysisReport component placeholder

@@ -1,0 +1,18 @@
+{
+  "name": "@g-fund/db",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "migrate": "node -e \"require('./src/migrate')\"",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "pg": "^8.16.0"
+  },
+  "devDependencies": {
+    "@types/pg": "^8",
+    "typescript": "^5.8.3"
+  }
+}
