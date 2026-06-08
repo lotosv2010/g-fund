@@ -7,6 +7,7 @@ import {
   FundOutlined,
   BarChartOutlined,
   FundProjectionScreenOutlined,
+  SettingOutlined,
   OpenAIOutlined,
 } from "@ant-design/icons";
 import { usePathname, useRouter } from "next/navigation";
@@ -17,8 +18,23 @@ const { Sider, Content, Header } = Layout;
 
 const menuItems = [
   { key: "/dashboard", icon: <DashboardOutlined />, label: "总览" },
-  { key: "/funds", icon: <FundOutlined />, label: "基金列表" },
-  { key: "/positions", icon: <BarChartOutlined />, label: "交易与持仓" },
+  {
+    key: "fund-group",
+    label: "基金管理",
+    icon: <FundOutlined />,
+    children: [
+      { key: "/funds", icon: <FundOutlined />, label: "基金列表" },
+      { key: "/positions", icon: <BarChartOutlined />, label: "交易与持仓" },
+    ],
+  },
+  {
+    key: "settings-group",
+    label: "系统设置",
+    icon: <SettingOutlined />,
+    children: [
+      { key: "/settings/ai", icon: <SettingOutlined />, label: "AI 设置" },
+    ],
+  },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -27,10 +43,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const openChatDrawer = useAppStore((s) => s.openChatDrawer);
   const toggleChatDrawer = useAppStore((s) => s.toggleChatDrawer);
 
+  const flatKeys = menuItems.flatMap((item) =>
+    Array.isArray(item.children) ? item.children.map((c) => c.key) : [item.key],
+  );
+
   const [selectedKey, setSelectedKey] = useState("/dashboard");
 
   useEffect(() => {
-    setSelectedKey(menuItems.find((item) => pathname.startsWith(item.key))?.key ?? "/dashboard");
+    setSelectedKey(flatKeys.find((key) => pathname.startsWith(key)) ?? "/dashboard");
   }, [pathname]);
 
   useEffect(() => {
@@ -61,7 +81,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             gap: 8,
             fontWeight: 700,
             fontSize: 15,
-            color: "#dc2626",
+            color: "#1677ff",
             borderBottom: "1px solid #f0f0f0",
           }}
         >
@@ -70,23 +90,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
         <Menu
           mode="inline"
+          defaultOpenKeys={["fund-group", "settings-group"]}
           selectedKeys={[selectedKey]}
           items={menuItems}
           onClick={({ key }) => router.push(key)}
           style={{ borderRight: 0, paddingTop: 8, flex: 1 }}
         />
-        <div style={{ padding: "12px 16px", borderTop: "1px solid #f0f0f0" }}>
-          <Tooltip title="AI 分析 (⌘K)" placement="right">
-            <Button
-              type="primary"
-              icon={<OpenAIOutlined />}
-              block
-              onClick={openChatDrawer}
-            >
-              AI 分析
-            </Button>
-          </Tooltip>
-        </div>
       </Sider>
       <Layout>
         <Header
