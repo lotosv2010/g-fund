@@ -45,12 +45,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }, [toggleChatDrawer]);
 
   return (
-    <Layout style={{ minHeight: "100vh" }}>
+    <Layout style={{ height: "100vh", overflow: "hidden" }}>
       <Sider
         theme="light"
         breakpoint="lg"
         collapsedWidth={0}
-        style={{ borderRight: "1px solid #f0f0f0", display: "flex", flexDirection: "column" }}
+        style={{ borderRight: "1px solid #f0f0f0", display: "flex", flexDirection: "column", overflow: "auto" }}
       >
         <div
           style={{
@@ -108,7 +108,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             />
           </Tooltip>
         </Header>
-        <Content style={{ padding: 24 }}>{children}</Content>
+        <Content style={{ padding: 24, overflow: "auto" }}>{children}</Content>
       </Layout>
       <ChatDrawer />
     </Layout>
