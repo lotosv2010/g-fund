@@ -110,7 +110,7 @@ export default function FundsPage() {
   const isCustomSort = sortField !== null && sortOrder !== null;
 
   const categoryFunds = useMemo(() => {
-    let list = funds.filter((f) => f.category === activeTab);
+    let list = activeTab === "holding" ? funds : funds.filter((f) => f.category === activeTab);
 
     if (search) {
       const q = search.toLowerCase();
@@ -136,7 +136,8 @@ export default function FundsPage() {
     const counts: Record<FundCategory, number> = { holding: 0, longterm: 0, watchlist: 0 };
     for (const f of funds) {
       if (!search || f.name.toLowerCase().includes(search.toLowerCase()) || f.code.includes(search)) {
-        counts[f.category]++;
+        counts.holding++;
+        if (f.category !== "holding") counts[f.category]++;
       }
     }
     return counts;
