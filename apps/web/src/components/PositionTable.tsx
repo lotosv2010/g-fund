@@ -7,7 +7,7 @@ const { Text } = Typography;
 
 function PnlCell({ value }: { value: string }) {
   const n = parseFloat(value);
-  const color = n > 0 ? "#16a34a" : n < 0 ? "#dc2626" : "#6b7280";
+  const color = n > 0 ? "#dc2626" : n < 0 ? "#16a34a" : "#6b7280";
   const prefix = n > 0 ? "+" : "";
   return <span style={{ color }}>{prefix}{value}</span>;
 }
@@ -75,12 +75,12 @@ export default function PositionTable({ data, loading }: PositionTableProps) {
                 <Text strong>¥{totalValue.toLocaleString()}</Text>
               </Table.Summary.Cell>
               <Table.Summary.Cell index={6} align="right">
-                <Text strong style={{ color: totalPnl >= 0 ? "#16a34a" : "#dc2626" }}>
+                <Text strong style={{ color: totalPnl >= 0 ? "#dc2626" : "#16a34a" }}>
                   {totalPnl >= 0 ? "+" : ""}¥{totalPnl.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                 </Text>
               </Table.Summary.Cell>
               <Table.Summary.Cell index={7} align="right">
-                <Text strong style={{ color: totalPnlRate >= 0 ? "#16a34a" : "#dc2626" }}>
+                <Text strong style={{ color: totalPnlRate >= 0 ? "#dc2626" : "#16a34a" }}>
                   {totalPnlRate >= 0 ? "+" : ""}{(totalPnlRate * 100).toFixed(2)}%
                 </Text>
               </Table.Summary.Cell>

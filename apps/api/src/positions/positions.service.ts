@@ -34,7 +34,34 @@ export class PositionsService {
 
   async findAll(): Promise<PositionListItem[]> {
     const rows = await this.db.select().from(schema.positions);
-    if (rows.length === 0) return [];
+
+    // positions 表为空时，降级读取 funds 表中已有的持仓数据
+    if (rows.length === 0) {
+      const holdingFunds = await this.db
+        .select()
+        .from(schema.funds)
+        .where(eq(schema.funds.category, 'holding'));
+
+      return holdingFunds
+        .filter((f) => parseFloat(f.costAmount ?? '0') > 0)
+        .map((f) => {
+          const cost = parseFloat(f.costAmount);
+          const current = parseFloat(f.currentValue ?? '0');
+          return {
+            id: f.id,
+            fundCode: f.code,
+            fundName: f.name,
+            shares: '0',
+            costPrice: '0',
+            costAmount: f.costAmount,
+            createdAt: f.createdAt.toISOString(),
+            updatedAt: f.updatedAt.toISOString(),
+            currentValue: f.currentValue ?? '0',
+            pnlAmount: (current - cost).toFixed(2),
+            pnlRate: cost > 0 ? ((current - cost) / cost).toFixed(4) : '0.0000',
+          };
+        });
+    }
 
     const fundCodes = rows.map((r) => r.fundCode);
     const funds = await this.db

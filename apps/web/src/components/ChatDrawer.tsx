@@ -1,7 +1,7 @@
 "use client";
 
 import { Drawer, Input, Button, Space, Typography, Flex } from "antd";
-import { SendOutlined, RobotOutlined } from "@ant-design/icons";
+import { SendOutlined, OpenAIOutlined } from "@ant-design/icons";
 import { useAppStore } from "@/store/useAppStore";
 
 const { Text } = Typography;
@@ -19,7 +19,7 @@ export default function ChatDrawer() {
     <Drawer
       title={
         <Flex align="center" gap={8}>
-          <RobotOutlined />
+          <OpenAIOutlined />
           <span>AI 分析</span>
         </Flex>
       }

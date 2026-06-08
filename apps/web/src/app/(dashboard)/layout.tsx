@@ -6,7 +6,8 @@ import {
   DashboardOutlined,
   FundOutlined,
   BarChartOutlined,
-  RobotOutlined,
+  FundProjectionScreenOutlined,
+  OpenAIOutlined,
 } from "@ant-design/icons";
 import { usePathname, useRouter } from "next/navigation";
 import { useAppStore } from "@/store/useAppStore";
@@ -57,13 +58,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
+            gap: 8,
             fontWeight: 700,
-            fontSize: 16,
-            color: "#2563eb",
+            fontSize: 15,
+            color: "#dc2626",
             borderBottom: "1px solid #f0f0f0",
           }}
         >
-          基金管理
+          <FundProjectionScreenOutlined style={{ fontSize: 20 }} />
+          <span>智能基金仓位管理</span>
         </div>
         <Menu
           mode="inline"
@@ -76,7 +79,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <Tooltip title="AI 分析 (⌘K)" placement="right">
             <Button
               type="primary"
-              icon={<RobotOutlined />}
+              icon={<OpenAIOutlined />}
               block
               onClick={openChatDrawer}
             >
@@ -93,15 +96,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             borderBottom: "1px solid #f0f0f0",
             display: "flex",
             alignItems: "center",
-            justifyContent: "space-between",
+            justifyContent: "flex-end",
             height: 56,
           }}
         >
-          <span style={{ color: "#6b7280", fontSize: 14 }}>智能基金仓位管理系统</span>
           <Tooltip title="AI 分析 (⌘K)">
             <Button
               type="text"
-              icon={<RobotOutlined style={{ fontSize: 18 }} />}
+              icon={<OpenAIOutlined style={{ fontSize: 18 }} />}
               onClick={openChatDrawer}
             />
           </Tooltip>
