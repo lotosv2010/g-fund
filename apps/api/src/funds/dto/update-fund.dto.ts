@@ -1,5 +1,6 @@
-import { IsString, IsOptional, IsNumberString, IsInt, Min, Max, Length } from 'class-validator';
+import { IsString, IsOptional, IsNumberString, IsInt, IsIn, Min, Max, Length } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
+import { FUND_CATEGORIES } from '@g-fund/types';
 
 export class UpdateFundDto {
   @ApiPropertyOptional()
@@ -19,6 +20,12 @@ export class UpdateFundDto {
   @Min(1)
   @Max(5)
   riskLevel?: number;
+
+  @ApiPropertyOptional({ enum: FUND_CATEGORIES })
+  @IsOptional()
+  @IsString()
+  @IsIn(FUND_CATEGORIES)
+  category?: string;
 
   @ApiPropertyOptional()
   @IsOptional()

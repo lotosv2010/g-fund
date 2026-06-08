@@ -1,5 +1,5 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param } from '@nestjs/common';
-import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import { Controller, Get, Post, Patch, Delete, Body, Param, Query } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { FundsService } from './funds.service';
 import { CreateFundDto } from './dto/create-fund.dto';
 import { UpdateFundDto } from './dto/update-fund.dto';
@@ -11,8 +11,9 @@ export class FundsController {
 
   @Get()
   @ApiOperation({ summary: '获取基金列表' })
-  findAll() {
-    return this.fundsService.findAll();
+  @ApiQuery({ name: 'category', required: false, enum: ['holding', 'longterm', 'watchlist'] })
+  findAll(@Query('category') category?: string) {
+    return this.fundsService.findAll(category);
   }
 
   @Get(':code')

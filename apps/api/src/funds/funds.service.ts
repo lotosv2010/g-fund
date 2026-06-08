@@ -1,5 +1,5 @@
 import { Injectable, Inject, NotFoundException, ConflictException } from '@nestjs/common';
-import { eq } from 'drizzle-orm';
+import { eq, SQL } from 'drizzle-orm';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '@g-fund/db';
 import { DB } from '../db/db.module';
@@ -21,6 +21,7 @@ function toListItem(r: FundRow): FundListItem {
     name: r.name,
     type: r.type ?? null,
     riskLevel: r.riskLevel ?? null,
+    category: (r.category ?? 'holding') as FundListItem['category'],
     costAmount: r.costAmount ?? '0',
     currentValue: r.currentValue ?? '0',
     targetAmount: r.targetAmount ?? '0',
@@ -37,8 +38,15 @@ function toListItem(r: FundRow): FundListItem {
 export class FundsService {
   constructor(@Inject(DB) private readonly db: DbType) {}
 
-  async findAll(): Promise<FundListItem[]> {
-    const rows = await this.db.select().from(schema.funds);
+  async findAll(category?: string): Promise<FundListItem[]> {
+    const conditions: SQL[] = [];
+    if (category) {
+      conditions.push(eq(schema.funds.category, category));
+    }
+    const query = conditions.length > 0
+      ? this.db.select().from(schema.funds).where(conditions[0])
+      : this.db.select().from(schema.funds);
+    const rows = await query;
     return rows.map(toListItem);
   }
 
@@ -65,6 +73,7 @@ export class FundsService {
         name: dto.name,
         type: dto.type ?? null,
         riskLevel: dto.riskLevel ?? null,
+        category: dto.category ?? 'holding',
         costAmount: dto.costAmount ?? '0',
         currentValue: dto.currentValue ?? '0',
         targetAmount: dto.targetAmount ?? '0',

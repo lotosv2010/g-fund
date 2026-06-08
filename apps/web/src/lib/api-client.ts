@@ -1,5 +1,5 @@
 import axios from "axios";
-import type { FundListItem, CreateFundDto, UpdateFundDto } from "@g-fund/types";
+import type { FundListItem, CreateFundDto, UpdateFundDto, FundCategory } from "@g-fund/types";
 
 const http = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api",
@@ -15,7 +15,8 @@ http.interceptors.response.use(
 );
 
 export const fundsApi = {
-  list: () => http.get<FundListItem[]>("/funds").then((r) => r.data),
+  list: (category?: FundCategory) =>
+    http.get<FundListItem[]>("/funds", { params: category ? { category } : undefined }).then((r) => r.data),
   get: (code: string) => http.get<FundListItem>(`/funds/${code}`).then((r) => r.data),
   create: (dto: CreateFundDto) => http.post<FundListItem>("/funds", dto).then((r) => r.data),
   update: (code: string, dto: UpdateFundDto) =>

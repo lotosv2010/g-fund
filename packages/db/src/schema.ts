@@ -6,6 +6,7 @@ export const funds = pgTable('funds', {
   name: varchar('name', { length: 100 }).notNull(),
   type: varchar('type', { length: 20 }),
   riskLevel: smallint('risk_level'),
+  category: varchar('category', { length: 20 }).notNull().default('holding'),
   costAmount: numeric('cost_amount', { precision: 18, scale: 2 }).notNull().default('0'),
   currentValue: numeric('current_value', { precision: 18, scale: 2 }).notNull().default('0'),
   targetAmount: numeric('target_amount', { precision: 18, scale: 2 }).notNull().default('0'),

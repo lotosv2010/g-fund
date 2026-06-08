@@ -13,10 +13,12 @@ import {
   Typography,
   message,
   Tag,
+  Tabs,
 } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
-import type { FundListItem, CreateFundDto } from "@g-fund/types";
+import type { FundListItem, CreateFundDto, FundCategory } from "@g-fund/types";
+import { FUND_CATEGORIES, FUND_CATEGORY_LABELS } from "@g-fund/types";
 import { fundsApi } from "@/lib/api-client";
 
 const { Title } = Typography;
@@ -36,12 +38,73 @@ function PnlCell({ value }: { value: string }) {
   return <span style={{ color }}>{prefix}{value}</span>;
 }
 
+const COLUMNS: ColumnsType<FundListItem> = [
+  { title: "基金代码", dataIndex: "code", width: 100 },
+  { title: "基金名称", dataIndex: "name", ellipsis: true },
+  {
+    title: "类型",
+    dataIndex: "type",
+    width: 100,
+    render: (v) => v ?? "—",
+  },
+  {
+    title: "风险等级",
+    dataIndex: "riskLevel",
+    width: 100,
+    render: (v) =>
+      v ? <Tag color={RISK_LABELS[v]?.color}>{RISK_LABELS[v]?.label}</Tag> : "—",
+  },
+  {
+    title: "持仓金额",
+    dataIndex: "costAmount",
+    width: 120,
+    align: "right",
+    render: (v) => `¥${parseFloat(v).toLocaleString()}`,
+  },
+  {
+    title: "当前市值",
+    dataIndex: "currentValue",
+    width: 120,
+    align: "right",
+    render: (v) => `¥${parseFloat(v).toLocaleString()}`,
+  },
+  {
+    title: "持仓收益",
+    dataIndex: "pnlAmount",
+    width: 120,
+    align: "right",
+    render: (v) => <PnlCell value={`¥${parseFloat(v).toLocaleString()}`} />,
+  },
+  {
+    title: "收益率",
+    dataIndex: "pnlRate",
+    width: 100,
+    align: "right",
+    render: (v) => <PnlCell value={`${(parseFloat(v) * 100).toFixed(2)}%`} />,
+  },
+  {
+    title: "目标金额",
+    dataIndex: "targetAmount",
+    width: 120,
+    align: "right",
+    render: (v) => `¥${parseFloat(v).toLocaleString()}`,
+  },
+  {
+    title: "目标比例",
+    dataIndex: "targetRatio",
+    width: 100,
+    align: "right",
+    render: (v) => `${v}%`,
+  },
+];
+
 export default function FundsPage() {
   const [funds, setFunds] = useState<FundListItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<FundCategory>("holding");
   const [modalOpen, setModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [form] = Form.useForm<CreateFundDto>();
+  const [form] = Form.useForm<CreateFundDto & { category: FundCategory }>();
   const [messageApi, contextHolder] = message.useMessage();
 
   const load = useCallback(async () => {
@@ -58,11 +121,22 @@ export default function FundsPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  async function handleCreate(values: CreateFundDto) {
+  const filteredFunds = funds.filter((f) => f.category === activeTab);
+
+  const categoryCounts = FUND_CATEGORIES.reduce(
+    (acc, cat) => {
+      acc[cat] = funds.filter((f) => f.category === cat).length;
+      return acc;
+    },
+    {} as Record<FundCategory, number>,
+  );
+
+  async function handleCreate(values: CreateFundDto & { category: FundCategory }) {
     setSubmitting(true);
     try {
       await fundsApi.create({
         ...values,
+        category: values.category ?? activeTab,
         costAmount: values.costAmount ? String(values.costAmount) : undefined,
         currentValue: values.currentValue ? String(values.currentValue) : undefined,
         targetAmount: values.targetAmount ? String(values.targetAmount) : undefined,
@@ -90,63 +164,7 @@ export default function FundsPage() {
   }
 
   const columns: ColumnsType<FundListItem> = [
-    { title: "基金代码", dataIndex: "code", width: 100 },
-    { title: "基金名称", dataIndex: "name", ellipsis: true },
-    {
-      title: "类型",
-      dataIndex: "type",
-      width: 100,
-      render: (v) => v ?? "—",
-    },
-    {
-      title: "风险等级",
-      dataIndex: "riskLevel",
-      width: 100,
-      render: (v) =>
-        v ? <Tag color={RISK_LABELS[v]?.color}>{RISK_LABELS[v]?.label}</Tag> : "—",
-    },
-    {
-      title: "持仓金额",
-      dataIndex: "costAmount",
-      width: 120,
-      align: "right",
-      render: (v) => `¥${parseFloat(v).toLocaleString()}`,
-    },
-    {
-      title: "当前市值",
-      dataIndex: "currentValue",
-      width: 120,
-      align: "right",
-      render: (v) => `¥${parseFloat(v).toLocaleString()}`,
-    },
-    {
-      title: "持仓收益",
-      dataIndex: "pnlAmount",
-      width: 120,
-      align: "right",
-      render: (v) => <PnlCell value={`¥${parseFloat(v).toLocaleString()}`} />,
-    },
-    {
-      title: "收益率",
-      dataIndex: "pnlRate",
-      width: 100,
-      align: "right",
-      render: (v) => <PnlCell value={`${(parseFloat(v) * 100).toFixed(2)}%`} />,
-    },
-    {
-      title: "目标金额",
-      dataIndex: "targetAmount",
-      width: 120,
-      align: "right",
-      render: (v) => `¥${parseFloat(v).toLocaleString()}`,
-    },
-    {
-      title: "目标比例",
-      dataIndex: "targetRatio",
-      width: 100,
-      align: "right",
-      render: (v) => `${v}%`,
-    },
+    ...COLUMNS,
     {
       title: "操作",
       width: 80,
@@ -165,26 +183,41 @@ export default function FundsPage() {
     },
   ];
 
+  const tabItems = FUND_CATEGORIES.map((cat) => ({
+    key: cat,
+    label: `${FUND_CATEGORY_LABELS[cat]}（${categoryCounts[cat]}）`,
+    children: (
+      <Table
+        rowKey="code"
+        columns={columns}
+        dataSource={filteredFunds}
+        loading={loading}
+        scroll={{ x: 1100 }}
+        pagination={{ pageSize: 20, showTotal: (t) => `共 ${t} 支` }}
+        size="middle"
+      />
+    ),
+  }));
+
   return (
     <>
       {contextHolder}
       <Space direction="vertical" size="middle" style={{ width: "100%" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <Title level={4} style={{ margin: 0 }}>基金列表</Title>
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => setModalOpen(true)}>
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={() => {
+              form.setFieldsValue({ category: activeTab });
+              setModalOpen(true);
+            }}
+          >
             添加基金
           </Button>
         </div>
 
-        <Table
-          rowKey="code"
-          columns={columns}
-          dataSource={funds}
-          loading={loading}
-          scroll={{ x: 1100 }}
-          pagination={{ pageSize: 20, showTotal: (t) => `共 ${t} 支` }}
-          size="middle"
-        />
+        <Tabs activeKey={activeTab} onChange={(key) => setActiveTab(key as FundCategory)} items={tabItems} />
       </Space>
 
       <Modal
@@ -203,6 +236,13 @@ export default function FundsPage() {
           </Form.Item>
           <Form.Item name="name" label="基金名称" rules={[{ required: true, message: "请输入基金名称" }]}>
             <Input placeholder="如 易方达消费行业" maxLength={100} />
+          </Form.Item>
+          <Form.Item name="category" label="分类" rules={[{ required: true }]}>
+            <Select>
+              {FUND_CATEGORIES.map((cat) => (
+                <Select.Option key={cat} value={cat}>{FUND_CATEGORY_LABELS[cat]}</Select.Option>
+              ))}
+            </Select>
           </Form.Item>
           <Form.Item name="type" label="基金类型">
             <Select placeholder="请选择" allowClear>
