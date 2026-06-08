@@ -37,10 +37,7 @@ export class PositionsService {
 
     // positions 表为空时，降级读取 funds 表中已有的持仓数据
     if (rows.length === 0) {
-      const holdingFunds = await this.db
-        .select()
-        .from(schema.funds)
-        .where(eq(schema.funds.category, 'holding'));
+      const holdingFunds = await this.db.select().from(schema.funds);
 
       return holdingFunds
         .filter((f) => parseFloat(f.costAmount ?? '0') > 0)

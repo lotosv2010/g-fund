@@ -83,10 +83,7 @@ export class DailySnapshotsService {
       });
     } else {
       // positions 为空时降级读 funds
-      const holdingFunds = await this.db
-        .select()
-        .from(schema.funds)
-        .where(eq(schema.funds.category, 'holding'));
+      const holdingFunds = await this.db.select().from(schema.funds);
 
       items = holdingFunds
         .filter((f) => parseFloat(f.costAmount ?? '0') > 0)
