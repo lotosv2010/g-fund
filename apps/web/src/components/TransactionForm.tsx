@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Form, Input, InputNumber, Select, Button, DatePicker, message, Space } from "antd";
 import type { CreateTransactionDto, FundListItem } from "@g-fund/types";
 import dayjs from "dayjs";
@@ -7,13 +7,23 @@ import dayjs from "dayjs";
 interface TransactionFormProps {
   funds: FundListItem[];
   onSubmit: (dto: CreateTransactionDto) => Promise<void>;
+  defaultFundCode?: string;
+  defaultType?: "buy" | "sell";
 }
 
-export default function TransactionForm({ funds, onSubmit }: TransactionFormProps) {
+export default function TransactionForm({ funds, onSubmit, defaultFundCode, defaultType }: TransactionFormProps) {
   const [form] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
-  const [txType, setTxType] = useState<"buy" | "sell">("buy");
+  const [txType, setTxType] = useState<"buy" | "sell">(defaultType ?? "buy");
   const [messageApi, contextHolder] = message.useMessage();
+
+  useEffect(() => {
+    const values: Record<string, unknown> = { tradeDate: dayjs() };
+    if (defaultFundCode) values.fundCode = defaultFundCode;
+    if (defaultType) values.type = defaultType;
+    form.setFieldsValue(values);
+    if (defaultType) setTxType(defaultType);
+  }, [defaultFundCode, defaultType, form]);
 
   async function handleFinish(values: Record<string, unknown>) {
     setSubmitting(true);
@@ -51,6 +61,7 @@ export default function TransactionForm({ funds, onSubmit }: TransactionFormProp
             showSearch
             placeholder="选择基金"
             optionFilterProp="label"
+            disabled={!!defaultFundCode}
             options={funds.map((f) => ({ value: f.code, label: `${f.code} ${f.name}` }))}
           />
         </Form.Item>
