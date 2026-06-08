@@ -10,6 +10,7 @@ ADR 记录重要的技术决策。格式：背景 → 决策 → 后果。
 | ADR-002 | LangGraph.js 管理 AI 分析流程 | Accepted |
 | ADR-003 | 仓位计算在 Service 层用事务处理 | Accepted |
 | ADR-004 | 基金自选库（funds 表）+ drizzle-orm + antd 前端 | Accepted |
+| ADR-005 | 导航结构重构：Dashboard + 合并页面 + AI 抽屉 | Accepted |
 
 ---
 
@@ -55,3 +56,25 @@ ADR 记录重要的技术决策。格式：背景 → 决策 → 后果。
 - 连接池通过 NestJS 全局 `DbModule`（`@Global()`）注入，各 Service 用 `@Inject(DB)` 取用
 
 **后果**：drizzle-orm schema 在 `packages/db/src/schema.ts` 集中管理；所有模块共享同一 Pool 实例；antd 主题色与 UI 规范保持一致。
+
+---
+
+## ADR-005：导航结构重构 — Dashboard + 合并页面 + AI 抽屉
+
+**背景**：原有 4 个平级菜单（基金列表、持仓管理、每日日志、AI 分析）存在以下问题：
+- 持仓管理与每日日志天然耦合（交易产生日志），分开后用户需频繁切换页面
+- AI 分析作为独立页面，打断操作流，且 Chat 形式更适合侧边抽屉而非全页
+- 缺少 Dashboard 总览页，用户进入系统后无全局资产视图
+
+**决策**：
+1. 新增 Dashboard 作为默认着陆页（`/dashboard`），展示资产聚合、盈亏曲线、持仓分布
+2. 合并「持仓管理」与「每日日志」为「交易与持仓」页面（`/positions`），内含 3 个 Tab：当前持仓、买入卖出、操作日志
+3. AI 分析从路由页面改为右侧 Drawer（400px 宽），通过悬浮按钮 / Header 图标 / `Cmd+K` 快捷键全局唤起
+4. 新增 `daily_snapshots` 表存储每日资产快照，为 Dashboard 盈亏曲线提供数据源
+
+**后果**：
+- 菜单从 4 项精简为 3 项（总览、基金列表、交易与持仓），信息架构更清晰
+- AI 分析可从任何页面唤起，不再打断用户操作流
+- 需新增 `daily_snapshots` 表及对应的快照生成逻辑（定时任务或懒生成）
+- `positions` 页面复杂度上升，需用 Tab 组件做好分区
+- ChatDrawer 需管理 SSE 连接生命周期（开/关时连接/断开）

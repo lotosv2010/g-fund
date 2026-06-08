@@ -1,25 +1,43 @@
 "use client";
-import { Layout, Menu } from "antd";
+
+import { useEffect } from "react";
+import { Layout, Menu, Button, Tooltip } from "antd";
 import {
+  DashboardOutlined,
   FundOutlined,
   BarChartOutlined,
-  FileTextOutlined,
   RobotOutlined,
 } from "@ant-design/icons";
 import { usePathname, useRouter } from "next/navigation";
+import { useAppStore } from "@/store/useAppStore";
+import ChatDrawer from "@/components/ChatDrawer";
 
 const { Sider, Content, Header } = Layout;
 
 const menuItems = [
+  { key: "/dashboard", icon: <DashboardOutlined />, label: "总览" },
   { key: "/funds", icon: <FundOutlined />, label: "基金列表" },
-  { key: "/positions", icon: <BarChartOutlined />, label: "持仓管理" },
-  { key: "/daily-log", icon: <FileTextOutlined />, label: "每日日志" },
-  { key: "/analysis", icon: <RobotOutlined />, label: "AI 分析" },
+  { key: "/positions", icon: <BarChartOutlined />, label: "交易与持仓" },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const openChatDrawer = useAppStore((s) => s.openChatDrawer);
+  const toggleChatDrawer = useAppStore((s) => s.toggleChatDrawer);
+
+  const selectedKey = menuItems.find((item) => pathname.startsWith(item.key))?.key ?? "/dashboard";
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        toggleChatDrawer();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [toggleChatDrawer]);
 
   return (
     <Layout style={{ minHeight: "100vh" }}>
@@ -27,7 +45,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         theme="light"
         breakpoint="lg"
         collapsedWidth={0}
-        style={{ borderRight: "1px solid #f0f0f0" }}
+        style={{ borderRight: "1px solid #f0f0f0", display: "flex", flexDirection: "column" }}
       >
         <div
           style={{
@@ -45,11 +63,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
         <Menu
           mode="inline"
-          selectedKeys={[pathname]}
+          selectedKeys={[selectedKey]}
           items={menuItems}
           onClick={({ key }) => router.push(key)}
-          style={{ borderRight: 0, paddingTop: 8 }}
+          style={{ borderRight: 0, paddingTop: 8, flex: 1 }}
         />
+        <div style={{ padding: "12px 16px", borderTop: "1px solid #f0f0f0" }}>
+          <Tooltip title="AI 分析 (⌘K)" placement="right">
+            <Button
+              type="primary"
+              icon={<RobotOutlined />}
+              block
+              onClick={openChatDrawer}
+            >
+              AI 分析
+            </Button>
+          </Tooltip>
+        </div>
       </Sider>
       <Layout>
         <Header
@@ -59,13 +89,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             borderBottom: "1px solid #f0f0f0",
             display: "flex",
             alignItems: "center",
+            justifyContent: "space-between",
             height: 56,
           }}
         >
           <span style={{ color: "#6b7280", fontSize: 14 }}>智能基金仓位管理系统</span>
+          <Tooltip title="AI 分析 (⌘K)">
+            <Button
+              type="text"
+              icon={<RobotOutlined style={{ fontSize: 18 }} />}
+              onClick={openChatDrawer}
+            />
+          </Tooltip>
         </Header>
         <Content style={{ padding: 24 }}>{children}</Content>
       </Layout>
+      <ChatDrawer />
     </Layout>
   );
 }

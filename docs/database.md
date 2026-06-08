@@ -45,6 +45,21 @@
 | input_snapshot | JSONB | 分析时的持仓快照 |
 | result | JSONB | 分析结果 |
 
+### daily_snapshots（每日资产快照）
+
+> Dashboard 盈亏曲线数据源。每日定时任务或首次访问时生成。
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | SERIAL PK | |
+| snapshot_date | DATE UNIQUE | 快照日期 |
+| total_cost | NUMERIC(18,2) | 总投入成本 |
+| total_value | NUMERIC(18,2) | 总市值（当时净值 × 份额） |
+| total_pnl | NUMERIC(18,2) | 总盈亏（total_value - total_cost） |
+| pnl_ratio | NUMERIC(8,4) | 收益率（total_pnl / total_cost） |
+| position_count | INTEGER | 当时持仓数量 |
+| positions_snapshot | JSONB | 持仓明细快照（fund_code, shares, value, pnl） |
+
 ## 仓位计算规则
 
 **买入**
@@ -68,4 +83,5 @@ CREATE INDEX idx_transactions_fund_code ON transactions(fund_code);
 CREATE INDEX idx_transactions_trade_date ON transactions(trade_date DESC);
 CREATE INDEX idx_daily_logs_date ON daily_logs(log_date DESC);
 CREATE INDEX idx_analysis_created ON analysis_records(created_at DESC);
+CREATE INDEX idx_daily_snapshots_date ON daily_snapshots(snapshot_date DESC);
 ```
