@@ -12,18 +12,21 @@
   "dependencies": {
     "@g-fund/types": "workspace:*",
     "@g-fund/ui": "workspace:*",
-    "next": "^15.3.3",
+    "@ant-design/icons": "^6.2.5",
+    "@ant-design/nextjs-registry": "^1.0.1",
+    "antd": "^6.4.3",
+    "next": "^16.2.7",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
-    "axios": "^1.9.0",
+    "axios": "^1.17.0",
     "zustand": "^5.0.5",
-    "recharts": "^2.15.3",
+    "recharts": "^3.8.1",
     "react-router-dom": "^7.6.2"
   },
   "devDependencies": {
-    "@types/node": "^22",
+    "@types/node": "^25.9.2",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "typescript": "^5.8.3"
+    "typescript": "^6.0.3"
   }
 }

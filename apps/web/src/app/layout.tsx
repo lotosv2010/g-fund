@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import AntdProvider from "./antd-provider";
+import "./globals.css";
 
 export const metadata: Metadata = {
   title: "基金投资管理系统",
@@ -12,7 +14,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="zh-CN">
-      <body>{children}</body>
+      <body>
+        <AntdProvider>{children}</AntdProvider>
+      </body>
     </html>
   );
 }

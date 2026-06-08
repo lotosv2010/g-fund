@@ -15,5 +15,8 @@
   "packageManager": "pnpm@10.11.1",
   "engines": {
     "node": ">=20"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["@nestjs/core", "esbuild", "sharp", "@scarf/scarf"]
   }
 }

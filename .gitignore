@@ -32,3 +32,10 @@ Thumbs.db
 
 # Claude Code 个人配置
 .claude/settings.local.json
+
+
+# turbo
+.turbo/
+
+#next
+.next/

@@ -2,17 +2,21 @@
   "name": "@g-fund/db",
   "version": "0.1.0",
   "private": true,
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "scripts": {
-    "migrate": "node -e \"require('./src/migrate')\"",
+    "build": "tsc",
+    "migrate": "tsx src/migrate.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "drizzle-orm": "^0.45.2",
     "pg": "^8.16.0"
   },
   "devDependencies": {
+    "@types/node": "^25.9.2",
     "@types/pg": "^8",
-    "typescript": "^5.8.3"
+    "tsx": "^4.19.2",
+    "typescript": "^6.0.3"
   }
 }

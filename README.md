@@ -27,7 +27,7 @@ pnpm dev
 
 | 层级 | 技术 |
 |------|------|
-| 前端 | Next.js 15 + React 19 + Tailwind CSS |
+| 前端 | Next.js 15 + React 19 + antd 5 |
 | 后端 | NestJS 11 + Fastify + PostgreSQL |
 | AI Agent | LangGraph.js + 盈米 MCP |
 | 构建 | Turborepo + pnpm workspaces |

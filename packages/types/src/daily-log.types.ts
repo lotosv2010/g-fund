@@ -1,1 +1,8 @@
-// 每日日志类型定义
+export interface DailyLog {
+  id: number;
+  logDate: string;
+  summary: string | null;
+  marketNote: string | null;
+  createdAt: string;
+  updatedAt: string;
+}

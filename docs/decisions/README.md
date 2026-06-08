@@ -9,6 +9,7 @@ ADR 记录重要的技术决策。格式：背景 → 决策 → 后果。
 | ADR-001 | NestJS + Fastify 后端框架 | Accepted |
 | ADR-002 | LangGraph.js 管理 AI 分析流程 | Accepted |
 | ADR-003 | 仓位计算在 Service 层用事务处理 | Accepted |
+| ADR-004 | 基金自选库（funds 表）+ drizzle-orm + antd 前端 | Accepted |
 
 ---
 
@@ -40,3 +41,17 @@ ADR 记录重要的技术决策。格式：背景 → 决策 → 后果。
 **决策**：在 PostgreSQL 事务中完成 INSERT + UPDATE，不使用数据库触发器。
 
 **后果**：逻辑在代码层可调试、可测试；需要确保所有买卖路径都走事务。
+
+---
+
+## ADR-004：基金自选库（funds 表）+ drizzle-orm + Ant Design
+
+**背景**：需要打通第一个端到端链路（DB → API → 前端），验证整体架构可用。选型需决定 ORM 方案和前端 UI 库。
+
+**决策**：
+- 新建 `funds` 表作为基金自选库（含持仓金额、目标金额、目标比例、持仓收益字段）
+- ORM 选用 drizzle-orm（类型安全、轻量、与 pg 原生兼容，避免重型 ORM）
+- 前端 UI 选用 Ant Design 5，通过 `@ant-design/nextjs-registry` 适配 App Router SSR
+- 连接池通过 NestJS 全局 `DbModule`（`@Global()`）注入，各 Service 用 `@Inject(DB)` 取用
+
+**后果**：drizzle-orm schema 在 `packages/db/src/schema.ts` 集中管理；所有模块共享同一 Pool 实例；antd 主题色与 UI 规范保持一致。
