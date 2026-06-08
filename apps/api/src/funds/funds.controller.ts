@@ -29,16 +29,16 @@ export class FundsController {
     return this.fundsService.create(dto);
   }
 
-  @Patch(':code')
-  @ApiOperation({ summary: '更新基金信息' })
-  update(@Param('code') code: string, @Body() dto: UpdateFundDto) {
-    return this.fundsService.update(code, dto);
-  }
-
   @Patch('reorder')
   @ApiOperation({ summary: '批量更新排序' })
   reorder(@Body() dto: ReorderFundDto) {
     return this.fundsService.reorder(dto.items);
+  }
+
+  @Patch(':code')
+  @ApiOperation({ summary: '更新基金信息' })
+  update(@Param('code') code: string, @Body() dto: UpdateFundDto) {
+    return this.fundsService.update(code, dto);
   }
 
   @Delete(':code')

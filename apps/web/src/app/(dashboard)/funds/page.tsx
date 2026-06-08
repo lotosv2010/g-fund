@@ -159,6 +159,8 @@ export default function FundsPage() {
 
     try {
       await fundsApi.reorder(reordered.map((f, i) => ({ code: f.code, sortOrder: i })));
+      messageApi.success("排序已更新");
+      load();
     } catch (e) {
       messageApi.error((e as Error).message);
       load();
@@ -304,9 +306,11 @@ export default function FundsPage() {
         </Flex>
 
         <Input.Search
+          value={search}
           placeholder="搜索基金名称或代码"
           allowClear
           onChange={(e) => setSearch(e.target.value)}
+          onClear={() => setSearch("")}
           style={{ maxWidth: 320 }}
         />
 
