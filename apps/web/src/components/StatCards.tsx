@@ -4,8 +4,8 @@ import type { PositionListItem, DailySnapshot } from "@g-fund/types";
 
 const { Text } = Typography;
 
-const PROFIT_COLOR = "#16a34a";
-const LOSS_COLOR = "#dc2626";
+const PROFIT_COLOR = "#dc2626";
+const LOSS_COLOR = "#16a34a";
 
 interface StatCardsProps {
   data: PositionListItem[];
