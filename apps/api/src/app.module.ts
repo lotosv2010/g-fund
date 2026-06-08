@@ -7,6 +7,7 @@ import { PositionsModule } from './positions/positions.module';
 import { TransactionsModule } from './transactions/transactions.module';
 import { DailyLogsModule } from './daily-logs/daily-logs.module';
 import { DailySnapshotsModule } from './daily-snapshots/daily-snapshots.module';
+import { SettingsModule } from './settings/settings.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { DailySnapshotsModule } from './daily-snapshots/daily-snapshots.module';
     TransactionsModule,
     DailyLogsModule,
     DailySnapshotsModule,
+    SettingsModule,
   ],
 })
 export class AppModule {}

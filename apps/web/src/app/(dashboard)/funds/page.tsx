@@ -15,12 +15,13 @@ import {
   Tag,
   Tabs,
   Flex,
+  Card,
 } from "antd";
-import { PlusOutlined, HolderOutlined } from "@ant-design/icons";
+import { PlusOutlined, HolderOutlined, EditOutlined } from "@ant-design/icons";
 import type { ColumnsType, SorterResult } from "antd/es/table/interface";
-import type { FundListItem, CreateFundDto, FundCategory } from "@g-fund/types";
+import type { FundListItem, CreateFundDto, UpdateFundDto, FundCategory } from "@g-fund/types";
 import { FUND_CATEGORIES, FUND_CATEGORY_LABELS } from "@g-fund/types";
-import { fundsApi } from "@/lib/api-client";
+import { fundsApi, settingsApi } from "@/lib/api-client";
 import {
   DndContext,
   closestCenter,
@@ -87,9 +88,15 @@ export default function FundsPage() {
   const [sortField, setSortField] = useState<string | null>(null);
   const [sortOrder, setSortOrder] = useState<"ascend" | "descend" | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [editingFund, setEditingFund] = useState<FundListItem | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [form] = Form.useForm<CreateFundDto & { category: FundCategory }>();
   const [messageApi, contextHolder] = message.useMessage();
+
+  const [targetTotalPosition, setTargetTotalPosition] = useState<string>("0");
+  const [settingsModalOpen, setSettingsModalOpen] = useState(false);
+  const [settingsSubmitting, setSettingsSubmitting] = useState(false);
+  const [settingsForm] = Form.useForm<{ targetTotalPosition: number }>();
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
@@ -106,6 +113,17 @@ export default function FundsPage() {
   }, [messageApi]);
 
   useEffect(() => { load(); }, [load]);
+
+  const loadSettings = useCallback(async () => {
+    try {
+      const setting = await settingsApi.get("target_total_position");
+      setTargetTotalPosition(setting.value);
+    } catch {
+      // setting may not exist yet
+    }
+  }, []);
+
+  useEffect(() => { loadSettings(); }, [loadSettings]);
 
   const isCustomSort = sortField !== null && sortOrder !== null;
 
@@ -168,6 +186,12 @@ export default function FundsPage() {
     }
   }
 
+  function closeModal() {
+    setModalOpen(false);
+    setEditingFund(null);
+    form.resetFields();
+  }
+
   async function handleCreate(values: CreateFundDto & { category: FundCategory }) {
     setSubmitting(true);
     try {
@@ -176,12 +200,35 @@ export default function FundsPage() {
         category: values.category ?? activeTab,
         costAmount: values.costAmount ? String(values.costAmount) : undefined,
         currentValue: values.currentValue ? String(values.currentValue) : undefined,
-        targetAmount: values.targetAmount ? String(values.targetAmount) : undefined,
         targetRatio: values.targetRatio ? String(values.targetRatio) : undefined,
       });
       messageApi.success("添加成功");
-      setModalOpen(false);
-      form.resetFields();
+      closeModal();
+      load();
+    } catch (e) {
+      messageApi.error((e as Error).message);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleEdit(values: CreateFundDto & { category: FundCategory }) {
+    if (!editingFund) return;
+    setSubmitting(true);
+    try {
+      const dto: UpdateFundDto = {
+        name: values.name,
+        type: values.type,
+        riskLevel: values.riskLevel,
+        category: values.category,
+        costAmount: values.costAmount ? String(values.costAmount) : undefined,
+        currentValue: values.currentValue ? String(values.currentValue) : undefined,
+        targetRatio: values.targetRatio ? String(values.targetRatio) : undefined,
+        note: values.note,
+      };
+      await fundsApi.update(editingFund.code, dto);
+      messageApi.success("更新成功");
+      closeModal();
       load();
     } catch (e) {
       messageApi.error((e as Error).message);
@@ -197,6 +244,22 @@ export default function FundsPage() {
       load();
     } catch (e) {
       messageApi.error((e as Error).message);
+    }
+  }
+
+  async function handleSettingsSave(values: { targetTotalPosition: number }) {
+    setSettingsSubmitting(true);
+    try {
+      await settingsApi.set("target_total_position", String(values.targetTotalPosition));
+      setTargetTotalPosition(String(values.targetTotalPosition));
+      messageApi.success("目标总仓位已更新");
+      setSettingsModalOpen(false);
+      settingsForm.resetFields();
+      load();
+    } catch (e) {
+      messageApi.error((e as Error).message);
+    } finally {
+      setSettingsSubmitting(false);
     }
   }
 
@@ -238,17 +301,40 @@ export default function FundsPage() {
       render: (v) => `${v}%`,
     },
     {
-      title: "操作", width: 80, fixed: "right",
+      title: "操作", width: 120, fixed: "right",
       render: (_, record) => (
-        <Popconfirm
-          title="确认删除该基金？"
-          onConfirm={() => handleDelete(record.code)}
-          okText="删除"
-          okButtonProps={{ danger: true }}
-          cancelText="取消"
-        >
-          <Button type="link" danger size="small">删除</Button>
-        </Popconfirm>
+        <Space size="small">
+          <Button
+            type="link"
+            size="small"
+            icon={<EditOutlined />}
+            onClick={() => {
+              setEditingFund(record);
+              form.setFieldsValue({
+                code: record.code,
+                name: record.name,
+                category: record.category,
+                type: record.type ?? undefined,
+                riskLevel: record.riskLevel ?? undefined,
+                costAmount: record.costAmount ?? undefined,
+                currentValue: record.currentValue ?? undefined,
+                targetRatio: record.targetRatio ?? undefined,
+                note: record.note ?? undefined,
+              });
+            }}
+          >
+            编辑
+          </Button>
+          <Popconfirm
+            title="确认删除该基金？"
+            onConfirm={() => handleDelete(record.code)}
+            okText="删除"
+            okButtonProps={{ danger: true }}
+            cancelText="取消"
+          >
+            <Button type="link" danger size="small">删除</Button>
+          </Popconfirm>
+        </Space>
       ),
     },
   ];
@@ -293,7 +379,38 @@ export default function FundsPage() {
       {contextHolder}
       <Space orientation="vertical" size="middle" style={{ width: "100%" }}>
         <Flex justify="space-between" align="center">
-          <Title level={4} style={{ margin: 0 }}>基金列表</Title>
+          <Title level={4} style={{ margin: 0, minWidth: 100 }}>基金列表</Title>
+          <Card size="small" style={{ background: "#f0f5ff", borderColor: "#adc6ff" }}>
+            <Space>
+              <span style={{ color: "#595959" }}>目标总仓位：</span>
+              <span style={{ fontWeight: 600, fontSize: 16 }}>
+                ¥{parseFloat(targetTotalPosition).toLocaleString()}
+              </span>
+              <Button
+                type="link"
+                size="small"
+                icon={<EditOutlined />}
+                onClick={() => {
+                  settingsForm.setFieldsValue({ targetTotalPosition: parseFloat(targetTotalPosition) });
+                  setSettingsModalOpen(true);
+                }}
+              >
+                编辑
+              </Button>
+            </Space>
+          </Card>
+          <div style={{ minWidth: 100 }} />
+        </Flex>
+
+        <Flex justify="space-between" align="center">
+          <Input.Search
+            value={search}
+            placeholder="搜索基金名称或代码"
+            allowClear
+            onChange={(e) => setSearch(e.target.value)}
+            onClear={() => setSearch("")}
+            style={{ maxWidth: 320 }}
+          />
           <Button
             type="primary"
             icon={<PlusOutlined />}
@@ -306,31 +423,22 @@ export default function FundsPage() {
           </Button>
         </Flex>
 
-        <Input.Search
-          value={search}
-          placeholder="搜索基金名称或代码"
-          allowClear
-          onChange={(e) => setSearch(e.target.value)}
-          onClear={() => setSearch("")}
-          style={{ maxWidth: 320 }}
-        />
-
         <Tabs activeKey={activeTab} onChange={(key) => { setActiveTab(key as FundCategory); setSortField(null); setSortOrder(null); }} items={tabItems} />
       </Space>
 
       <Modal
-        title="添加基金"
-        open={modalOpen}
-        onCancel={() => { setModalOpen(false); form.resetFields(); }}
+        title={editingFund ? "编辑基金" : "添加基金"}
+        open={modalOpen || editingFund !== null}
+        onCancel={closeModal}
         onOk={() => form.submit()}
         confirmLoading={submitting}
-        okText="添加"
+        okText={editingFund ? "保存" : "添加"}
         cancelText="取消"
         width={520}
       >
-        <Form form={form} layout="vertical" onFinish={handleCreate} style={{ marginTop: 16 }}>
+        <Form form={form} layout="vertical" onFinish={editingFund ? handleEdit : handleCreate} style={{ marginTop: 16 }}>
           <Form.Item name="code" label="基金代码" rules={[{ required: true, message: "请输入基金代码" }]}>
-            <Input placeholder="如 110022" maxLength={20} />
+            <Input placeholder="如 110022" maxLength={20} disabled={!!editingFund} />
           </Form.Item>
           <Form.Item name="name" label="基金名称" rules={[{ required: true, message: "请输入基金名称" }]}>
             <Input placeholder="如 易方达消费行业" maxLength={100} />
@@ -362,14 +470,32 @@ export default function FundsPage() {
           <Form.Item name="currentValue" label="当前市值（元）">
             <InputNumber min={0} precision={2} style={{ width: "100%" }} placeholder="0.00" />
           </Form.Item>
-          <Form.Item name="targetAmount" label="目标金额（元）">
-            <InputNumber min={0} precision={2} style={{ width: "100%" }} placeholder="0.00" />
-          </Form.Item>
           <Form.Item name="targetRatio" label="目标比例（%）">
             <InputNumber min={0} max={100} precision={2} style={{ width: "100%" }} placeholder="0.00" />
           </Form.Item>
           <Form.Item name="note" label="备注">
             <Input.TextArea rows={2} />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      <Modal
+        title="编辑目标总仓位"
+        open={settingsModalOpen}
+        onCancel={() => { setSettingsModalOpen(false); settingsForm.resetFields(); }}
+        onOk={() => settingsForm.submit()}
+        confirmLoading={settingsSubmitting}
+        okText="保存"
+        cancelText="取消"
+        width={400}
+      >
+        <Form form={settingsForm} layout="vertical" onFinish={handleSettingsSave} style={{ marginTop: 16 }}>
+          <Form.Item
+            name="targetTotalPosition"
+            label="目标总仓位金额（元）"
+            rules={[{ required: true, message: "请输入目标总仓位金额" }]}
+          >
+            <InputNumber min={0} precision={2} style={{ width: "100%" }} placeholder="0.00" />
           </Form.Item>
         </Form>
       </Modal>

@@ -3,6 +3,7 @@ import type {
   FundListItem, CreateFundDto, UpdateFundDto, FundCategory, ReorderFundDto,
   PositionListItem, Transaction, CreateTransactionDto,
   DailyLog, CreateDailyLogDto, UpdateDailyLogDto, DailySnapshot,
+  AppSetting,
 } from "@g-fund/types";
 
 const http = axios.create({
@@ -58,4 +59,10 @@ export const dailySnapshotsApi = {
     http.get<DailySnapshot[]>("/daily-snapshots", { params }).then((r) => r.data),
   generate: () =>
     http.post<DailySnapshot>("/daily-snapshots/generate").then((r) => r.data),
+};
+
+export const settingsApi = {
+  get: (key: string) => http.get<AppSetting>(`/settings/${key}`).then((r) => r.data),
+  set: (key: string, value: string) =>
+    http.put<AppSetting>(`/settings/${key}`, { value }).then((r) => r.data),
 };

@@ -59,3 +59,9 @@ export interface ReorderFundDto {
   code: string;
   sortOrder: number;
 }
+
+export interface AppSetting {
+  key: string;
+  value: string;
+  updatedAt: string;
+}

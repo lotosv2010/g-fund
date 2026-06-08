@@ -67,6 +67,12 @@ export class FundsService {
       .where(eq(schema.funds.code, dto.code));
     if (existing.length > 0) throw new ConflictException(`基金 ${dto.code} 已存在`);
 
+    let targetAmount = dto.targetAmount ?? '0';
+    if (dto.targetRatio) {
+      const total = await this.getTargetTotalPosition();
+      targetAmount = (total * parseFloat(dto.targetRatio) / 100).toFixed(2);
+    }
+
     const [row] = await this.db
       .insert(schema.funds)
       .values({
@@ -77,7 +83,7 @@ export class FundsService {
         category: dto.category ?? 'holding',
         costAmount: dto.costAmount ?? '0',
         currentValue: dto.currentValue ?? '0',
-        targetAmount: dto.targetAmount ?? '0',
+        targetAmount,
         targetRatio: dto.targetRatio ?? '0',
         note: dto.note ?? null,
       })
@@ -87,9 +93,20 @@ export class FundsService {
 
   async update(code: string, dto: UpdateFundDto): Promise<FundListItem> {
     await this.findOne(code);
+
+    let targetAmount: string | undefined;
+    if (dto.targetRatio !== undefined) {
+      const total = await this.getTargetTotalPosition();
+      targetAmount = (total * parseFloat(dto.targetRatio) / 100).toFixed(2);
+    }
+
     const [row] = await this.db
       .update(schema.funds)
-      .set({ ...dto, updatedAt: new Date() })
+      .set({
+        ...dto,
+        ...(targetAmount !== undefined ? { targetAmount } : {}),
+        updatedAt: new Date(),
+      })
       .where(eq(schema.funds.code, code))
       .returning();
     return toListItem(row);
@@ -107,5 +124,26 @@ export class FundsService {
         .set({ sortOrder: String(item.sortOrder), updatedAt: new Date() })
         .where(eq(schema.funds.code, item.code));
     }
+  }
+
+  async recalcTargetAmounts(totalPosition: string): Promise<void> {
+    const total = parseFloat(totalPosition);
+    const allFunds = await this.db.select().from(schema.funds);
+    for (const fund of allFunds) {
+      const ratio = parseFloat(fund.targetRatio ?? '0');
+      const targetAmount = (total * ratio / 100).toFixed(2);
+      await this.db
+        .update(schema.funds)
+        .set({ targetAmount, updatedAt: new Date() })
+        .where(eq(schema.funds.code, fund.code));
+    }
+  }
+
+  private async getTargetTotalPosition(): Promise<number> {
+    const [row] = await this.db
+      .select()
+      .from(schema.appSettings)
+      .where(eq(schema.appSettings.key, 'target_total_position'));
+    return row ? parseFloat(row.value) : 0;
   }
 }
