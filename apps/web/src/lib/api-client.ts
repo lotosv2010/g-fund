@@ -1,5 +1,5 @@
 import axios from "axios";
-import type { FundListItem, CreateFundDto, UpdateFundDto, FundCategory } from "@g-fund/types";
+import type { FundListItem, CreateFundDto, UpdateFundDto, FundCategory, ReorderFundDto } from "@g-fund/types";
 
 const http = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api",
@@ -22,4 +22,6 @@ export const fundsApi = {
   update: (code: string, dto: UpdateFundDto) =>
     http.patch<FundListItem>(`/funds/${code}`, dto).then((r) => r.data),
   remove: (code: string) => http.delete(`/funds/${code}`),
+  reorder: (items: ReorderFundDto[]) =>
+    http.patch("/funds/reorder", { items }).then((r) => r.data),
 };

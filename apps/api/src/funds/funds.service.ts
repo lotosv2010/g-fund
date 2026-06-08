@@ -1,5 +1,5 @@
 import { Injectable, Inject, NotFoundException, ConflictException } from '@nestjs/common';
-import { eq, SQL } from 'drizzle-orm';
+import { eq, asc, SQL } from 'drizzle-orm';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '@g-fund/db';
 import { DB } from '../db/db.module';
@@ -22,6 +22,7 @@ function toListItem(r: FundRow): FundListItem {
     type: r.type ?? null,
     riskLevel: r.riskLevel ?? null,
     category: (r.category ?? 'holding') as FundListItem['category'],
+    sortOrder: Number(r.sortOrder ?? 0),
     costAmount: r.costAmount ?? '0',
     currentValue: r.currentValue ?? '0',
     targetAmount: r.targetAmount ?? '0',
@@ -43,10 +44,10 @@ export class FundsService {
     if (category) {
       conditions.push(eq(schema.funds.category, category));
     }
-    const query = conditions.length > 0
+    const base = conditions.length > 0
       ? this.db.select().from(schema.funds).where(conditions[0])
       : this.db.select().from(schema.funds);
-    const rows = await query;
+    const rows = await base.orderBy(asc(schema.funds.sortOrder));
     return rows.map(toListItem);
   }
 
@@ -97,5 +98,14 @@ export class FundsService {
   async remove(code: string): Promise<void> {
     await this.findOne(code);
     await this.db.delete(schema.funds).where(eq(schema.funds.code, code));
+  }
+
+  async reorder(items: { code: string; sortOrder: number }[]): Promise<void> {
+    for (const item of items) {
+      await this.db
+        .update(schema.funds)
+        .set({ sortOrder: String(item.sortOrder), updatedAt: new Date() })
+        .where(eq(schema.funds.code, item.code));
+    }
   }
 }

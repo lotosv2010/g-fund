@@ -14,6 +14,7 @@ export interface Fund {
   type: string | null;
   riskLevel: number | null;
   category: FundCategory;
+  sortOrder: number;
   costAmount: string;
   currentValue: string;
   targetAmount: string;
@@ -46,9 +47,15 @@ export interface UpdateFundDto {
   type?: string;
   riskLevel?: number;
   category?: FundCategory;
+  sortOrder?: number;
   costAmount?: string;
   currentValue?: string;
   targetAmount?: string;
   targetRatio?: string;
   note?: string;
+}
+
+export interface ReorderFundDto {
+  code: string;
+  sortOrder: number;
 }

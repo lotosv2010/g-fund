@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Table,
   Button,
@@ -14,12 +14,28 @@ import {
   message,
   Tag,
   Tabs,
+  Flex,
 } from "antd";
-import { PlusOutlined } from "@ant-design/icons";
-import type { ColumnsType } from "antd/es/table";
+import { PlusOutlined, HolderOutlined } from "@ant-design/icons";
+import type { ColumnsType, SorterResult } from "antd/es/table/interface";
 import type { FundListItem, CreateFundDto, FundCategory } from "@g-fund/types";
 import { FUND_CATEGORIES, FUND_CATEGORY_LABELS } from "@g-fund/types";
 import { fundsApi } from "@/lib/api-client";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 const { Title } = Typography;
 
@@ -38,74 +54,44 @@ function PnlCell({ value }: { value: string }) {
   return <span style={{ color }}>{prefix}{value}</span>;
 }
 
-const COLUMNS: ColumnsType<FundListItem> = [
-  { title: "基金代码", dataIndex: "code", width: 100 },
-  { title: "基金名称", dataIndex: "name", ellipsis: true },
-  {
-    title: "类型",
-    dataIndex: "type",
-    width: 100,
-    render: (v) => v ?? "—",
-  },
-  {
-    title: "风险等级",
-    dataIndex: "riskLevel",
-    width: 100,
-    render: (v) =>
-      v ? <Tag color={RISK_LABELS[v]?.color}>{RISK_LABELS[v]?.label}</Tag> : "—",
-  },
-  {
-    title: "持仓金额",
-    dataIndex: "costAmount",
-    width: 120,
-    align: "right",
-    render: (v) => `¥${parseFloat(v).toLocaleString()}`,
-  },
-  {
-    title: "当前市值",
-    dataIndex: "currentValue",
-    width: 120,
-    align: "right",
-    render: (v) => `¥${parseFloat(v).toLocaleString()}`,
-  },
-  {
-    title: "持仓收益",
-    dataIndex: "pnlAmount",
-    width: 120,
-    align: "right",
-    render: (v) => <PnlCell value={`¥${parseFloat(v).toLocaleString()}`} />,
-  },
-  {
-    title: "收益率",
-    dataIndex: "pnlRate",
-    width: 100,
-    align: "right",
-    render: (v) => <PnlCell value={`${(parseFloat(v) * 100).toFixed(2)}%`} />,
-  },
-  {
-    title: "目标金额",
-    dataIndex: "targetAmount",
-    width: 120,
-    align: "right",
-    render: (v) => `¥${parseFloat(v).toLocaleString()}`,
-  },
-  {
-    title: "目标比例",
-    dataIndex: "targetRatio",
-    width: 100,
-    align: "right",
-    render: (v) => `${v}%`,
-  },
-];
+function DragHandle({ id }: { id: string }) {
+  const { attributes, listeners, setNodeRef } = useSortable({ id });
+  return (
+    <HolderOutlined
+      ref={setNodeRef}
+      {...attributes}
+      {...listeners}
+      style={{ cursor: "grab", color: "#999", fontSize: 16 }}
+    />
+  );
+}
+
+function SortableRow(props: React.HTMLAttributes<HTMLTableRowElement> & { "data-row-key"?: string }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: props["data-row-key"] ?? "",
+  });
+  const style: React.CSSProperties = {
+    ...props.style,
+    transform: CSS.Transform.toString(transform),
+    transition,
+    ...(isDragging ? { position: "relative" as const, zIndex: 9999, opacity: 0.8 } : {}),
+  };
+  return <tr {...props} ref={setNodeRef} style={style} {...attributes} {...listeners} />;
+}
 
 export default function FundsPage() {
   const [funds, setFunds] = useState<FundListItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<FundCategory>("holding");
+  const [search, setSearch] = useState("");
+  const [sortField, setSortField] = useState<string | null>(null);
+  const [sortOrder, setSortOrder] = useState<"ascend" | "descend" | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [form] = Form.useForm<CreateFundDto & { category: FundCategory }>();
   const [messageApi, contextHolder] = message.useMessage();
+
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -121,15 +107,63 @@ export default function FundsPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  const filteredFunds = funds.filter((f) => f.category === activeTab);
+  const isCustomSort = sortField !== null && sortOrder !== null;
 
-  const categoryCounts = FUND_CATEGORIES.reduce(
-    (acc, cat) => {
-      acc[cat] = funds.filter((f) => f.category === cat).length;
-      return acc;
-    },
-    {} as Record<FundCategory, number>,
-  );
+  const categoryFunds = useMemo(() => {
+    let list = funds.filter((f) => f.category === activeTab);
+
+    if (search) {
+      const q = search.toLowerCase();
+      list = list.filter((f) => f.name.toLowerCase().includes(q) || f.code.includes(q));
+    }
+
+    if (isCustomSort && sortField) {
+      const dir = sortOrder === "ascend" ? 1 : -1;
+      list = [...list].sort((a, b) => {
+        const va = a[sortField as keyof FundListItem];
+        const vb = b[sortField as keyof FundListItem];
+        if (typeof va === "string" && typeof vb === "string") {
+          return dir * va.localeCompare(vb);
+        }
+        return dir * (Number(va) - Number(vb));
+      });
+    }
+
+    return list;
+  }, [funds, activeTab, search, sortField, sortOrder, isCustomSort]);
+
+  const categoryCounts = useMemo(() => {
+    const counts: Record<FundCategory, number> = { holding: 0, longterm: 0, watchlist: 0 };
+    for (const f of funds) {
+      if (!search || f.name.toLowerCase().includes(search.toLowerCase()) || f.code.includes(search)) {
+        counts[f.category]++;
+      }
+    }
+    return counts;
+  }, [funds, search]);
+
+  async function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = categoryFunds.findIndex((f) => f.code === active.id);
+    const newIndex = categoryFunds.findIndex((f) => f.code === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const reordered = arrayMove(categoryFunds, oldIndex, newIndex);
+    const updated = funds.map((f) => {
+      const idx = reordered.findIndex((r) => r.code === f.code);
+      return idx !== -1 ? { ...f, sortOrder: idx } : f;
+    });
+    setFunds(updated);
+
+    try {
+      await fundsApi.reorder(reordered.map((f, i) => ({ code: f.code, sortOrder: i })));
+    } catch (e) {
+      messageApi.error((e as Error).message);
+      load();
+    }
+  }
 
   async function handleCreate(values: CreateFundDto & { category: FundCategory }) {
     setSubmitting(true);
@@ -163,12 +197,45 @@ export default function FundsPage() {
     }
   }
 
-  const columns: ColumnsType<FundListItem> = [
-    ...COLUMNS,
+  const sortableColumns: ColumnsType<FundListItem> = [
     {
-      title: "操作",
-      width: 80,
-      fixed: "right",
+      title: "",
+      width: 40,
+      render: (_, record) => isCustomSort ? null : <DragHandle id={record.code} />,
+    },
+    { title: "基金代码", dataIndex: "code", width: 100 },
+    { title: "基金名称", dataIndex: "name", ellipsis: true, sorter: true },
+    { title: "类型", dataIndex: "type", width: 100, render: (v) => v ?? "—" },
+    {
+      title: "风险等级", dataIndex: "riskLevel", width: 100,
+      render: (v) => v ? <Tag color={RISK_LABELS[v]?.color}>{RISK_LABELS[v]?.label}</Tag> : "—",
+    },
+    {
+      title: "持仓金额", dataIndex: "costAmount", width: 120, align: "right", sorter: true,
+      render: (v) => `¥${parseFloat(v).toLocaleString()}`,
+    },
+    {
+      title: "当前市值", dataIndex: "currentValue", width: 120, align: "right", sorter: true,
+      render: (v) => `¥${parseFloat(v).toLocaleString()}`,
+    },
+    {
+      title: "持仓收益", dataIndex: "pnlAmount", width: 120, align: "right", sorter: true,
+      render: (v) => <PnlCell value={`¥${parseFloat(v).toLocaleString()}`} />,
+    },
+    {
+      title: "收益率", dataIndex: "pnlRate", width: 100, align: "right", sorter: true,
+      render: (v) => <PnlCell value={`${(parseFloat(v) * 100).toFixed(2)}%`} />,
+    },
+    {
+      title: "目标金额", dataIndex: "targetAmount", width: 120, align: "right",
+      render: (v) => `¥${parseFloat(v).toLocaleString()}`,
+    },
+    {
+      title: "目标比例", dataIndex: "targetRatio", width: 100, align: "right",
+      render: (v) => `${v}%`,
+    },
+    {
+      title: "操作", width: 80, fixed: "right",
       render: (_, record) => (
         <Popconfirm
           title="确认删除该基金？"
@@ -183,27 +250,46 @@ export default function FundsPage() {
     },
   ];
 
+  function handleTableChange(_pagination: unknown, _filters: unknown, sorter: SorterResult<FundListItem> | SorterResult<FundListItem>[]) {
+    const s = Array.isArray(sorter) ? sorter[0] : sorter;
+    if (s.field && s.order) {
+      setSortField(s.field as string);
+      setSortOrder(s.order);
+    } else {
+      setSortField(null);
+      setSortOrder(null);
+    }
+  }
+
+  const tableContent = (
+    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      <SortableContext items={categoryFunds.map((f) => f.code)} strategy={verticalListSortingStrategy} disabled={isCustomSort}>
+        <Table
+          rowKey="code"
+          columns={sortableColumns}
+          dataSource={categoryFunds}
+          loading={loading}
+          scroll={{ x: 1200 }}
+          pagination={{ pageSize: 50, showTotal: (t) => `共 ${t} 支` }}
+          size="middle"
+          onChange={handleTableChange}
+          components={{ body: { row: SortableRow } }}
+        />
+      </SortableContext>
+    </DndContext>
+  );
+
   const tabItems = FUND_CATEGORIES.map((cat) => ({
     key: cat,
     label: `${FUND_CATEGORY_LABELS[cat]}（${categoryCounts[cat]}）`,
-    children: (
-      <Table
-        rowKey="code"
-        columns={columns}
-        dataSource={filteredFunds}
-        loading={loading}
-        scroll={{ x: 1100 }}
-        pagination={{ pageSize: 20, showTotal: (t) => `共 ${t} 支` }}
-        size="middle"
-      />
-    ),
+    children: tableContent,
   }));
 
   return (
     <>
       {contextHolder}
       <Space orientation="vertical" size="middle" style={{ width: "100%" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <Flex justify="space-between" align="center">
           <Title level={4} style={{ margin: 0 }}>基金列表</Title>
           <Button
             type="primary"
@@ -215,9 +301,16 @@ export default function FundsPage() {
           >
             添加基金
           </Button>
-        </div>
+        </Flex>
 
-        <Tabs activeKey={activeTab} onChange={(key) => setActiveTab(key as FundCategory)} items={tabItems} />
+        <Input.Search
+          placeholder="搜索基金名称或代码"
+          allowClear
+          onChange={(e) => setSearch(e.target.value)}
+          style={{ maxWidth: 320 }}
+        />
+
+        <Tabs activeKey={activeTab} onChange={(key) => { setActiveTab(key as FundCategory); setSortField(null); setSortOrder(null); }} items={tabItems} />
       </Space>
 
       <Modal

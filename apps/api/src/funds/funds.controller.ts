@@ -3,6 +3,7 @@ import { ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { FundsService } from './funds.service';
 import { CreateFundDto } from './dto/create-fund.dto';
 import { UpdateFundDto } from './dto/update-fund.dto';
+import { ReorderFundDto } from './dto/reorder-fund.dto';
 
 @ApiTags('funds')
 @Controller('funds')
@@ -32,6 +33,12 @@ export class FundsController {
   @ApiOperation({ summary: '更新基金信息' })
   update(@Param('code') code: string, @Body() dto: UpdateFundDto) {
     return this.fundsService.update(code, dto);
+  }
+
+  @Patch('reorder')
+  @ApiOperation({ summary: '批量更新排序' })
+  reorder(@Body() dto: ReorderFundDto) {
+    return this.fundsService.reorder(dto.items);
   }
 
   @Delete(':code')
