@@ -1,6 +1,6 @@
 "use client";
 import { Card, Col, Row, Skeleton, Typography } from "antd";
-import type { PositionListItem } from "@g-fund/types";
+import type { PositionListItem, DailySnapshot } from "@g-fund/types";
 
 const { Text } = Typography;
 
@@ -10,14 +10,18 @@ const LOSS_COLOR = "#dc2626";
 interface StatCardsProps {
   data: PositionListItem[];
   loading: boolean;
+  todaySnapshot?: DailySnapshot | null;
 }
 
-export default function StatCards({ data, loading }: StatCardsProps) {
+export default function StatCards({ data, loading, todaySnapshot }: StatCardsProps) {
   const totalAssets = data.reduce((s, r) => s + parseFloat(r.currentValue), 0);
   const totalCost = data.reduce((s, r) => s + parseFloat(r.costAmount), 0);
   const totalPnl = totalAssets - totalCost;
   const totalPnlRate = totalCost > 0 ? totalPnl / totalCost : 0;
   const isProfit = totalPnl >= 0;
+
+  const todayPnl = todaySnapshot ? parseFloat(todaySnapshot.totalPnl) : null;
+  const todayProfit = todayPnl !== null ? todayPnl >= 0 : null;
 
   const cards = [
     {
@@ -34,9 +38,11 @@ export default function StatCards({ data, loading }: StatCardsProps) {
     },
     {
       title: "今日盈亏",
-      content: "—",
-      sub: "待接入",
-      color: undefined as string | undefined,
+      content: todayPnl !== null
+        ? `${todayPnl >= 0 ? "+" : ""}¥${todayPnl.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+        : "—",
+      sub: todaySnapshot ? `市值 ¥${parseFloat(todaySnapshot.totalValue).toLocaleString(undefined, { maximumFractionDigits: 0 })}` : "暂无快照",
+      color: todayProfit !== null ? (todayProfit ? PROFIT_COLOR : LOSS_COLOR) : undefined,
     },
     {
       title: "持仓数量",

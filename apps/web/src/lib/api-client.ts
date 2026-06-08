@@ -2,6 +2,7 @@ import axios from "axios";
 import type {
   FundListItem, CreateFundDto, UpdateFundDto, FundCategory, ReorderFundDto,
   PositionListItem, Transaction, CreateTransactionDto,
+  DailyLog, CreateDailyLogDto, UpdateDailyLogDto, DailySnapshot,
 } from "@g-fund/types";
 
 const http = axios.create({
@@ -40,4 +41,21 @@ export const transactionsApi = {
   create: (dto: CreateTransactionDto) =>
     http.post<Transaction>("/transactions", dto).then((r) => r.data),
   remove: (id: number) => http.delete(`/transactions/${id}`),
+};
+
+export const dailyLogsApi = {
+  list: (params?: { from?: string; to?: string }) =>
+    http.get<DailyLog[]>("/daily-logs", { params }).then((r) => r.data),
+  create: (dto: CreateDailyLogDto) =>
+    http.post<DailyLog>("/daily-logs", dto).then((r) => r.data),
+  update: (id: number, dto: UpdateDailyLogDto) =>
+    http.patch<DailyLog>(`/daily-logs/${id}`, dto).then((r) => r.data),
+  remove: (id: number) => http.delete(`/daily-logs/${id}`),
+};
+
+export const dailySnapshotsApi = {
+  list: (params?: { from?: string; to?: string }) =>
+    http.get<DailySnapshot[]>("/daily-snapshots", { params }).then((r) => r.data),
+  generate: () =>
+    http.post<DailySnapshot>("/daily-snapshots/generate").then((r) => r.data),
 };
