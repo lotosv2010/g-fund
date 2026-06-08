@@ -20,8 +20,7 @@ export default function PositionPie({ data, loading }: PositionPieProps) {
   const chartData = useMemo<PieDatum[]>(() => {
     const map = new Map<string, number>();
     for (const pos of data) {
-      // 从 fundCode 前缀推断类型（实际应从 fund.type 获取，此处简化）
-      const type = pos.fundCode.startsWith("1") || pos.fundCode.startsWith("5") ? "股票型" : "其他";
+      const type = pos.type ?? "其他";
       map.set(type, (map.get(type) ?? 0) + parseFloat(pos.currentValue));
     }
     return Array.from(map, ([name, value]) => ({ name, value: Math.round(value * 100) / 100 }));

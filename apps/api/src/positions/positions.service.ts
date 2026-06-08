@@ -8,7 +8,12 @@ import { PositionListItem } from '@g-fund/types';
 type DbType = NodePgDatabase<typeof schema>;
 type PositionRow = typeof schema.positions.$inferSelect;
 
-function toListItem(row: PositionRow, currentValue: string): PositionListItem {
+function toListItem(
+  row: PositionRow,
+  currentValue: string,
+  type: string | null,
+  category: string,
+): PositionListItem {
   const cost = parseFloat(row.costAmount ?? '0');
   const current = parseFloat(currentValue);
   const pnlAmount = (current - cost).toFixed(2);
@@ -25,6 +30,8 @@ function toListItem(row: PositionRow, currentValue: string): PositionListItem {
     currentValue,
     pnlAmount,
     pnlRate,
+    type,
+    category,
   };
 }
 
@@ -56,6 +63,8 @@ export class PositionsService {
             currentValue: f.currentValue ?? '0',
             pnlAmount: (current - cost).toFixed(2),
             pnlRate: cost > 0 ? ((current - cost) / cost).toFixed(4) : '0.0000',
+            type: f.type ?? null,
+            category: f.category ?? 'holding',
           };
         });
     }
@@ -71,7 +80,7 @@ export class PositionsService {
     return rows.map((row) => {
       const fund = fundMap.get(row.fundCode);
       const currentValue = fund?.currentValue ?? '0';
-      return toListItem(row, currentValue);
+      return toListItem(row, currentValue, fund?.type ?? null, fund?.category ?? 'holding');
     });
   }
 
@@ -87,6 +96,6 @@ export class PositionsService {
       .from(schema.funds)
       .where(eq(schema.funds.code, fundCode));
 
-    return toListItem(row, fund?.currentValue ?? '0');
+    return toListItem(row, fund?.currentValue ?? '0', fund?.type ?? null, fund?.category ?? 'holding');
   }
 }

@@ -13,4 +13,6 @@ export interface PositionListItem extends Position {
   currentValue: string;
   pnlAmount: string;
   pnlRate: string;
+  type: string | null;
+  category: string;
 }
