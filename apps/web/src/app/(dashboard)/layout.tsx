@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Layout, Menu, Button, Tooltip } from "antd";
 import {
   DashboardOutlined,
@@ -26,7 +26,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const openChatDrawer = useAppStore((s) => s.openChatDrawer);
   const toggleChatDrawer = useAppStore((s) => s.toggleChatDrawer);
 
-  const selectedKey = menuItems.find((item) => pathname.startsWith(item.key))?.key ?? "/dashboard";
+  const [selectedKey, setSelectedKey] = useState("/dashboard");
+
+  useEffect(() => {
+    setSelectedKey(menuItems.find((item) => pathname.startsWith(item.key))?.key ?? "/dashboard");
+  }, [pathname]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {

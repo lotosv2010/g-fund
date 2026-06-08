@@ -202,7 +202,7 @@ export default function FundsPage() {
   return (
     <>
       {contextHolder}
-      <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+      <Space orientation="vertical" size="middle" style={{ width: "100%" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <Title level={4} style={{ margin: 0 }}>基金列表</Title>
           <Button
