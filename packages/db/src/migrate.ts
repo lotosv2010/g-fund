@@ -2,9 +2,30 @@ import { readFileSync, readdirSync } from 'fs';
 import { join } from 'path';
 import { Pool } from 'pg';
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+async function ensureDatabase(connectionString: string) {
+  const url = new URL(connectionString);
+  const dbName = url.pathname.slice(1);
+  url.pathname = '/postgres';
+  const adminPool = new Pool({ connectionString: url.toString() });
+  try {
+    const { rows } = await adminPool.query(
+      'SELECT 1 FROM pg_database WHERE datname = $1',
+      [dbName],
+    );
+    if (rows.length === 0) {
+      await adminPool.query(`CREATE DATABASE "${dbName}"`);
+      console.log(`created database: ${dbName}`);
+    }
+  } finally {
+    await adminPool.end();
+  }
+}
 
-async function migrate() {
+export async function runMigrations(connectionString: string) {
+  if (!connectionString) throw new Error('DATABASE_URL is not set');
+  await ensureDatabase(connectionString);
+
+  const pool = new Pool({ connectionString });
   const client = await pool.connect();
   try {
     await client.query(`
@@ -44,7 +65,14 @@ async function migrate() {
   }
 }
 
-migrate().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+if (require.main === module) {
+  const connectionString = process.env.DATABASE_URL;
+  if (!connectionString) {
+    console.error('DATABASE_URL is not set');
+    process.exit(1);
+  }
+  runMigrations(connectionString).catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
+}
