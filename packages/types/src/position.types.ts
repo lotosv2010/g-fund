@@ -8,3 +8,9 @@ export interface Position {
   createdAt: string;
   updatedAt: string;
 }
+
+export interface PositionListItem extends Position {
+  currentValue: string;
+  pnlAmount: string;
+  pnlRate: string;
+}

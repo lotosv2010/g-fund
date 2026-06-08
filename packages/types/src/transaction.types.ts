@@ -10,3 +10,13 @@ export interface Transaction {
   note: string | null;
   createdAt: string;
 }
+
+export interface CreateTransactionDto {
+  fundCode: string;
+  type: 'buy' | 'sell';
+  amount: string;
+  shares?: string;
+  price?: string;
+  tradeDate: string;
+  note?: string;
+}
