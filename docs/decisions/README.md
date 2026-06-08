@@ -11,6 +11,7 @@ ADR 记录重要的技术决策。格式：背景 → 决策 → 后果。
 | ADR-003 | 仓位计算在 Service 层用事务处理 | Accepted |
 | ADR-004 | 基金自选库（funds 表）+ drizzle-orm + antd 前端 | Accepted |
 | ADR-005 | 导航结构重构：Dashboard + 合并页面 + AI 抽屉 | Accepted |
+| ADR-006 | AI 功能体系：双源数据 + 止盈止损 + 定投提醒 + 定时同步 | Accepted |
 
 ---
 
@@ -78,3 +79,34 @@ ADR 记录重要的技术决策。格式：背景 → 决策 → 后果。
 - 需新增 `daily_snapshots` 表及对应的快照生成逻辑（定时任务或懒生成）
 - `positions` 页面复杂度上升，需用 Tab 组件做好分区
 - ChatDrawer 需管理 SSE 连接生命周期（开/关时连接/断开）
+
+---
+
+## ADR-006：AI 功能体系 — 双源数据 + 止盈止损 + 定投提醒 + 定时同步
+
+**背景**：基础数据层（funds/positions/transactions/daily-logs/daily-snapshots）已就绪，Agent 和 MCP 模块为 placeholder。需要设计完整的 AI 功能体系，覆盖实时监控、止盈止损预警、定投提醒、数据同步等场景。参考 portfolio-monitor skill 的规则体系（止盈止损规则、DCA 策略、报告模板）。
+
+**决策**：
+
+1. **双源数据架构**：天天基金 API（盘中实时，用于"今日"列）+ 盈米 MCP（T+1，用于历史分析和盈亏计算），通过 `MarketDataService` 统一抽象
+2. **止盈止损规则引擎**：定投期只调速不卖；持有期三档止盈（25%/40%/60%）+ 两档止损（10%/20%）；深度套牢必须给出明确建议（补仓/止损/观望）
+3. **定投金额叠加算法**：实际金额 = 基准金额 × T 系数 × P2 系数 × P3 系数 × P4 系数，上限 3 倍，下限 10% 归零
+4. **LangGraph 主图扩展为 6 节点**：`dataFetcher → stopLossChecker → dcaCalculator → riskAnalyzer → advisor → reportGenerator`
+5. **定时任务调度**（`@nestjs/schedule`）：
+   - 每日 14:00 交易日 → 持仓监控报告
+   - 双周四 14:30 → 定投执行提醒
+   - 每日 16:30 → T+1 数据同步入库
+   - 每日 17:00 → 估值分位同步
+6. **数据库扩展**：新增 `stop_loss_records`、`dca_records`、`alert_configs` 三张表；`funds` 表增加 `valuation_percentile`、`weekly_return`、`monthly_return`、`phase`、`priority`、`target_amount`、`base_amount` 字段
+
+**后果**：
+
+- 需实现 `market-data` 模块封装天天基金 API + 盈米 MCP 双源
+- 需实现 `scheduler` 模块管理 4 个 Cron Job
+- LangGraph 节点从 3 个扩展到 6 个，状态类型需同步扩展
+- 止盈止损规则硬编码在代码中，未来可通过 `alert_configs` 表实现可配置
+- 天天基金 API 为公开接口，无认证但有请求频率限制，需做并发控制
+- 交易日判断需维护节假日表或接入外部 API
+- 实现预估 4 周：基础设施 1 周 → 核心分析 1 周 → 定时任务 3 天 → 前端集成 1 周
+
+**详细设计**：见 `docs/decisions/AI-FEATURE-DESIGN.md`
