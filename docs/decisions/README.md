@@ -12,6 +12,7 @@ ADR 记录重要的技术决策。格式：背景 → 决策 → 后果。
 | ADR-004 | 基金自选库（funds 表）+ drizzle-orm + antd 前端 | Accepted |
 | ADR-005 | 导航结构重构：Dashboard + 合并页面 + AI 抽屉 | Accepted |
 | ADR-006 | AI 功能体系：双源数据 + 止盈止损 + 定投提醒 + 定时同步 | Accepted |
+| ADR-007 | AI Agent 实现方案：LangChain deep agent + MCP tools | Accepted |
 
 ---
 
@@ -110,3 +111,49 @@ ADR 记录重要的技术决策。格式：背景 → 决策 → 后果。
 - 实现预估 4 周：基础设施 1 周 → 核心分析 1 周 → 定时任务 3 天 → 前端集成 1 周
 
 **详细设计**：见 `docs/decisions/AI-FEATURE-DESIGN.md`
+
+---
+
+## ADR-007：AI Agent 实现方案 — LangChain deep agent + MCP tools
+
+**背景**：ADR-006 设计了 6 节点 StateGraph（dataFetcher → stopLoss → dcaCalc → riskAnalyzer → advisor → reportGen），但实际实现时需权衡两种路径：手写节点编排 vs LangChain deep agent。用户明确要求使用 LangChain deep agent 模式。
+
+**备选方案**：
+
+| 方案 | 技术路径 | 优点 | 缺点 |
+|------|---------|------|------|
+| A：手写 StateGraph | `new StateGraph()` + 6 个 `addNode` + 显式边 | 流程确定性强、可精确控制执行顺序 | 代码量大、扩展新分析维度需改图结构 |
+| B：createReactAgent | `createReactAgent` + MCP tools 注入 | 代码精简、agent 自主编排、扩展只需加 tool | agent 调用顺序不确定、需精心设计 system prompt |
+| C：混合方案 | createReactAgent + 部分硬编码边（如 dataFetcher 必须先执行） | 兼顾灵活性和确定性 | 复杂度高于 B，收益不明显 |
+
+**决策**：采用方案 B — `createReactAgent`。
+
+核心设计：
+
+```
+┌─────────────────────────────────────────────┐
+│              createReactAgent                │
+│  system prompt: 分析规则 + 报告模板          │
+│  tools: [mcpGetFundDetail, mcpGetNavHistory, │
+│          getPortfolioSummary, calcStopLoss,  │
+│          calcDcaAmount, ...]                 │
+│  checkpointer: MemorySaver (可选)            │
+└──────────────────┬──────────────────────────┘
+                   │ agent 自主编排 tool 调用
+                   ▼
+            SSE 流式输出到前端
+```
+
+1. **MCP tools 适配层**：`McpService` 封装盈米 MCP SSE 客户端，暴露结构化方法；`AgentToolsService` 将这些方法转为 LangChain `DynamicStructuredTool`（Zod schema 约束入参/出参）
+2. **LLM 工厂**：`LlmFactory` 根据 `LLM_PROVIDER` 环境变量返回 `ChatOpenAI`（deepseek/moonshot）或 `ChatGoogleGenerativeAI`（minimax），统一 `baseUrl + apiKey` 配置
+3. **System prompt**：内置止盈止损规则、定投系数算法、报告模板格式，指导 agent 分析方法论
+4. **SSE 流式**：`AnalysisController` 暴露 `GET /analysis/stream?query=xxx`，使用 `agent.stream()` 逐步推送 token/tool 调用/result
+5. **持久化**：分析完成写入 `analysis_records` 表（provider + inputSnapshot + result）
+
+**后果**：
+
+- 代码量大幅减少（约 4 个核心文件 vs 原设计 6+ 个节点文件）
+- agent 调用顺序由 LLM 决定，需通过 system prompt 约束关键顺序（如"先获取持仓数据再分析"）
+- 新增分析维度只需添加 tool + 更新 system prompt，无需改图结构
+- MCP SSE 客户端需处理连接生命周期（connect/reconnect/disconnect）
+- `@langchain/openai` 已安装，deepseek/moonshot 通过 OpenAI 兼容接口接入

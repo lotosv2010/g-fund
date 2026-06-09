@@ -2,7 +2,9 @@
 
 ## 当前焦点
 
-Milestone 1 数据层 + Milestone 3 前端已完成。下一步：Milestone 2（AI Agent 全链路）。
+Milestone 1 数据层 + Milestone 2 AI Agent + Milestone 3 前端已完成。下一步：Milestone 2 扩展（Cron 定时任务）或 T1.3.4 ChatDrawer。
+
+**ADR-007**：使用 LangChain deep agent（`createDeepAgent` from `deepagents`）替代手写 StateGraph。
 
 ## Milestone 1：基础数据层
 
@@ -15,14 +17,14 @@ Milestone 1 数据层 + Milestone 3 前端已完成。下一步：Milestone 2（
 | T1.1.5 | NestJS daily-logs 模块实现 | [x] | 0.5d |
 | T1.1.6 | NestJS daily-snapshots 模块实现（新增） | [x] | 0.5d |
 
-## Milestone 2：AI Agent
+## Milestone 2：AI Agent（ADR-007 deep agent）
 
 | ID | 任务 | 状态 | 估时 |
 |----|------|------|------|
-| T1.2.1 | 盈米 MCP 客户端（mcp.service.ts） | [ ] | 0.5d |
-| T1.2.2 | LLM 工厂（llm.factory.ts） | [ ] | 0.5d |
-| T1.2.3 | LangGraph Agent 工作流（graph.ts + nodes） | [ ] | 1d |
-| T1.2.4 | NestJS analysis 模块 + SSE 接口 | [ ] | 1d |
+| T1.2.1 | McpService — 盈米 MCP SSE 客户端封装 | [x] | 0.5d |
+| T1.2.2 | LLM 工厂 + AgentToolsService | [x] | 0.5d |
+| T1.2.3 | createDeepAgent + system prompt + SSE 流式 | [x] | 1d |
+| T1.2.4 | AnalysisModule — Controller + Service + 注册 | [x] | 0.5d |
 
 ## Milestone 3：前端（按新导航结构）
 

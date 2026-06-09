@@ -1,1 +1,1 @@
-// riskAnalyzer node placeholder - LLM 结构化输出风险分析
+// Agent tools replace manual nodes — see agent-tools.service.ts
