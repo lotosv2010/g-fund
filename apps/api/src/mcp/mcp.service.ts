@@ -1,9 +1,14 @@
 import { join } from 'path';
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { Inject, Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { eq } from 'drizzle-orm';
+import { NodePgDatabase } from 'drizzle-orm/node-postgres';
+import * as schema from '@g-fund/db';
+import { DB } from '../db/db.module';
 import { Client } from '@modelcontextprotocol/sdk/client';
 import type { Tool, CallToolResult } from '@modelcontextprotocol/sdk/types';
-import type { McpServer } from '@g-fund/types';
+import type { McpServer, McpConfig } from '@g-fund/types';
+
+type DbType = NodePgDatabase<typeof schema>;
 
 @Injectable()
 export class McpService implements OnModuleInit, OnModuleDestroy {
@@ -12,16 +17,30 @@ export class McpService implements OnModuleInit, OnModuleDestroy {
   private toolsByServer = new Map<string, Tool[]>();
   private toolClientMap = new Map<string, string>(); // tool name -> server id
 
-  constructor(private readonly config: ConfigService) {}
+  constructor(@Inject(DB) private readonly db: DbType) {}
 
   async onModuleInit() {
-    const url = this.config.get<string>('QIEMAN_MCP_URL');
-    const apiKey = this.config.get<string>('QIEMAN_API_KEY');
-    if (!url) {
-      this.logger.warn('QIEMAN_MCP_URL not configured, MCP disabled');
+    const config = await this.loadMcpConfig();
+    if (config.length === 0) {
+      this.logger.warn('No MCP servers configured, MCP disabled');
       return;
     }
-    await this.connectServer({ id: 'default', name: '盈米', url, apiKey: apiKey ?? '', enabled: true });
+    for (const server of config.filter((s) => s.enabled && s.url)) {
+      await this.connectServer(server);
+    }
+  }
+
+  private async loadMcpConfig(): Promise<McpConfig> {
+    try {
+      const [row] = await this.db
+        .select()
+        .from(schema.appSettings)
+        .where(eq(schema.appSettings.key, 'mcp_config'));
+      if (!row) return [];
+      return JSON.parse(row.value) as McpConfig;
+    } catch {
+      return [];
+    }
   }
 
   async onModuleDestroy() {
