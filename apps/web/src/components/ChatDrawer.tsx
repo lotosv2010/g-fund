@@ -32,6 +32,7 @@ import {
   EditOutlined,
   HistoryOutlined,
   RocketOutlined,
+  LoadingOutlined,
 } from "@ant-design/icons";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -244,14 +245,7 @@ export default function ChatDrawer() {
             ) : (
               messages.map((msg) => <MessageBubble key={msg.id} message={msg} />)
             )}
-            {isStreaming &&
-              !messages.some(
-                (m) => m.kind === "thinking" || m.kind === "tool_call" || m.kind === "assistant",
-              ) && (
-                <Flex justify="center" style={{ padding: 16 }}>
-                  <Text type="secondary">AI 思考中...</Text>
-                </Flex>
-              )}
+            {isStreaming && <TypingIndicator messages={messages} />}
             {reconnectInfo && (
               <Alert
                 type="warning"
@@ -447,6 +441,30 @@ function SuggestionPanel({ disabled, onPick }: SuggestionPanelProps) {
   );
 }
 
+function TypingIndicator({ messages }: { messages: ReadonlyArray<ChatMessage> }) {
+  const last = messages[messages.length - 1];
+  const label = (() => {
+    if (!last || last.kind === "user") return "AI 思考中";
+    if (last.kind === "thinking") return "AI 思考中";
+    if (last.kind === "tool_call") return `调用 ${last.tool} 中`;
+    if (last.kind === "tool_result") return "整理结果中";
+    return "生成回答中";
+  })();
+  return (
+    <Flex align="center" gap={8} style={{ padding: "8px 4px" }}>
+      <LoadingOutlined spin style={{ color: "#1677ff" }} />
+      <Text type="secondary" style={{ fontSize: 13 }}>
+        {label}
+      </Text>
+      <span className="typing-dots" aria-hidden>
+        <span />
+        <span />
+        <span />
+      </span>
+    </Flex>
+  );
+}
+
 function MessageBubble({ message }: { message: ChatMessage }) {
   switch (message.kind) {
     case "user":
@@ -506,8 +524,10 @@ function MessageBubble({ message }: { message: ChatMessage }) {
                 </Flex>
               ),
               children: (
-                <div style={{ whiteSpace: "pre-wrap", color: "#595959", fontSize: 13 }}>
-                  {message.content}
+                <div className="ai-markdown ai-markdown--thinking">
+                  <Markdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]}>
+                    {message.content}
+                  </Markdown>
                 </div>
               ),
             },
