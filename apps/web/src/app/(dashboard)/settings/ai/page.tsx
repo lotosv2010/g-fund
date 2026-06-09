@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import {
-  Card, Form, Input, Radio, Slider, Switch, Button, message,
+  Card, Form, Input, Radio, Slider, Switch, Button, App,
   InputNumber, Space, Typography, Divider, Select, Table, Tag,
 } from "antd";
 import { SaveOutlined, PlusOutlined, DeleteOutlined } from "@ant-design/icons";
@@ -22,6 +22,7 @@ function newServer(): McpServer {
 }
 
 export default function AISettingsPage() {
+  const { message } = App.useApp();
   const [aiConfig, setAiConfig] = useState<AiConfig>(DEFAULT_AI_CONFIG);
   const [mcpServers, setMcpServers] = useState<McpConfig>(DEFAULT_MCP_CONFIG);
   const [loading, setLoading] = useState(true);

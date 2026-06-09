@@ -2,7 +2,7 @@
 
 import { useRef, useEffect } from "react";
 import { Drawer, Input, Button, Space, Typography, Flex, Collapse, Tag, Alert } from "antd";
-import { SendOutlined, OpenAIOutlined, ToolOutlined, CheckCircleOutlined } from "@ant-design/icons";
+import { SendOutlined, OpenAIOutlined, ToolOutlined, CheckCircleOutlined, BulbOutlined } from "@ant-design/icons";
 import Markdown from "react-markdown";
 import { useAppStore } from "@/store/useAppStore";
 import { useChatStore } from "@/store/use-chat-store";
@@ -44,7 +44,7 @@ export default function ChatDrawer() {
       }
       open={chatDrawerOpen}
       onClose={handleClose}
-      width={400}
+      size={400}
       destroyOnClose
     >
       <Flex vertical style={{ height: "100%" }} gap={16}>
@@ -57,11 +57,14 @@ export default function ChatDrawer() {
           {messages.map((msg) => (
             <MessageBubble key={msg.id} message={msg} />
           ))}
-          {isStreaming && !messages.some((m) => m.kind === "assistant") && (
-            <Flex justify="center" style={{ padding: 16 }}>
-              <Text type="secondary">AI 思考中...</Text>
-            </Flex>
-          )}
+          {isStreaming &&
+            !messages.some(
+              (m) => m.kind === "thinking" || m.kind === "tool_call" || m.kind === "assistant",
+            ) && (
+              <Flex justify="center" style={{ padding: 16 }}>
+                <Text type="secondary">AI 思考中...</Text>
+              </Flex>
+            )}
         </Flex>
 
         <Space wrap size={8}>
@@ -141,6 +144,31 @@ function MessageBubble({ message }: { message: ChatMessage }) {
         />
       );
 
+    case "thinking":
+      return (
+        <Collapse
+          size="small"
+          defaultActiveKey={["1"]}
+          style={{ marginBottom: 8, background: "#fafafa" }}
+          items={[
+            {
+              key: "1",
+              label: (
+                <Flex align="center" gap={6}>
+                  <BulbOutlined style={{ color: "#faad14" }} />
+                  <Text type="secondary">AI 思考</Text>
+                </Flex>
+              ),
+              children: (
+                <div style={{ whiteSpace: "pre-wrap", color: "#595959", fontSize: 13 }}>
+                  {message.content}
+                </div>
+              ),
+            },
+          ]}
+        />
+      );
+
     case "tool_result":
       return (
         <Collapse
@@ -169,6 +197,11 @@ function MessageBubble({ message }: { message: ChatMessage }) {
     case "assistant":
       return (
         <div style={{ marginBottom: 8, lineHeight: 1.8 }}>
+          {message.truncated && (
+            <Tag color="warning" style={{ marginBottom: 8 }}>
+              已达最大推理步数（部分结论）
+            </Tag>
+          )}
           <Markdown>{message.content}</Markdown>
         </div>
       );

@@ -13,6 +13,23 @@ interface ChatState {
   clearMessages: () => void;
 }
 
+function appendThinking(messages: ChatMessage[], content: string): ChatMessage[] {
+  const last = messages[messages.length - 1];
+  if (last?.kind === "thinking") {
+    const merged: ChatMessage = { ...last, content: `${last.content}\n${content}` };
+    return [...messages.slice(0, -1), merged];
+  }
+  return [
+    ...messages,
+    {
+      kind: "thinking",
+      id: crypto.randomUUID(),
+      content,
+      timestamp: Date.now(),
+    },
+  ];
+}
+
 export const useChatStore = create<ChatState>((set, get) => ({
   messages: [],
   inputValue: "",
@@ -37,6 +54,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }));
 
     const cleanup = startAnalysisStream(content.trim(), {
+      onThinking: (text) => {
+        set((s) => ({ messages: appendThinking(s.messages, text) }));
+      },
       onToolCall: (tool, toolContent) => {
         set((s) => ({
           messages: [
@@ -65,7 +85,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
           ],
         }));
       },
-      onResult: (resultContent) => {
+      onResult: (resultContent, truncated) => {
         set((s) => ({
           messages: [
             ...s.messages,
@@ -74,6 +94,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
               id: crypto.randomUUID(),
               content: resultContent,
               timestamp: Date.now(),
+              truncated,
             },
           ],
           isStreaming: false,

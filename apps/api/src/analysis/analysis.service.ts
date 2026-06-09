@@ -6,7 +6,7 @@ import { DB } from '../db/db.module';
 import { AgentToolsService } from '../agent/agent-tools.service';
 import { SettingsService } from '../settings/settings.service';
 import { createLlmFromConfig } from '../agent/llm.factory';
-import { runAgent, type OnToolCallFn } from '../agent/graph';
+import { runAgent, type OnStreamFn } from '../agent/graph';
 
 type DbType = NodePgDatabase<typeof schema>;
 
@@ -28,8 +28,13 @@ export class AnalysisService {
   stream(query: string): Observable<StreamEvent> {
     return new Observable<StreamEvent>((subscriber) => {
       this.runStream(query, subscriber).catch((err) => {
-        this.logger.error(`Stream error: ${(err as Error).message}`);
-        subscriber.error(err);
+        const message = (err as Error).message;
+        this.logger.error(`Stream error: ${message}`);
+        subscriber.next({
+          type: 'message',
+          data: JSON.stringify({ kind: 'error', content: message }),
+        });
+        subscriber.complete();
       });
     });
   }
@@ -41,10 +46,10 @@ export class AnalysisService {
     const aiConfig = await this.settingsService.getAiConfig();
     const model = createLlmFromConfig(aiConfig);
 
-    const onToolCall: OnToolCallFn = async (toolName, phase, content) => {
+    const onStream: OnStreamFn = (event) => {
       subscriber.next({
-        type: phase === 'call' ? 'tool_call' : 'tool_result',
-        data: JSON.stringify({ tool: toolName, phase, content }),
+        type: 'message',
+        data: JSON.stringify(event),
       });
     };
 
@@ -52,15 +57,22 @@ export class AnalysisService {
       model,
       tools: this.toolsService.getTools(),
       query,
-      onToolCall,
+      onStream,
     });
 
-    subscriber.next({ type: 'result', data: result.output });
+    subscriber.next({
+      type: 'message',
+      data: JSON.stringify({
+        kind: 'result',
+        content: result.output,
+        truncated: result.truncated,
+      }),
+    });
     await this.persist(aiConfig.activeProvider, query, result.output);
     subscriber.complete();
   }
 
-  async invoke(query: string): Promise<{ output: string }> {
+  async invoke(query: string): Promise<{ output: string; truncated: boolean }> {
     const aiConfig = await this.settingsService.getAiConfig();
     const model = createLlmFromConfig(aiConfig);
 
@@ -71,7 +83,7 @@ export class AnalysisService {
     });
 
     await this.persist(aiConfig.activeProvider, query, result.output);
-    return { output: result.output };
+    return { output: result.output, truncated: result.truncated };
   }
 
   private async persist(provider: string, query: string, output: string): Promise<void> {
@@ -86,4 +98,3 @@ export class AnalysisService {
     }
   }
 }
-

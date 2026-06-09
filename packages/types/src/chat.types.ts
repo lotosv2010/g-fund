@@ -26,6 +26,14 @@ export interface AssistantMessage {
   readonly id: string;
   readonly content: string;
   readonly timestamp: number;
+  readonly truncated?: boolean;
+}
+
+export interface ThinkingMessage {
+  readonly kind: "thinking";
+  readonly id: string;
+  readonly content: string;
+  readonly timestamp: number;
 }
 
 export interface ErrorMessage {
@@ -40,4 +48,5 @@ export type ChatMessage =
   | ToolCallMessage
   | ToolResultMessage
   | AssistantMessage
+  | ThinkingMessage
   | ErrorMessage;
