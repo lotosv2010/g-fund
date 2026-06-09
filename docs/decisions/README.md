@@ -12,7 +12,7 @@ ADR 记录重要的技术决策。格式：背景 → 决策 → 后果。
 | ADR-004 | 基金自选库（funds 表）+ drizzle-orm + antd 前端 | Accepted |
 | ADR-005 | 导航结构重构：Dashboard + 合并页面 + AI 抽屉 | Accepted |
 | ADR-006 | AI 功能体系：双源数据 + 止盈止损 + 定投提醒 + 定时同步 | Accepted |
-| ADR-007 | AI Agent 实现方案：LangChain deep agent + MCP tools | Accepted |
+| ADR-008 | AI 设置页面 + 动态 LLM 配置（DB 驱动，运行时生效） | Accepted |
 
 ---
 

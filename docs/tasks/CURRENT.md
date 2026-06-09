@@ -2,7 +2,7 @@
 
 ## 当前焦点
 
-Milestone 1 数据层 + Milestone 2 AI Agent + Milestone 3 前端已完成。下一步：Milestone 2 扩展（Cron 定时任务）或 T1.3.4 ChatDrawer。
+Milestone 5 AI 设置已完成。下一步：T1.3.4 ChatDrawer 或 Milestone 2 扩展（Cron 定时任务）。
 
 **ADR-007**：使用 LangChain deep agent（`createDeepAgent` from `deepagents`）替代手写 StateGraph。
 
@@ -35,7 +35,16 @@ Milestone 1 数据层 + Milestone 2 AI Agent + Milestone 3 前端已完成。下
 | T1.3.3 | 交易与持仓页（Tab 结构：持仓 / 交易 / 日志 / 投资日记） | [x] | 1.5d |
 | T1.3.4 | ChatDrawer AI 抽屉（SSE 流式 Chat + 全局唤起） | [ ] | 1.5d |
 
-## Milestone 4：基金列表端到端
+## Milestone 5：AI 设置
+
+| ID | 任务 | 状态 | 估时 |
+|----|------|------|------|
+| T5.1.1 | @g-fund/types 新增 AiConfig / ProviderConfig / McpConfig 类型 | [x] | 0.25d |
+| T5.1.2 | llm.factory.ts 新增 createLlmFromConfig() | [x] | 0.25d |
+| T5.1.3 | SettingsService 新增 ai/mcp 配置读写；McpService 新增 reconnect()；export SettingsService | [x] | 0.25d |
+| T5.1.4 | AnalysisService 改为每请求从 DB 动态创建 LLM | [x] | 0.25d |
+| T5.1.5 | 前端 AI 设置页（Segmented + 参数表单 + MCP 配置 + 保存） | [x] | 0.5d |
+
 
 | ID | 任务 | 状态 | 估时 |
 |----|------|------|------|
