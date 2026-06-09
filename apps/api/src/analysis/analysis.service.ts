@@ -11,8 +11,8 @@ import { Inject as InjectDB } from '@nestjs/common';
 
 type DbType = NodePgDatabase<typeof schema>;
 
-interface StreamEvent {
-  event: string;
+export interface StreamEvent {
+  type: string;
   data: string;
 }
 
@@ -41,7 +41,7 @@ export class AnalysisService {
   ): Promise<void> {
     const onToolCall: OnToolCallFn = async (toolName, phase, content) => {
       subscriber.next({
-        event: phase === 'call' ? 'tool_call' : 'tool_result',
+        type: phase === 'call' ? 'tool_call' : 'tool_result',
         data: JSON.stringify({ tool: toolName, phase, content }),
       });
     };
@@ -53,7 +53,7 @@ export class AnalysisService {
       onToolCall,
     });
 
-    subscriber.next({ event: 'result', data: result.output });
+    subscriber.next({ type: 'result', data: result.output });
     await this.persist(query, result.output);
     subscriber.complete();
   }

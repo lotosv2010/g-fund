@@ -14,31 +14,30 @@ export function startAnalysisStream(
   const url = `${BASE_URL}/analysis/stream?query=${encodeURIComponent(query)}`;
   const es = new EventSource(url);
 
-  es.addEventListener("tool_call", (e) => {
-    const d = JSON.parse((e as MessageEvent).data) as {
-      tool: string;
-      content: string;
-    };
-    callbacks.onToolCall(d.tool, d.content);
-  });
+  es.onmessage = (e: MessageEvent) => {
+    try {
+      const d = JSON.parse(e.data) as {
+        tool?: string;
+        phase?: string;
+        content?: string;
+      };
 
-  es.addEventListener("tool_result", (e) => {
-    const d = JSON.parse((e as MessageEvent).data) as {
-      tool: string;
-      content: string;
-    };
-    callbacks.onToolResult(d.tool, d.content);
-  });
+      if (d.tool && d.phase === "call") {
+        callbacks.onToolCall(d.tool, d.content ?? "");
+      } else if (d.tool && d.phase === "result") {
+        callbacks.onToolResult(d.tool, d.content ?? "");
+      } else {
+        callbacks.onResult(e.data);
+      }
+    } catch {
+      callbacks.onResult(e.data);
+    }
+  };
 
-  es.addEventListener("result", (e) => {
-    es.close();
-    callbacks.onResult((e as MessageEvent).data);
-  });
-
-  es.addEventListener("error", () => {
+  es.onerror = () => {
     es.close();
     callbacks.onError("连接中断，请重试");
-  });
+  };
 
   return () => es.close();
 }

@@ -1,11 +1,6 @@
-import { Controller, Get, Post, Body, Query, Sse } from '@nestjs/common';
+import { Controller, Post, Body, Query, Sse } from '@nestjs/common';
 import { Observable } from 'rxjs';
-import { AnalysisService } from './analysis.service';
-
-interface StreamEvent {
-  event: string;
-  data: string;
-}
+import { AnalysisService, type StreamEvent } from './analysis.service';
 
 @Controller('analysis')
 export class AnalysisController {
