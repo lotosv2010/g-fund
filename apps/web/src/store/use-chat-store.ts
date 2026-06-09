@@ -167,13 +167,32 @@ export const useChatStore = create<ChatState>((set, get) => ({
       if (fresh) set({ sessions: fresh });
     });
 
+    let pendingThinkingId: string | null = null;
+
+    const flushThinking = async () => {
+      if (!pendingThinkingId) return;
+      const target = get().messages.find((m) => m.id === pendingThinkingId);
+      pendingThinkingId = null;
+      if (target?.kind === "thinking" && target.content.trim()) {
+        await persistSafely(sessionId, {
+          role: "assistant",
+          kind: "thinking",
+          content: target.content,
+        });
+      }
+    };
+
     const cleanup = startAnalysisStream(
       { query: trimmed, history },
       {
         onThinking: (text) => {
-          set({ messages: appendThinking(get().messages, text), reconnectInfo: null });
+          const next = appendThinking(get().messages, text);
+          const last = next[next.length - 1];
+          if (last?.kind === "thinking") pendingThinkingId = last.id;
+          set({ messages: next, reconnectInfo: null });
         },
         onToolCall: (tool, toolContent) => {
+          void flushThinking();
           set({
             messages: [
               ...get().messages,
@@ -186,6 +205,12 @@ export const useChatStore = create<ChatState>((set, get) => ({
               },
             ],
             reconnectInfo: null,
+          });
+          void persistSafely(sessionId, {
+            role: "assistant",
+            kind: "tool_call",
+            content: toolContent,
+            tool,
           });
         },
         onToolResult: (tool, toolContent) => {
@@ -202,8 +227,15 @@ export const useChatStore = create<ChatState>((set, get) => ({
             ],
             reconnectInfo: null,
           });
+          void persistSafely(sessionId, {
+            role: "tool",
+            kind: "tool_result",
+            content: toolContent,
+            tool,
+          });
         },
         onResult: (resultContent, truncated) => {
+          void flushThinking();
           set({
             messages: [
               ...get().messages,
@@ -227,6 +259,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
           });
         },
         onError: (errMsg) => {
+          void flushThinking();
           set({
             messages: [
               ...get().messages,
