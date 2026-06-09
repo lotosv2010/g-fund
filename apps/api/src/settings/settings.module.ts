@@ -7,5 +7,6 @@ import { FundsModule } from '../funds/funds.module';
   imports: [FundsModule],
   controllers: [SettingsController],
   providers: [SettingsService],
+  exports: [SettingsService],
 })
 export class SettingsModule {}

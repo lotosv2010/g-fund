@@ -3,7 +3,7 @@ import type {
   FundListItem, CreateFundDto, UpdateFundDto, FundCategory, ReorderFundDto,
   PositionListItem, Transaction, CreateTransactionDto,
   DailyLog, CreateDailyLogDto, UpdateDailyLogDto, DailySnapshot,
-  AppSetting,
+  AppSetting, AiConfig, McpConfig,
 } from "@g-fund/types";
 
 const http = axios.create({
@@ -65,4 +65,14 @@ export const settingsApi = {
   get: (key: string) => http.get<AppSetting>(`/settings/${key}`).then((r) => r.data),
   set: (key: string, value: string) =>
     http.put<AppSetting>(`/settings/${key}`, { value }).then((r) => r.data),
+};
+
+export const aiConfigApi = {
+  get: () => http.get<AiConfig>("/settings/ai/config").then((r) => r.data),
+  set: (config: AiConfig) => http.put<AppSetting>("/settings/ai/config", config).then((r) => r.data),
+};
+
+export const mcpConfigApi = {
+  get: () => http.get<McpConfig>("/settings/mcp/config").then((r) => r.data),
+  set: (config: McpConfig) => http.put<AppSetting>("/settings/mcp/config", config).then((r) => r.data),
 };
