@@ -1,4 +1,4 @@
-import { pgTable, serial, varchar, numeric, smallint, text, timestamp, date, integer, jsonb } from 'drizzle-orm/pg-core';
+import { pgTable, serial, varchar, numeric, smallint, text, timestamp, date, integer, jsonb, boolean } from 'drizzle-orm/pg-core';
 
 export const funds = pgTable('funds', {
   id: serial('id').primaryKey(),
@@ -50,14 +50,6 @@ export const dailyLogs = pgTable('daily_logs', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
-export const analysisRecords = pgTable('analysis_records', {
-  id: serial('id').primaryKey(),
-  provider: varchar('provider', { length: 20 }).notNull(),
-  inputSnapshot: jsonb('input_snapshot').notNull(),
-  result: jsonb('result').notNull(),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-});
-
 export const appSettings = pgTable('app_settings', {
   key: varchar('key', { length: 50 }).primaryKey(),
   value: text('value').notNull(),
@@ -73,5 +65,23 @@ export const dailySnapshots = pgTable('daily_snapshots', {
   pnlRatio: numeric('pnl_ratio', { precision: 8, scale: 4 }).notNull().default('0'),
   positionCount: integer('position_count').notNull().default(0),
   positionsSnapshot: jsonb('positions_snapshot'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const chatSessions = pgTable('chat_sessions', {
+  id: serial('id').primaryKey(),
+  title: varchar('title', { length: 120 }).notNull().default('新对话'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const chatMessages = pgTable('chat_messages', {
+  id: serial('id').primaryKey(),
+  sessionId: integer('session_id').notNull().references(() => chatSessions.id, { onDelete: 'cascade' }),
+  role: varchar('role', { length: 16 }).notNull(),
+  kind: varchar('kind', { length: 16 }).notNull(),
+  content: text('content').notNull(),
+  tool: varchar('tool', { length: 80 }),
+  truncated: boolean('truncated').notNull().default(false),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });

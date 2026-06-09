@@ -2,7 +2,7 @@
 -- 导出时间：2026-06-09
 
 -- 清理现有数据（按依赖顺序）
-TRUNCATE TABLE analysis_records, positions, funds, app_settings RESTART IDENTITY CASCADE;
+TRUNCATE TABLE positions, funds, app_settings RESTART IDENTITY CASCADE;
 
 -- app_settings
 INSERT INTO app_settings (key, value, updated_at) VALUES ('target_total_position', '200000', '2026-06-08 16:08:51.055+08');
@@ -74,12 +74,6 @@ INSERT INTO positions (id, fund_code, fund_name, shares, cost_price, cost_amount
 INSERT INTO positions (id, fund_code, fund_name, shares, cost_price, cost_amount, created_at, updated_at) VALUES (30, '161726', '招商国证生物医药指数A', 0.0000, 0.0000, 17304.96, '2026-06-08 15:28:44.948121+08', '2026-06-08 15:28:44.948121+08');
 INSERT INTO positions (id, fund_code, fund_name, shares, cost_price, cost_amount, created_at, updated_at) VALUES (31, '021227', '广发全球精选股票C', 0.0000, 0.0000, 1000.00, '2026-06-08 15:28:44.948121+08', '2026-06-08 15:28:44.948121+08');
 
--- analysis_records（3条，结果太长已截取摘要）
-INSERT INTO analysis_records (id, provider, input_snapshot, result, created_at) VALUES (1, 'moonshot', '{"query": "分析我的仓位风险"}', '{"output": "仓位风险分析报告 - 31只基金，总成本¥137,372.48，总现值¥136,660.63，总盈亏-¥711.85(-0.52%)"}', '2026-06-09 10:04:31.923711+08');
-INSERT INTO analysis_records (id, provider, input_snapshot, result, created_at) VALUES (2, 'moonshot', '{"query": "分析我的仓位风险"}', '{"output": "仓位风险分析报告 - 总资产¥146,584.82，累计盈亏-¥11,615.18(-7.35%)"}', '2026-06-09 10:49:24.111266+08');
-INSERT INTO analysis_records (id, provider, input_snapshot, result, created_at) VALUES (3, 'moonshot', '{"query": "分析我的仓位风险"}', '{"output": "仓位风险分析报告 - 总持仓现值¥164,665，31只基金详细分析"}', '2026-06-09 14:13:08.369095+08');
-
 -- 重置序列
-SELECT pg_catalog.setval('public.analysis_records_id_seq', 3, true);
 SELECT pg_catalog.setval('public.funds_id_seq', 31, true);
 SELECT pg_catalog.setval('public.positions_id_seq', 31, true);

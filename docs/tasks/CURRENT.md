@@ -1,54 +1,38 @@
 # 当前任务（CURRENT）
 
-## 当前焦点
-
-Milestone 5 AI 设置已完成。下一步：T1.3.4 ChatDrawer 或 Milestone 2 扩展（Cron 定时任务）。
-
-**ADR-007**：使用 LangChain deep agent（`createDeepAgent` from `deepagents`）替代手写 StateGraph。
-
-## Milestone 1：基础数据层
+## Milestone 6：同步与历史会话
 
 | ID | 任务 | 状态 | 估时 |
 |----|------|------|------|
-| T1.1.1 | packages/types 共享类型定义 | [x] | 0.5d |
-| T1.1.2 | packages/db 连接池实现 | [x] | 0.5d |
-| T1.1.3 | NestJS positions 模块实现 | [x] | 1d |
-| T1.1.4 | NestJS transactions 模块实现 | [x] | 0.5d |
-| T1.1.5 | NestJS daily-logs 模块实现 | [x] | 0.5d |
-| T1.1.6 | NestJS daily-snapshots 模块实现（新增） | [x] | 0.5d |
+| T6.1.1 | 一键同步仓位（依据现有持仓 + 上一交易日数据更新净值/收益/持仓金额） | [ ] | 1d |
+| T6.1.2 | AI 回答 Markdown 美化（react-markdown + remark-gfm + rehype-highlight + 表格/代码主题） | [x] | 0.5d |
+| T6.1.3 | AI 抽屉预设问题美化（卡片样式 + 图标 + 分组） | [x] | 0.25d |
+| T6.1.4 | 历史会话 + 新建会话（chat_sessions / chat_messages 表 + 侧栏会话列表 + 切换/删除） | [x] | 1.5d |
 
-## Milestone 2：AI Agent（ADR-007 deep agent）
+## Milestone 7：止盈止损与定投
 
 | ID | 任务 | 状态 | 估时 |
 |----|------|------|------|
-| T1.2.1 | McpService — 盈米 MCP SSE 客户端封装 | [x] | 0.5d |
-| T1.2.2 | LLM 工厂 + AgentToolsService | [x] | 0.5d |
-| T1.2.3 | createDeepAgent + system prompt + SSE 流式 | [x] | 1d |
-| T1.2.4 | AnalysisModule — Controller + Service + 注册 | [x] | 0.5d |
+| T7.1.1 | funds 表字段扩展（valuation_percentile / phase / priority / target_amount / base_amount / weekly_return / monthly_return） | [ ] | 0.5d |
+| T7.1.2 | 止盈三档（25/40/60%）+ 止损两档（10/20%）规则引擎 | [ ] | 1d |
+| T7.1.3 | 深度套牢反弹信号检查（连续 3 日 >1% 或周累计 >3%） | [ ] | 0.5d |
+| T7.1.4 | 定投金额叠加算法（T × P2 × P3 × P4，上限 3 倍 / 下限 10% 归零） | [ ] | 1d |
 
-## Milestone 3：前端（按新导航结构）
-
-| ID | 任务 | 状态 | 估时 |
-|----|------|------|------|
-| T1.3.1 | 导航重构：侧边栏菜单调整 + 路由重定向 | [x] | 0.5d |
-| T1.3.2 | Dashboard 总览页（StatCards + PnLChart + PositionPie + RecentTrades） | [x] | 1.5d |
-| T1.3.3 | 交易与持仓页（Tab 结构：持仓 / 交易 / 日志 / 投资日记） | [x] | 1.5d |
-| T1.3.4 | ChatDrawer AI 抽屉（SSE 流式 Chat + 全局唤起） | [ ] | 1.5d |
-
-## Milestone 5：AI 设置
+## Milestone 8：AI 体验增强
 
 | ID | 任务 | 状态 | 估时 |
 |----|------|------|------|
-| T5.1.1 | @g-fund/types 新增 AiConfig / ProviderConfig / McpConfig 类型 | [x] | 0.25d |
-| T5.1.2 | llm.factory.ts 新增 createLlmFromConfig() | [x] | 0.25d |
-| T5.1.3 | SettingsService 新增 ai/mcp 配置读写；McpService 新增 reconnect()；export SettingsService | [x] | 0.25d |
-| T5.1.4 | AnalysisService 改为每请求从 DB 动态创建 LLM | [x] | 0.25d |
-| T5.1.5 | 前端 AI 设置页（Segmented + 参数表单 + MCP 配置 + 保存） | [x] | 0.5d |
+| T8.1.1 | 多轮上下文（后端 runAgent 接收 history 参数） | [x] | 0.5d |
+| T8.1.2 | SSE 重连 / 错误恢复（指数退避 + 断点续传） | [x] | 0.5d |
+| T8.1.3 | 分析结果持久化到 analysis_records + 历史查看入口 | [x] | 0.5d |
+| T8.1.4 | AI 抽屉快捷指令（今日监控 / 定投计算 / 止盈止损 / 板块分析 / 基金诊断） | [x] | 0.5d |
+| T8.1.5 | Cmd+K 全局唤起 AI 抽屉 | [x] | 0.25d |
 
+## Milestone 9：Dashboard 增强
 
 | ID | 任务 | 状态 | 估时 |
 |----|------|------|------|
-| T1.4.1 | packages/db 连接池（drizzle-orm）+ 002_funds.sql 迁移 | [x] | 0.5d |
-| T1.4.2 | @g-fund/types Fund 类型（Fund/FundListItem/CreateFundDto/UpdateFundDto） | [x] | 0.25d |
-| T1.4.3 | NestJS main.ts + AppModule + DbModule + FundsModule（CRUD） | [x] | 1d |
-| T1.4.4 | 前端 antd + Dashboard Layout + api-client + 基金列表页 | [x] | 1d |
+| T9.1.1 | 止盈止损速览卡片（🔴/🟡/🟢 信号 + 操作建议） | [ ] | 0.5d |
+| T9.1.2 | 下次定投预估卡片（双周四日期 + 预估金额） | [ ] | 0.25d |
+| T9.1.3 | 最近预警时间线（来源：stop_loss_records） | [ ] | 0.5d |
+| T9.1.4 | 基金诊断 / 单基金深度分析页 | [ ] | 1d |

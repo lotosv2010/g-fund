@@ -11,6 +11,7 @@ import { buildSystemPrompt } from './prompt';
 
 const AGENT_NAME = 'g-fund-analyst';
 const DEFAULT_RECURSION_LIMIT = 50;
+const MAX_HISTORY_TURNS = 20;
 
 export type StreamEventKind = 'thinking' | 'tool_call' | 'tool_result';
 
@@ -22,10 +23,16 @@ export interface StreamEvent {
 
 export type OnStreamFn = (event: StreamEvent) => Promise<void> | void;
 
+export interface HistoryTurn {
+  readonly role: 'user' | 'assistant';
+  readonly content: string;
+}
+
 export interface CreateAgentParams {
   readonly model: BaseLanguageModel;
   readonly tools: StructuredToolInterface[];
   readonly query: string;
+  readonly history?: ReadonlyArray<HistoryTurn>;
   readonly maxIterations?: number;
   readonly onStream?: OnStreamFn;
 }
@@ -56,9 +63,11 @@ export async function runAgent(params: CreateAgentParams): Promise<AgentResult> 
   const seenIds = new Set<string>();
   let truncated = false;
 
+  const initialMessages = buildInitialMessages(params.history, params.query);
+
   try {
     const stream = await agent.stream(
-      { messages: [new HumanMessage(params.query)] },
+      { messages: initialMessages },
       { recursionLimit },
     );
 
@@ -95,6 +104,24 @@ export async function runAgent(params: CreateAgentParams): Promise<AgentResult> 
   }
 
   return { output, messages, truncated };
+}
+
+function buildInitialMessages(
+  history: ReadonlyArray<HistoryTurn> | undefined,
+  query: string,
+): BaseMessage[] {
+  const turns = (history ?? []).slice(-MAX_HISTORY_TURNS);
+  const result: BaseMessage[] = [];
+  for (const turn of turns) {
+    if (!turn.content?.trim()) continue;
+    result.push(
+      turn.role === 'assistant'
+        ? new AIMessage(turn.content)
+        : new HumanMessage(turn.content),
+    );
+  }
+  result.push(new HumanMessage(query));
+  return result;
 }
 
 async function dispatchEvent(msg: BaseMessage, onStream: OnStreamFn): Promise<void> {

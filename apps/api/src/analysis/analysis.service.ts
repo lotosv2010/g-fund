@@ -1,14 +1,9 @@
-import { Injectable, Inject, Logger } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { Observable, Subscriber } from 'rxjs';
-import { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import * as schema from '@g-fund/db';
-import { DB } from '../db/db.module';
 import { AgentToolsService } from '../agent/agent-tools.service';
 import { SettingsService } from '../settings/settings.service';
 import { createLlmFromConfig } from '../agent/llm.factory';
-import { runAgent, type OnStreamFn } from '../agent/graph';
-
-type DbType = NodePgDatabase<typeof schema>;
+import { runAgent, type OnStreamFn, type HistoryTurn } from '../agent/graph';
 
 export interface StreamEvent {
   type: string;
@@ -22,12 +17,11 @@ export class AnalysisService {
   constructor(
     private readonly toolsService: AgentToolsService,
     private readonly settingsService: SettingsService,
-    @Inject(DB) private readonly db: DbType,
   ) {}
 
-  stream(query: string): Observable<StreamEvent> {
+  stream(query: string, history?: HistoryTurn[]): Observable<StreamEvent> {
     return new Observable<StreamEvent>((subscriber) => {
-      this.runStream(query, subscriber).catch((err) => {
+      this.runStream(query, subscriber, history).catch((err) => {
         const message = (err as Error).message;
         this.logger.error(`Stream error: ${message}`);
         subscriber.next({
@@ -42,6 +36,7 @@ export class AnalysisService {
   private async runStream(
     query: string,
     subscriber: Subscriber<StreamEvent>,
+    history?: HistoryTurn[],
   ): Promise<void> {
     const aiConfig = await this.settingsService.getAiConfig();
     const model = createLlmFromConfig(aiConfig);
@@ -57,6 +52,7 @@ export class AnalysisService {
       model,
       tools: this.toolsService.getTools(),
       query,
+      history,
       onStream,
     });
 
@@ -68,11 +64,13 @@ export class AnalysisService {
         truncated: result.truncated,
       }),
     });
-    await this.persist(aiConfig.activeProvider, query, result.output);
     subscriber.complete();
   }
 
-  async invoke(query: string): Promise<{ output: string; truncated: boolean }> {
+  async invoke(
+    query: string,
+    history?: HistoryTurn[],
+  ): Promise<{ output: string; truncated: boolean }> {
     const aiConfig = await this.settingsService.getAiConfig();
     const model = createLlmFromConfig(aiConfig);
 
@@ -80,21 +78,9 @@ export class AnalysisService {
       model,
       tools: this.toolsService.getTools(),
       query,
+      history,
     });
 
-    await this.persist(aiConfig.activeProvider, query, result.output);
     return { output: result.output, truncated: result.truncated };
-  }
-
-  private async persist(provider: string, query: string, output: string): Promise<void> {
-    try {
-      await this.db.insert(schema.analysisRecords).values({
-        provider,
-        inputSnapshot: { query },
-        result: { output },
-      });
-    } catch (error) {
-      this.logger.warn(`Failed to persist analysis: ${(error as Error).message}`);
-    }
   }
 }

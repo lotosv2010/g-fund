@@ -50,3 +50,25 @@ export type ChatMessage =
   | AssistantMessage
   | ThinkingMessage
   | ErrorMessage;
+
+export interface ChatSessionSummary {
+  readonly id: number;
+  readonly title: string;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+}
+
+export interface ChatSessionDetail extends ChatSessionSummary {
+  readonly messages: ChatMessage[];
+}
+
+export type PersistedRole = "user" | "assistant" | "tool" | "system";
+export type PersistedKind = ChatMessage["kind"];
+
+export interface PersistChatMessageDto {
+  readonly role: PersistedRole;
+  readonly kind: PersistedKind;
+  readonly content: string;
+  readonly tool?: string;
+  readonly truncated?: boolean;
+}

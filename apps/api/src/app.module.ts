@@ -11,6 +11,7 @@ import { TransactionsModule } from './transactions/transactions.module';
 import { DailyLogsModule } from './daily-logs/daily-logs.module';
 import { DailySnapshotsModule } from './daily-snapshots/daily-snapshots.module';
 import { SettingsModule } from './settings/settings.module';
+import { ChatModule } from './chat/chat.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { SettingsModule } from './settings/settings.module';
     DailyLogsModule,
     DailySnapshotsModule,
     SettingsModule,
+    ChatModule,
   ],
 })
 export class AppModule {}

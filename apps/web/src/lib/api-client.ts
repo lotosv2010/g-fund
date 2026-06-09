@@ -4,6 +4,7 @@ import type {
   PositionListItem, Transaction, CreateTransactionDto,
   DailyLog, CreateDailyLogDto, UpdateDailyLogDto, DailySnapshot,
   AppSetting, AiConfig, McpConfig,
+  ChatSessionSummary, ChatSessionDetail, PersistChatMessageDto, ChatMessage,
 } from "@g-fund/types";
 
 const http = axios.create({
@@ -75,4 +76,17 @@ export const aiConfigApi = {
 export const mcpConfigApi = {
   get: () => http.get<McpConfig>("/settings/mcp/config").then((r) => r.data),
   set: (config: McpConfig) => http.put<AppSetting>("/settings/mcp/config", config).then((r) => r.data),
+};
+
+export const chatApi = {
+  list: () => http.get<ChatSessionSummary[]>("/chat/sessions").then((r) => r.data),
+  create: (title?: string) =>
+    http.post<ChatSessionSummary>("/chat/sessions", { title }).then((r) => r.data),
+  detail: (id: number) =>
+    http.get<ChatSessionDetail>(`/chat/sessions/${id}`).then((r) => r.data),
+  rename: (id: number, title: string) =>
+    http.patch<ChatSessionSummary>(`/chat/sessions/${id}`, { title }).then((r) => r.data),
+  remove: (id: number) => http.delete(`/chat/sessions/${id}`),
+  appendMessage: (id: number, dto: PersistChatMessageDto) =>
+    http.post<ChatMessage>(`/chat/sessions/${id}/messages`, dto).then((r) => r.data),
 };
