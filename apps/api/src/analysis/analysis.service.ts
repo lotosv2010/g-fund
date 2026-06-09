@@ -1,13 +1,12 @@
 import { Injectable, Inject, Logger } from '@nestjs/common';
-import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import { Observable, Subscriber } from 'rxjs';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '@g-fund/db';
 import { DB } from '../db/db.module';
-import { LLM } from '../agent/agent.module';
 import { AgentToolsService } from '../agent/agent-tools.service';
+import { SettingsService } from '../settings/settings.service';
+import { createLlmFromConfig } from '../agent/llm.factory';
 import { runAgent, type OnToolCallFn } from '../agent/graph';
-import { Inject as InjectDB } from '@nestjs/common';
 
 type DbType = NodePgDatabase<typeof schema>;
 
@@ -21,9 +20,9 @@ export class AnalysisService {
   private readonly logger = new Logger(AnalysisService.name);
 
   constructor(
-    @Inject(LLM) private readonly llm: BaseLanguageModel,
     private readonly toolsService: AgentToolsService,
-    @InjectDB(DB) private readonly db: DbType,
+    private readonly settingsService: SettingsService,
+    @Inject(DB) private readonly db: DbType,
   ) {}
 
   stream(query: string): Observable<StreamEvent> {
@@ -39,6 +38,9 @@ export class AnalysisService {
     query: string,
     subscriber: Subscriber<StreamEvent>,
   ): Promise<void> {
+    const aiConfig = await this.settingsService.getAiConfig();
+    const model = createLlmFromConfig(aiConfig);
+
     const onToolCall: OnToolCallFn = async (toolName, phase, content) => {
       subscriber.next({
         type: phase === 'call' ? 'tool_call' : 'tool_result',
@@ -47,31 +49,33 @@ export class AnalysisService {
     };
 
     const result = await runAgent({
-      model: this.llm,
+      model,
       tools: this.toolsService.getTools(),
       query,
       onToolCall,
     });
 
     subscriber.next({ type: 'result', data: result.output });
-    await this.persist(query, result.output);
+    await this.persist(aiConfig.activeProvider, query, result.output);
     subscriber.complete();
   }
 
   async invoke(query: string): Promise<{ output: string }> {
+    const aiConfig = await this.settingsService.getAiConfig();
+    const model = createLlmFromConfig(aiConfig);
+
     const result = await runAgent({
-      model: this.llm,
+      model,
       tools: this.toolsService.getTools(),
       query,
     });
 
-    await this.persist(query, result.output);
+    await this.persist(aiConfig.activeProvider, query, result.output);
     return { output: result.output };
   }
 
-  private async persist(query: string, output: string): Promise<void> {
+  private async persist(provider: string, query: string, output: string): Promise<void> {
     try {
-      const provider = process.env.LLM_PROVIDER ?? 'deepseek';
       await this.db.insert(schema.analysisRecords).values({
         provider,
         inputSnapshot: { query },
@@ -82,3 +86,4 @@ export class AnalysisService {
     }
   }
 }
+

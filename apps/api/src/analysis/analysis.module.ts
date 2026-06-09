@@ -1,10 +1,11 @@
 import { Module } from '@nestjs/common';
 import { AgentModule } from '../agent/agent.module';
+import { SettingsModule } from '../settings/settings.module';
 import { AnalysisController } from './analysis.controller';
 import { AnalysisService } from './analysis.service';
 
 @Module({
-  imports: [AgentModule],
+  imports: [AgentModule, SettingsModule],
   controllers: [AnalysisController],
   providers: [AnalysisService],
 })

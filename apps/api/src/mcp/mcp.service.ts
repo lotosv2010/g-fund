@@ -3,13 +3,14 @@ import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/commo
 import { ConfigService } from '@nestjs/config';
 import { Client } from '@modelcontextprotocol/sdk/client';
 import type { Tool, CallToolResult } from '@modelcontextprotocol/sdk/types';
+import type { McpServer } from '@g-fund/types';
 
 @Injectable()
 export class McpService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(McpService.name);
-  private client: Client | null = null;
-  private tools: Tool[] = [];
-  private connected = false;
+  private clients = new Map<string, Client>();
+  private toolsByServer = new Map<string, Tool[]>();
+  private toolClientMap = new Map<string, string>(); // tool name -> server id
 
   constructor(private readonly config: ConfigService) {}
 
@@ -20,57 +21,35 @@ export class McpService implements OnModuleInit, OnModuleDestroy {
       this.logger.warn('QIEMAN_MCP_URL not configured, MCP disabled');
       return;
     }
-    await this.connect(url, apiKey);
+    await this.connectServer({ id: 'default', name: '盈米', url, apiKey: apiKey ?? '', enabled: true });
   }
 
   async onModuleDestroy() {
-    await this.disconnect();
+    await this.disconnectAll();
   }
 
-  private async connect(url: string, apiKey?: string): Promise<void> {
-    try {
-      // MCP SDK exports map 未暴露 ./client/streamableHttp 子路径给 CJS，直接引用文件绕过
-      const clientDir = join(require.resolve('@modelcontextprotocol/sdk/client'), '..');
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const { StreamableHTTPClientTransport } = require(join(clientDir, 'streamableHttp.js'));
-      const transport = new StreamableHTTPClientTransport(new URL(url), {
-        requestInit: apiKey ? { headers: { 'X-Api-Key': apiKey } } : undefined,
-      });
-      this.client = new Client({ name: 'g-fund-agent', version: '1.0.0' });
-      await this.client.connect(transport);
-      this.connected = true;
-
-      const result = await this.client.listTools();
-      this.tools = result.tools;
-      this.logger.log(`MCP connected, ${this.tools.length} tools available`);
-    } catch (error) {
-      this.logger.error(`MCP connection failed: ${(error as Error).message}`);
-      this.connected = false;
-    }
-  }
-
-  private async disconnect(): Promise<void> {
-    if (this.client) {
-      await this.client.close();
-      this.client = null;
-      this.connected = false;
-      this.logger.log('MCP disconnected');
+  async reconnectAll(servers: McpServer[]): Promise<void> {
+    await this.disconnectAll();
+    for (const server of servers.filter((s) => s.enabled && s.url)) {
+      await this.connectServer(server);
     }
   }
 
   isConnected(): boolean {
-    return this.connected;
+    return this.clients.size > 0;
   }
 
   getTools(): Tool[] {
-    return this.tools;
+    return [...this.toolsByServer.values()].flat();
   }
 
   async callTool(name: string, args?: Record<string, unknown>): Promise<CallToolResult> {
-    if (!this.client || !this.connected) {
-      throw new Error('MCP not connected');
-    }
-    return this.client.callTool({ name, arguments: args }) as Promise<CallToolResult>;
+    const serverId = this.toolClientMap.get(name);
+    const client = serverId
+      ? this.clients.get(serverId)
+      : this.clients.values().next().value;
+    if (!client) throw new Error('MCP not connected');
+    return client.callTool({ name, arguments: args }) as Promise<CallToolResult>;
   }
 
   async callTools(
@@ -82,5 +61,39 @@ export class McpService implements OnModuleInit, OnModuleDestroy {
     return results.map((r) =>
       r.status === 'fulfilled' ? r.value : r.reason instanceof Error ? r.reason : new Error(String(r.reason)),
     );
+  }
+
+  private async connectServer(server: McpServer): Promise<void> {
+    try {
+      // MCP SDK exports map 未暴露 ./client/streamableHttp 子路径给 CJS，直接引用文件绕过
+      const clientDir = join(require.resolve('@modelcontextprotocol/sdk/client'), '..');
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { StreamableHTTPClientTransport } = require(join(clientDir, 'streamableHttp.js'));
+      const transport = new StreamableHTTPClientTransport(new URL(server.url), {
+        requestInit: server.apiKey ? { headers: { 'X-Api-Key': server.apiKey } } : undefined,
+      });
+      const client = new Client({ name: 'g-fund-agent', version: '1.0.0' });
+      await client.connect(transport);
+
+      const result = await client.listTools();
+      this.clients.set(server.id, client);
+      this.toolsByServer.set(server.id, result.tools);
+      for (const tool of result.tools) {
+        this.toolClientMap.set(tool.name, server.id);
+      }
+      this.logger.log(`[${server.name}] MCP connected, ${result.tools.length} tools`);
+    } catch (error) {
+      this.logger.error(`[${server.name}] MCP connection failed: ${(error as Error).message}`);
+    }
+  }
+
+  private async disconnectAll(): Promise<void> {
+    for (const [id, client] of this.clients) {
+      await client.close().catch(() => {});
+      this.logger.log(`[${id}] MCP disconnected`);
+    }
+    this.clients.clear();
+    this.toolsByServer.clear();
+    this.toolClientMap.clear();
   }
 }
