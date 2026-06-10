@@ -32,27 +32,27 @@ export default function PositionTable({ data, loading, onBuy, onSell, onViewLog,
     { title: "基金代码", dataIndex: "fundCode", width: 100 },
     { title: "基金名称", dataIndex: "fundName", ellipsis: true },
     {
-      title: "持有份额", dataIndex: "shares", width: 120, align: "right",
+      title: "持有份额", dataIndex: "shares", width: 120, align: "right", ellipsis: true,
       render: (v) => parseFloat(v).toLocaleString(undefined, { minimumFractionDigits: 4 }),
     },
     {
-      title: "成本价", dataIndex: "costPrice", width: 100, align: "right",
+      title: "成本价", dataIndex: "costPrice", width: 100, align: "right", ellipsis: true,
       render: (v) => parseFloat(v).toFixed(4),
     },
     {
-      title: "成本金额", dataIndex: "costAmount", width: 120, align: "right",
+      title: "成本金额", dataIndex: "costAmount", width: 120, align: "right", ellipsis: true,
       render: (v) => `¥${parseFloat(v).toLocaleString()}`,
     },
     {
-      title: "当前市值", dataIndex: "currentValue", width: 120, align: "right",
+      title: "当前市值", dataIndex: "currentValue", width: 120, align: "right", ellipsis: true,
       render: (v) => `¥${parseFloat(v).toLocaleString()}`,
     },
     {
-      title: "盈亏金额", dataIndex: "pnlAmount", width: 120, align: "right",
+      title: "盈亏金额", dataIndex: "pnlAmount", width: 120, align: "right", ellipsis: true,
       render: (v) => <PnlCell value={`¥${parseFloat(v).toLocaleString()}`} />,
     },
     {
-      title: "盈亏率", dataIndex: "pnlRate", width: 100, align: "right",
+      title: "盈亏率", dataIndex: "pnlRate", width: 100, align: "right", ellipsis: true,
       render: (v) => <PnlCell value={`${(parseFloat(v) * 100).toFixed(2)}%`} />,
     },
     ...(onBuy || onSell || onViewLog || onEditSnapshot
@@ -106,23 +106,27 @@ export default function PositionTable({ data, loading, onBuy, onSell, onViewLog,
             <Table.Summary fixed>
               <Table.Summary.Row>
                 <Table.Summary.Cell index={0} colSpan={hasActions ? 5 : 4}>
-                  <Text strong>合计</Text>
+                  <div style={{ whiteSpace: "nowrap" }}><Text strong>合计</Text></div>
                 </Table.Summary.Cell>
                 <Table.Summary.Cell index={4} align="right">
-                  <Text strong>¥{totalCost.toLocaleString()}</Text>
+                  <div style={{ whiteSpace: "nowrap", textAlign: "right" }}><Text strong>¥{totalCost.toLocaleString()}</Text></div>
                 </Table.Summary.Cell>
                 <Table.Summary.Cell index={5} align="right">
-                  <Text strong>¥{totalValue.toLocaleString()}</Text>
+                  <div style={{ whiteSpace: "nowrap", textAlign: "right" }}><Text strong>¥{totalValue.toLocaleString()}</Text></div>
                 </Table.Summary.Cell>
                 <Table.Summary.Cell index={6} align="right">
-                  <Text strong style={{ color: totalPnl >= 0 ? "#dc2626" : "#16a34a" }}>
-                    {totalPnl >= 0 ? "+" : ""}¥{totalPnl.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                  </Text>
+                  <div style={{ whiteSpace: "nowrap", textAlign: "right" }}>
+                    <Text strong style={{ color: totalPnl >= 0 ? "#dc2626" : "#16a34a" }}>
+                      {totalPnl >= 0 ? "+" : ""}¥{totalPnl.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </Text>
+                  </div>
                 </Table.Summary.Cell>
                 <Table.Summary.Cell index={7} align="right">
-                  <Text strong style={{ color: totalPnlRate >= 0 ? "#dc2626" : "#16a34a" }}>
-                    {totalPnlRate >= 0 ? "+" : ""}{(totalPnlRate * 100).toFixed(2)}%
-                  </Text>
+                  <div style={{ whiteSpace: "nowrap", textAlign: "right" }}>
+                    <Text strong style={{ color: totalPnlRate >= 0 ? "#dc2626" : "#16a34a" }}>
+                      {totalPnlRate >= 0 ? "+" : ""}{(totalPnlRate * 100).toFixed(2)}%
+                    </Text>
+                  </div>
                 </Table.Summary.Cell>
               </Table.Summary.Row>
             </Table.Summary>

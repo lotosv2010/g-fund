@@ -11,7 +11,7 @@ import { McpService } from '../mcp/mcp.service';
 type DbType = NodePgDatabase<typeof schema>;
 type PositionRow = typeof schema.positions.$inferSelect;
 
-interface NavInfo {
+export interface NavInfo {
   navUnit: string;
   navDate?: string;
 }
@@ -152,6 +152,30 @@ export class PositionsSyncService {
     @Inject(DB) private readonly db: DbType,
     private readonly mcp: McpService,
   ) {}
+
+  async fetchNav(fundCode: string): Promise<NavInfo> {
+    if (!this.mcp.isConnected()) {
+      throw new Error('MCP 未连接');
+    }
+    const navTool = pickNavTool(this.mcp.getTools());
+    if (!navTool) {
+      throw new Error('未找到净值工具');
+    }
+    const codeArgName = pickFundCodeArgName(navTool);
+    const codeArgIsArray = isArrayArg(navTool, codeArgName);
+    const argValue = codeArgIsArray ? [fundCode] : fundCode;
+    const result = await this.mcp.callTool(navTool.name, { [codeArgName]: argValue });
+    const text = (result.content ?? [])
+      .filter((c): c is { type: 'text'; text: string } => c.type === 'text')
+      .map((c) => c.text)
+      .join('\n')
+      .trim();
+    const nav = parseNavFromText(text);
+    if (!nav) {
+      throw new Error(`无法解析基金 ${fundCode} 的净值`);
+    }
+    return nav;
+  }
 
   async syncAll(): Promise<SyncPositionsResult> {
     return firstValueFrom(this.collectDone(this.syncStream()));

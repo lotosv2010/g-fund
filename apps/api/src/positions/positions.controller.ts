@@ -48,6 +48,12 @@ export class PositionsController {
     await this.positionsService.remove(fundCode);
   }
 
+  @Get(':fundCode/nav')
+  @ApiOperation({ summary: '从 MCP 实时获取单支基金净值' })
+  fetchNav(@Param('fundCode') fundCode: string) {
+    return this.positionsSyncService.fetchNav(fundCode);
+  }
+
   @Get(':fundCode')
   @ApiOperation({ summary: '获取单个持仓' })
   findOne(@Param('fundCode') fundCode: string) {

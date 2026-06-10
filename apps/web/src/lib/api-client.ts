@@ -36,6 +36,8 @@ export const fundsApi = {
 export const positionsApi = {
   list: () => http.get<PositionListItem[]>("/positions").then((r) => r.data),
   get: (fundCode: string) => http.get<PositionListItem>(`/positions/${fundCode}`).then((r) => r.data),
+  fetchNav: (fundCode: string) =>
+    http.get<{ navUnit: string; navDate?: string }>(`/positions/${fundCode}/nav`, { timeout: 15000 }).then((r) => r.data),
   upsert: (dto: UpsertPositionDto) =>
     http.put<PositionListItem>("/positions", dto).then((r) => r.data),
   remove: (fundCode: string) => http.delete(`/positions/${fundCode}`),

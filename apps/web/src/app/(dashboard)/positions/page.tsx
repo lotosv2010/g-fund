@@ -316,6 +316,12 @@ export default function PositionsPage() {
           onSubmit={handleTradeSubmit}
           defaultFundCode={tradeFundCode || undefined}
           defaultType={tradeType}
+          availableShares={
+            tradeType === "sell" && tradeFundCode
+              ? parseFloat(positions.find((p) => p.fundCode === tradeFundCode)?.shares ?? "0")
+              : undefined
+          }
+          positions={positions}
         />
       </Modal>
 
@@ -331,8 +337,12 @@ export default function PositionsPage() {
         open={snapshotModalOpen}
         funds={funds}
         defaultFundCode={snapshotEditing?.fundCode}
-        defaultCostAmount={snapshotEditing?.costAmount}
-        defaultCostPrice={snapshotEditing?.costPrice}
+        defaultCurrentValue={snapshotEditing?.currentValue}
+        defaultPnlAmount={
+          snapshotEditing
+            ? String(parseFloat(snapshotEditing.currentValue) - parseFloat(snapshotEditing.costAmount))
+            : undefined
+        }
         submitting={snapshotSubmitting}
         onSubmit={handleSnapshotSubmit}
         onCancel={() => {

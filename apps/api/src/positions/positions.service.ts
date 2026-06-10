@@ -49,7 +49,13 @@ export class PositionsService {
       .where(inArray(schema.funds.code, fundCodes));
     const fundMap = new Map(funds.map((f) => [f.code, f]));
 
-    return rows.map((row) => toListItem(row, fundMap.get(row.fundCode)));
+    return rows
+      .sort((a, b) => {
+        const sortA = Number(fundMap.get(a.fundCode)?.sortOrder ?? 0);
+        const sortB = Number(fundMap.get(b.fundCode)?.sortOrder ?? 0);
+        return sortA - sortB;
+      })
+      .map((row) => toListItem(row, fundMap.get(row.fundCode)));
   }
 
   async findOne(fundCode: string): Promise<PositionListItem> {
@@ -83,43 +89,46 @@ export class PositionsService {
 
     const costAmount = parseFloat(dto.costAmount);
     const costPrice = parseFloat(dto.costPrice);
+    const currentValue = parseFloat(dto.currentValue);
+    const shares = parseFloat(dto.shares);
     if (!Number.isFinite(costAmount) || costAmount <= 0) {
-      throw new BadRequestException('持仓金额必须大于 0');
+      throw new BadRequestException('持有金额必须大于 0');
     }
     if (!Number.isFinite(costPrice) || costPrice <= 0) {
       throw new BadRequestException('成本净值必须大于 0');
     }
-    const shares = costAmount / costPrice;
+    if (!Number.isFinite(currentValue) || currentValue < 0) {
+      throw new BadRequestException('当前市值不能为负');
+    }
+    if (!Number.isFinite(shares) || shares <= 0) {
+      throw new BadRequestException('持有份额必须大于 0');
+    }
 
     const [existing] = await this.db
       .select()
       .from(schema.positions)
       .where(eq(schema.positions.fundCode, dto.fundCode));
 
+    const data = {
+      fundName: fund.name,
+      shares: shares.toFixed(4),
+      costPrice: costPrice.toFixed(4),
+      costAmount: costAmount.toFixed(2),
+      currentValue: currentValue.toFixed(2),
+      updatedAt: new Date(),
+    };
+
     let row: PositionRow;
     if (existing) {
       [row] = await this.db
         .update(schema.positions)
-        .set({
-          fundName: fund.name,
-          shares: shares.toFixed(4),
-          costPrice: costPrice.toFixed(4),
-          costAmount: costAmount.toFixed(2),
-          updatedAt: new Date(),
-        })
+        .set(data)
         .where(eq(schema.positions.fundCode, dto.fundCode))
         .returning();
     } else {
       [row] = await this.db
         .insert(schema.positions)
-        .values({
-          fundCode: dto.fundCode,
-          fundName: fund.name,
-          shares: shares.toFixed(4),
-          costPrice: costPrice.toFixed(4),
-          costAmount: costAmount.toFixed(2),
-          currentValue: '0',
-        })
+        .values({ fundCode: dto.fundCode, ...data })
         .returning();
     }
 

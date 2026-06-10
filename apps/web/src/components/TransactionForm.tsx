@@ -9,31 +9,53 @@ interface TransactionFormProps {
   onSubmit: (dto: CreateTransactionDto) => Promise<void>;
   defaultFundCode?: string;
   defaultType?: "buy" | "sell";
+  availableShares?: number;
+  positions?: Array<{ fundCode: string; shares: string }>;
 }
 
-export default function TransactionForm({ funds, onSubmit, defaultFundCode, defaultType }: TransactionFormProps) {
+export default function TransactionForm({ funds, onSubmit, defaultFundCode, defaultType, availableShares, positions }: TransactionFormProps) {
   const [form] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
   const [txType, setTxType] = useState<"buy" | "sell">(defaultType ?? "buy");
+  const [selectedFundCode, setSelectedFundCode] = useState<string>(defaultFundCode ?? "");
   const [messageApi, contextHolder] = message.useMessage();
 
   useEffect(() => {
     const values: Record<string, unknown> = { tradeDate: dayjs() };
-    if (defaultFundCode) values.fundCode = defaultFundCode;
+    if (defaultFundCode) {
+      values.fundCode = defaultFundCode;
+      setSelectedFundCode(defaultFundCode);
+    }
     if (defaultType) values.type = defaultType;
     form.setFieldsValue(values);
     if (defaultType) setTxType(defaultType);
   }, [defaultFundCode, defaultType, form]);
 
+  useEffect(() => {
+    form.setFieldsValue({ amount: undefined, shares: undefined, price: undefined });
+  }, [txType, form]);
+
+  const currentShares = availableShares ?? (positions && selectedFundCode
+    ? parseFloat(positions.find((p) => p.fundCode === selectedFundCode)?.shares ?? "0")
+    : 0);
+
   async function handleFinish(values: Record<string, unknown>) {
     setSubmitting(true);
     try {
+      const shares = values.shares != null ? parseFloat(String(values.shares)) : undefined;
+      const price = values.price != null ? parseFloat(String(values.price)) : undefined;
+      const amount = txType === "buy"
+        ? String(values.amount)
+        : shares != null && price != null
+          ? (shares * price).toFixed(2)
+          : "0";
+
       await onSubmit({
         fundCode: values.fundCode as string,
         type: txType,
-        amount: String(values.amount),
-        shares: values.shares != null ? String(values.shares) : undefined,
-        price: values.price != null ? String(values.price) : undefined,
+        amount,
+        shares: shares != null ? String(shares) : undefined,
+        price: price != null ? String(price) : undefined,
         tradeDate: (values.tradeDate as dayjs.Dayjs).format("YYYY-MM-DD"),
         note: values.note as string | undefined,
       });
@@ -63,17 +85,64 @@ export default function TransactionForm({ funds, onSubmit, defaultFundCode, defa
             optionFilterProp="label"
             disabled={!!defaultFundCode}
             options={funds.map((f) => ({ value: f.code, label: `${f.code} ${f.name}` }))}
+            onChange={(v) => setSelectedFundCode(v)}
           />
         </Form.Item>
-        <Form.Item name="amount" label="交易金额（元）" rules={[{ required: true, message: "请输入金额" }]}>
-          <InputNumber min={0} precision={2} style={{ width: "100%" }} placeholder="0.00" />
-        </Form.Item>
-        <Form.Item name="shares" label="交易份额">
-          <InputNumber min={0} precision={4} style={{ width: "100%" }} placeholder="可选" />
-        </Form.Item>
-        <Form.Item name="price" label="交易净值">
-          <InputNumber min={0} precision={4} style={{ width: "100%" }} placeholder="可选" />
-        </Form.Item>
+        {txType === "buy" ? (
+          <>
+            <Form.Item name="amount" label="交易金额（元）" rules={[{ required: true, message: "请输入金额" }]}>
+              <InputNumber min={0} precision={2} style={{ width: "100%" }} placeholder="0.00" />
+            </Form.Item>
+            <Form.Item name="price" label="交易净值">
+              <InputNumber min={0} precision={4} style={{ width: "100%" }} placeholder="可选" />
+            </Form.Item>
+          </>
+        ) : (
+          <>
+            <Form.Item name="shares" label="卖出份额" rules={[{ required: true, message: "请输入份额" }]}>
+              <InputNumber min={0} precision={4} style={{ width: "100%" }} placeholder="0.0000" />
+            </Form.Item>
+            {currentShares > 0 && (
+              <div style={{ marginTop: -16, marginBottom: 16 }}>
+                <Space size="small">
+                  <Button
+                    size="small"
+                    onClick={() => form.setFieldsValue({ shares: currentShares })}
+                  >
+                    全部
+                  </Button>
+                  <Button
+                    size="small"
+                    onClick={() => form.setFieldsValue({ shares: +(currentShares / 2).toFixed(4) })}
+                  >
+                    1/2
+                  </Button>
+                  <Button
+                    size="small"
+                    onClick={() => form.setFieldsValue({ shares: +(currentShares / 3).toFixed(4) })}
+                  >
+                    1/3
+                  </Button>
+                  <Button
+                    size="small"
+                    onClick={() => form.setFieldsValue({ shares: +(currentShares / 4).toFixed(4) })}
+                  >
+                    1/4
+                  </Button>
+                  <Button
+                    size="small"
+                    onClick={() => form.setFieldsValue({ shares: +(currentShares / 5).toFixed(4) })}
+                  >
+                    1/5
+                  </Button>
+                </Space>
+              </div>
+            )}
+            <Form.Item name="price" label="交易净值">
+              <InputNumber min={0} precision={4} style={{ width: "100%" }} placeholder="可选" />
+            </Form.Item>
+          </>
+        )}
         <Form.Item name="tradeDate" label="交易日期" rules={[{ required: true }]}>
           <DatePicker style={{ width: "100%" }} />
         </Form.Item>

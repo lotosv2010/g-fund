@@ -23,6 +23,8 @@ export interface UpsertPositionDto {
   fundCode: string;
   costAmount: string;
   costPrice: string;
+  currentValue: string;
+  shares: string;
 }
 
 export type SyncPositionItemStatus = "success" | "skipped" | "failed";
