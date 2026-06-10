@@ -11,7 +11,6 @@ import {
   Collapse,
   Tag,
   Alert,
-  List,
   App,
   Modal,
   Tooltip,
@@ -44,6 +43,54 @@ import { useChatStore } from "@/store/use-chat-store";
 import type { ChatMessage } from "@g-fund/types";
 
 const { Text } = Typography;
+
+type SessionItem = { id: number; title: string; updatedAt: string };
+
+interface SessionGroup {
+  readonly label: string;
+  readonly sessions: ReadonlyArray<SessionItem>;
+}
+
+function groupSessionsByDate(sessions: ReadonlyArray<SessionItem>): SessionGroup[] {
+  if (sessions.length === 0) return [];
+
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const startOfYesterday = startOfToday - 86_400_000;
+  const startOfWeek = startOfToday - ((now.getDay() === 0 ? 6 : now.getDay() - 1) * 86_400_000);
+  const startOfLastWeek = startOfWeek - 7 * 86_400_000;
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+  const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1).getTime();
+
+  const buckets = new Map<string, SessionItem[]>();
+
+  for (const s of sessions) {
+    const t = new Date(s.updatedAt).getTime();
+    const key =
+      t >= startOfToday
+        ? "今天"
+        : t >= startOfYesterday
+          ? "昨天"
+          : t >= startOfWeek
+            ? "本周"
+            : t >= startOfLastWeek
+              ? "上周"
+              : t >= startOfMonth
+                ? "本月"
+                : t >= startOfLastMonth
+                  ? "上月"
+                  : "更早";
+
+    const arr = buckets.get(key);
+    if (arr) arr.push(s);
+    else buckets.set(key, [s]);
+  }
+
+  const order = ["今天", "昨天", "本周", "上周", "本月", "上月", "更早"];
+  return order
+    .filter((label) => buckets.has(label))
+    .map((label) => ({ label, sessions: buckets.get(label)! }));
+}
 
 interface SuggestionItem {
   readonly key: string;
@@ -299,7 +346,7 @@ export default function ChatDrawer() {
 }
 
 interface SessionSidebarProps {
-  readonly sessions: ReadonlyArray<{ id: number; title: string; updatedAt: string }>;
+  readonly sessions: ReadonlyArray<SessionItem>;
   readonly activeId: number | null;
   readonly onNew: () => Promise<void> | void;
   readonly onSelect: (id: number) => Promise<void> | void;
@@ -335,59 +382,70 @@ function SessionSidebar({ sessions, activeId, onNew, onSelect, onRename, onDelet
             style={{ marginTop: 24 }}
           />
         ) : (
-          <List
-            dataSource={[...sessions]}
-            split={false}
-            renderItem={(s) => {
-              const active = s.id === activeId;
-              return (
-                <List.Item
-                  key={s.id}
-                  style={{
-                    padding: "6px 8px",
-                    borderRadius: 6,
-                    margin: "2px 4px",
-                    background: active ? "#e6f4ff" : "transparent",
-                    cursor: "pointer",
-                  }}
-                  onClick={() => void onSelect(s.id)}
-                >
-                  <Flex align="center" justify="space-between" style={{ width: "100%" }} gap={4}>
-                    <Text
-                      style={{
-                        flex: 1,
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                        color: active ? "#1677ff" : undefined,
-                      }}
-                    >
-                      {s.title}
-                    </Text>
-                    <Space size={0} onClick={(e) => e.stopPropagation()}>
-                      <Tooltip title="重命名">
-                        <Button
-                          type="text"
-                          size="small"
-                          icon={<EditOutlined />}
-                          onClick={() => onRename(s.id, s.title)}
-                        />
-                      </Tooltip>
-                      <Tooltip title="删除">
-                        <Button
-                          type="text"
-                          size="small"
-                          danger
-                          icon={<DeleteOutlined />}
-                          onClick={() => onDelete(s.id, s.title)}
-                        />
-                      </Tooltip>
-                    </Space>
-                  </Flex>
-                </List.Item>
-              );
-            }}
-          />
+          groupSessionsByDate(sessions).map((group) => (
+            <div key={group.label} style={{ marginBottom: 4 }}>
+              <Text
+                type="secondary"
+                style={{
+                  display: "block",
+                  fontSize: 12,
+                  padding: "8px 12px 4px",
+                  color: "#8c8c8c",
+                }}
+              >
+                {group.label}
+              </Text>
+              {group.sessions.map((s) => {
+                const active = s.id === activeId;
+                return (
+                  <div
+                    key={s.id}
+                    style={{
+                      padding: "6px 8px",
+                      borderRadius: 6,
+                      margin: "2px 4px",
+                      background: active ? "#e6f4ff" : "transparent",
+                      cursor: "pointer",
+                    }}
+                    onClick={() => void onSelect(s.id)}
+                  >
+                    <Flex align="center" justify="space-between" style={{ width: "100%" }} gap={4}>
+                      <Text
+                        style={{
+                          flex: 1,
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                          color: active ? "#1677ff" : undefined,
+                        }}
+                      >
+                        {s.title}
+                      </Text>
+                      <Space size={0} onClick={(e) => e.stopPropagation()}>
+                        <Tooltip title="重命名">
+                          <Button
+                            type="text"
+                            size="small"
+                            icon={<EditOutlined />}
+                            onClick={() => onRename(s.id, s.title)}
+                          />
+                        </Tooltip>
+                        <Tooltip title="删除">
+                          <Button
+                            type="text"
+                            size="small"
+                            danger
+                            icon={<DeleteOutlined />}
+                            onClick={() => onDelete(s.id, s.title)}
+                          />
+                        </Tooltip>
+                      </Space>
+                    </Flex>
+                  </div>
+                );
+              })}
+            </div>
+          ))
         )}
       </div>
     </Flex>
