@@ -86,6 +86,20 @@ export const mcpConfigApi = {
   set: (config: McpConfig) => http.put<AppSetting>("/settings/mcp/config", config).then((r) => r.data),
 };
 
+export const stopLossTakeProfitApi = {
+  list: () =>
+    http.get<import("@g-fund/types").StopLossTakeProfitSignal[]>("/stop-loss-take-profit").then((r) => r.data),
+  get: (fundCode: string) =>
+    http.get<import("@g-fund/types").StopLossTakeProfitSignal>(`/stop-loss-take-profit/${fundCode}`).then((r) => r.data),
+};
+
+export const dcaApi = {
+  calculate: () =>
+    http.get<import("@g-fund/types").DcaCalculation[]>("/dca").then((r) => r.data),
+  calculateByFund: (fundCode: string) =>
+    http.get<import("@g-fund/types").DcaCalculation>(`/dca/${fundCode}`).then((r) => r.data),
+};
+
 export const chatApi = {
   list: () => http.get<ChatSessionSummary[]>("/chat/sessions").then((r) => r.data),
   create: (title?: string) =>

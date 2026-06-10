@@ -1,0 +1,328 @@
+"use client";
+import { useState, useEffect, useCallback } from "react";
+import { useParams, useRouter } from "next/navigation";
+import {
+  Card, Col, Row, Typography, Tag, Descriptions, Statistic, Button,
+  Space, Skeleton, message, Divider, Progress, Alert,
+} from "antd";
+import {
+  ArrowLeftOutlined, FundOutlined, SafetyOutlined,
+  ScheduleOutlined, DollarOutlined, LineChartOutlined,
+  CheckCircleOutlined, WarningOutlined, CloseCircleOutlined,
+} from "@ant-design/icons";
+import type {
+  FundListItem, StopLossTakeProfitSignal, DcaCalculation,
+} from "@g-fund/types";
+import {
+  FUND_PHASE_LABELS, SIGNAL_LEVEL_LABELS,
+} from "@g-fund/types";
+import { fundsApi, stopLossTakeProfitApi, dcaApi } from "@/lib/api-client";
+
+const { Title, Text } = Typography;
+
+const LEVEL_CONFIG = {
+  green: { color: "#52c41a", icon: <CheckCircleOutlined /> },
+  yellow: { color: "#faad14", icon: <WarningOutlined /> },
+  red: { color: "#ff4d4f", icon: <CloseCircleOutlined /> },
+};
+
+export default function FundDiagnosisPage() {
+  const params = useParams();
+  const router = useRouter();
+  const fundCode = params.code as string;
+
+  const [fund, setFund] = useState<FundListItem | null>(null);
+  const [signal, setSignal] = useState<StopLossTakeProfitSignal | null>(null);
+  const [dca, setDca] = useState<DcaCalculation | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [messageApi, contextHolder] = message.useMessage();
+
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [fundData, signalData, dcaData] = await Promise.allSettled([
+        fundsApi.get(fundCode),
+        stopLossTakeProfitApi.get(fundCode),
+        dcaApi.calculateByFund(fundCode),
+      ]);
+
+      if (fundData.status === "fulfilled") setFund(fundData.value);
+      if (signalData.status === "fulfilled") setSignal(signalData.value);
+      if (dcaData.status === "fulfilled") setDca(dcaData.value);
+    } catch (e) {
+      messageApi.error((e as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  }, [fundCode, messageApi]);
+
+  useEffect(() => { loadData(); }, [loadData]);
+
+  if (loading) {
+    return (
+      <div style={{ padding: 24 }}>
+        <Skeleton active paragraph={{ rows: 10 }} />
+      </div>
+    );
+  }
+
+  if (!fund) {
+    return (
+      <div style={{ padding: 24 }}>
+        <Alert
+          type="error"
+          message="基金不存在"
+          description={`未找到代码为 ${fundCode} 的基金`}
+          action={
+            <Button onClick={() => router.push("/funds")}>返回列表</Button>
+          }
+        />
+      </div>
+    );
+  }
+
+  const pnlRate = parseFloat(fund.pnlRate);
+  const isProfit = pnlRate >= 0;
+
+  return (
+    <>
+      {contextHolder}
+      <Space direction="vertical" size="large" style={{ width: "100%" }}>
+        <Space>
+          <Button
+            icon={<ArrowLeftOutlined />}
+            onClick={() => router.push("/funds")}
+          >
+            返回列表
+          </Button>
+        </Space>
+
+        <Card>
+          <Row gutter={[24, 24]}>
+            <Col xs={24} md={16}>
+              <Space direction="vertical" size="small">
+                <Space>
+                  <Title level={3} style={{ margin: 0 }}>{fund.name}</Title>
+                  <Tag>{fund.code}</Tag>
+                  <Tag color={fund.category === "longterm" ? "blue" : "default"}>
+                    {fund.category === "longterm" ? "长期" : "关注"}
+                  </Tag>
+                </Space>
+                <Space>
+                  {fund.type && <Tag>{fund.type}</Tag>}
+                  {fund.riskLevel && (
+                    <Tag color={fund.riskLevel >= 4 ? "red" : fund.riskLevel >= 3 ? "orange" : "green"}>
+                      风险等级 {fund.riskLevel}
+                    </Tag>
+                  )}
+                  {fund.phase && (
+                    <Tag color={fund.phase === "low" ? "green" : fund.phase === "high" ? "red" : "blue"}>
+                      {FUND_PHASE_LABELS[fund.phase]}
+                    </Tag>
+                  )}
+                </Space>
+                {fund.note && <Text type="secondary">{fund.note}</Text>}
+              </Space>
+            </Col>
+            <Col xs={24} md={8}>
+              <Space direction="vertical" size="small" style={{ textAlign: "right", width: "100%" }}>
+                <Statistic
+                  title="当前收益"
+                  value={pnlRate}
+                  precision={2}
+                  suffix="%"
+                  valueStyle={{ color: isProfit ? "#dc2626" : "#16a34a" }}
+                />
+                <Text type="secondary">
+                  成本 ¥{parseFloat(fund.costAmount).toLocaleString()} → 市值 ¥{parseFloat(fund.currentValue).toLocaleString()}
+                </Text>
+              </Space>
+            </Col>
+          </Row>
+        </Card>
+
+        <Row gutter={[16, 16]}>
+          <Col xs={24} lg={12}>
+            <Card title={<><SafetyOutlined /> 止盈止损分析</>} style={{ height: "100%" }}>
+              {!signal ? (
+                <Text type="secondary">暂无持仓，无法分析</Text>
+              ) : (
+                <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+                  <Descriptions column={2} size="small">
+                    <Descriptions.Item label="成本价">¥{signal.costPrice}</Descriptions.Item>
+                    <Descriptions.Item label="当前价">¥{signal.currentPrice}</Descriptions.Item>
+                    <Descriptions.Item label="收益率">
+                      <Text style={{ color: isProfit ? "#dc2626" : "#16a34a", fontWeight: 600 }}>
+                        {signal.pnlRate}
+                      </Text>
+                    </Descriptions.Item>
+                    <Descriptions.Item label="信号类型">
+                      <Tag color={signal.signalType === "take_profit" ? "green" : "red"}>
+                        {signal.signalType === "take_profit" ? "止盈" : "止损"}
+                      </Tag>
+                    </Descriptions.Item>
+                  </Descriptions>
+
+                  <Divider style={{ margin: "8px 0" }} />
+
+                  <div>
+                    <Text strong>信号状态：</Text>
+                    {signal.triggered ? (
+                      <Alert
+                        type={signal.level === "red" ? "error" : "warning"}
+                        message={signal.message}
+                        style={{ marginTop: 8 }}
+                        showIcon
+                      />
+                    ) : (
+                      <Tag color="success" style={{ marginLeft: 8 }}>
+                        <CheckCircleOutlined /> 安全
+                      </Tag>
+                    )}
+                  </div>
+
+                  <div>
+                    <Text strong>阈值：</Text>
+                    <Text style={{ marginLeft: 8 }}>{signal.threshold}</Text>
+                  </div>
+                </Space>
+              )}
+            </Card>
+          </Col>
+
+          <Col xs={24} lg={12}>
+            <Card title={<><ScheduleOutlined /> 定投建议</>} style={{ height: "100%" }}>
+              {!dca ? (
+                <Text type="secondary">未配置定投</Text>
+              ) : (
+                <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+                  <Descriptions column={2} size="small">
+                    <Descriptions.Item label="基础金额">
+                      ¥{dca.baseAmount}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="估值百分位">
+                      {dca.valuationPercentile ?? "—"}%
+                    </Descriptions.Item>
+                    <Descriptions.Item label="阶段">
+                      {dca.phase ? FUND_PHASE_LABELS[dca.phase] : "—"}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="优先级">
+                      {dca.priority}
+                    </Descriptions.Item>
+                  </Descriptions>
+
+                  <Divider style={{ margin: "8px 0" }} />
+
+                  <div>
+                    <Text strong>系数计算：</Text>
+                    <Space style={{ marginTop: 8 }}>
+                      <Tag>P2={dca.p2}x</Tag>
+                      <Tag>P3={dca.p3}x</Tag>
+                      <Tag>P4={dca.p4}x</Tag>
+                    </Space>
+                  </div>
+
+                  <div>
+                    <Text strong>最终金额：</Text>
+                    {dca.skipped ? (
+                      <Tag color="warning" style={{ marginLeft: 8 }}>
+                        跳过 - {dca.skipReason}
+                      </Tag>
+                    ) : (
+                      <Statistic
+                        value={parseFloat(dca.finalAmount)}
+                        prefix="¥"
+                        precision={2}
+                        valueStyle={{ fontSize: 20 }}
+                      />
+                    )}
+                  </div>
+                </Space>
+              )}
+            </Card>
+          </Col>
+        </Row>
+
+        <Card title={<><FundOutlined /> 估值信息</>}>
+          <Descriptions column={3} size="small">
+            <Descriptions.Item label="估值百分位">
+              {fund.valuationPercentile !== null ? (
+                <Space>
+                  <Progress
+                    type="circle"
+                    percent={parseFloat(fund.valuationPercentile)}
+                    size={48}
+                    strokeColor={
+                      parseFloat(fund.valuationPercentile) <= 30
+                        ? "#52c41a"
+                        : parseFloat(fund.valuationPercentile) >= 70
+                          ? "#ff4d4f"
+                          : "#1677ff"
+                    }
+                    format={(p) => `${p}%`}
+                  />
+                </Space>
+              ) : "—"}
+            </Descriptions.Item>
+            <Descriptions.Item label="估值阶段">
+              {fund.phase ? (
+                <Tag color={fund.phase === "low" ? "green" : fund.phase === "high" ? "red" : "blue"}>
+                  {FUND_PHASE_LABELS[fund.phase]}
+                </Tag>
+              ) : "—"}
+            </Descriptions.Item>
+            <Descriptions.Item label="优先级">
+              <Tag>{fund.priority}</Tag>
+            </Descriptions.Item>
+            <Descriptions.Item label="周收益率">
+              {fund.weeklyReturn !== null ? (
+                <Text style={{ color: parseFloat(fund.weeklyReturn) >= 0 ? "#dc2626" : "#16a34a" }}>
+                  {parseFloat(fund.weeklyReturn) >= 0 ? "+" : ""}
+                  {(parseFloat(fund.weeklyReturn) * 100).toFixed(2)}%
+                </Text>
+              ) : "—"}
+            </Descriptions.Item>
+            <Descriptions.Item label="月收益率">
+              {fund.monthlyReturn !== null ? (
+                <Text style={{ color: parseFloat(fund.monthlyReturn) >= 0 ? "#dc2626" : "#16a34a" }}>
+                  {parseFloat(fund.monthlyReturn) >= 0 ? "+" : ""}
+                  {(parseFloat(fund.monthlyReturn) * 100).toFixed(2)}%
+                </Text>
+              ) : "—"}
+            </Descriptions.Item>
+            <Descriptions.Item label="目标仓位">
+              {fund.targetRatio ? `${fund.targetRatio}%` : "—"}
+            </Descriptions.Item>
+          </Descriptions>
+        </Card>
+
+        <Card title={<><DollarOutlined /> 持仓详情</>}>
+          <Descriptions column={3} size="small">
+            <Descriptions.Item label="持有份额">
+              {fund.hasPosition ? parseFloat(fund.currentValue).toLocaleString() : "—"}
+            </Descriptions.Item>
+            <Descriptions.Item label="成本金额">
+              ¥{parseFloat(fund.costAmount).toLocaleString()}
+            </Descriptions.Item>
+            <Descriptions.Item label="当前市值">
+              ¥{parseFloat(fund.currentValue).toLocaleString()}
+            </Descriptions.Item>
+            <Descriptions.Item label="盈亏金额">
+              <Text style={{ color: isProfit ? "#dc2626" : "#16a34a", fontWeight: 600 }}>
+                {isProfit ? "+" : ""}¥{parseFloat(fund.pnlAmount).toLocaleString()}
+              </Text>
+            </Descriptions.Item>
+            <Descriptions.Item label="收益率">
+              <Text style={{ color: isProfit ? "#dc2626" : "#16a34a", fontWeight: 600 }}>
+                {fund.pnlRate}
+              </Text>
+            </Descriptions.Item>
+            <Descriptions.Item label="目标金额">
+              {fund.targetAmount ? `¥${parseFloat(fund.targetAmount).toLocaleString()}` : "—"}
+            </Descriptions.Item>
+          </Descriptions>
+        </Card>
+      </Space>
+    </>
+  );
+}

@@ -1,7 +1,8 @@
 "use client";
 
 import { Table, Button, Space, Popconfirm, Tag } from "antd";
-import { EditOutlined } from "@ant-design/icons";
+import { EditOutlined, FundOutlined } from "@ant-design/icons";
+import { useRouter } from "next/navigation";
 import type { ColumnsType, SorterResult } from "antd/es/table/interface";
 import type { FundListItem } from "@g-fund/types";
 import {
@@ -43,6 +44,7 @@ export function FundsTable({
   onDelete,
   onTableChange,
 }: FundsTableProps) {
+  const router = useRouter();
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
   );
@@ -85,10 +87,18 @@ export function FundsTable({
     },
     {
       title: "操作",
-      width: 160,
+      width: 200,
       fixed: "right",
       render: (_, record) => (
         <Space size="small">
+          <Button
+            type="link"
+            size="small"
+            icon={<FundOutlined />}
+            onClick={() => router.push(`/funds/${record.code}`)}
+          >
+            诊断
+          </Button>
           <Button
             type="link"
             size="small"
