@@ -121,7 +121,7 @@ export default function PositionSnapshotModal({
       confirmLoading={submitting}
       okText="保存"
       cancelText="取消"
-      destroyOnClose
+      destroyOnHidden
       width={480}
     >
       <Form form={form} layout="vertical">
@@ -184,7 +184,7 @@ export default function PositionSnapshotModal({
                 <div>
                   <Text type="secondary" style={{ fontSize: 12 }}>持有份额</Text>
                   <div>
-                    <Text strong>{shares.toFixed(4)}</Text>
+                    <Text strong>{shares.toFixed(2)}</Text>
                   </div>
                 </div>
               )}

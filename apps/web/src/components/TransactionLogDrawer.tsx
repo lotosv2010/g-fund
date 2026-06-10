@@ -48,7 +48,7 @@ export default function TransactionLogDrawer({ fundCode, fundName, open, onClose
       dataIndex: "shares",
       width: 110,
       align: "right",
-      render: (v) => (v ? parseFloat(v).toLocaleString(undefined, { minimumFractionDigits: 4 }) : "—"),
+      render: (v) => (v ? parseFloat(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "—"),
     },
     {
       title: "净值",
@@ -88,8 +88,8 @@ export default function TransactionLogDrawer({ fundCode, fundName, open, onClose
         title={`${fundName} — 操作日志`}
         open={open}
         onClose={onClose}
-        width={520}
-        destroyOnClose
+        size={520}
+        destroyOnHidden
       >
         {data.length === 0 && !loading ? (
           <Empty description="暂无交易记录" />

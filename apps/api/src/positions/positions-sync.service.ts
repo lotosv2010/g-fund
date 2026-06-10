@@ -7,6 +7,7 @@ import type { Tool, CallToolResult } from '@modelcontextprotocol/sdk/types';
 import type { SyncPositionItemResult, SyncPositionsResult, SyncStreamEvent } from '@g-fund/types';
 import { DB } from '../db/db.module';
 import { McpService } from '../mcp/mcp.service';
+import { SettingsService } from '../settings/settings.service';
 
 type DbType = NodePgDatabase<typeof schema>;
 type PositionRow = typeof schema.positions.$inferSelect;
@@ -151,6 +152,7 @@ export class PositionsSyncService {
   constructor(
     @Inject(DB) private readonly db: DbType,
     private readonly mcp: McpService,
+    private readonly settings: SettingsService,
   ) {}
 
   async fetchNav(fundCode: string): Promise<NavInfo> {
@@ -289,6 +291,9 @@ export class PositionsSyncService {
     const succeeded = items.filter((i) => i.status === 'success').length;
     const failed = items.filter((i) => i.status === 'failed').length;
     const skipped = items.filter((i) => i.status === 'skipped').length;
+
+    await this.settings.set('last_sync_at', syncedAt);
+
     subscriber.next({
       type: 'done',
       result: { total: items.length, succeeded, failed, skipped, syncedAt, items },

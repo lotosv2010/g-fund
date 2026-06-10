@@ -12,6 +12,7 @@ import {
   Tag,
   Alert,
   List,
+  App,
   Modal,
   Tooltip,
   Empty,
@@ -145,6 +146,7 @@ const SUGGESTION_GROUPS: ReadonlyArray<SuggestionGroup> = [
 ];
 
 export default function ChatDrawer() {
+  const { modal } = App.useApp();
   const { chatDrawerOpen, closeChatDrawer } = useAppStore();
   const {
     sessions,
@@ -185,7 +187,7 @@ export default function ChatDrawer() {
   };
 
   const confirmDelete = (id: number, title: string) => {
-    Modal.confirm({
+    modal.confirm({
       title: "删除该会话？",
       content: `「${title}」将被永久删除，且无法恢复。`,
       okType: "danger",
@@ -221,8 +223,8 @@ export default function ChatDrawer() {
       }
       open={chatDrawerOpen}
       onClose={handleClose}
-      width="min(960px, 90vw)"
-      destroyOnClose
+      size="min(960px, 90vw)"
+      destroyOnHidden
       styles={{ body: { padding: 0 } }}
     >
       <Flex style={{ height: "100%" }}>

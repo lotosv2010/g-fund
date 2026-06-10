@@ -308,7 +308,7 @@ export default function PositionsPage() {
         open={tradeModalOpen}
         onCancel={() => setTradeModalOpen(false)}
         footer={null}
-        destroyOnClose
+        destroyOnHidden
         width={480}
       >
         <TransactionForm

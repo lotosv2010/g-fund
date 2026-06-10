@@ -1,8 +1,9 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { Button, Modal, Progress, Tag, message } from "antd";
+import { Button, App, Modal, Progress, Tag, message } from "antd";
 import { SyncOutlined } from "@ant-design/icons";
 import type { SyncPositionItemResult, SyncPositionsResult, SyncStreamEvent } from "@g-fund/types";
+import { settingsApi } from "@/lib/api-client";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api";
 
@@ -18,7 +19,14 @@ const STATUS_LABEL: Record<SyncPositionItemResult["status"], { text: string; col
   failed: { text: "失败", color: "red" },
 };
 
+function isSameDay(dateStr: string): boolean {
+  const d = new Date(dateStr);
+  const now = new Date();
+  return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+}
+
 export default function SyncPositionsButton({ onDone, size = "middle", type = "default" }: SyncPositionsButtonProps) {
+  const { modal } = App.useApp();
   const [open, setOpen] = useState(false);
   const [running, setRunning] = useState(false);
   const [total, setTotal] = useState(0);
@@ -27,8 +35,18 @@ export default function SyncPositionsButton({ onDone, size = "middle", type = "d
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [messageApi, contextHolder] = message.useMessage();
   const esRef = useRef<EventSource | null>(null);
+  const [isTodaySynced, setIsTodaySynced] = useState(false);
 
-  useEffect(() => () => esRef.current?.close(), []);
+  useEffect(() => {
+    esRef.current?.close();
+
+    settingsApi
+      .get("last_sync_at")
+      .then(({ value }) => {
+        setIsTodaySynced(isSameDay(value));
+      })
+      .catch(() => {});
+  }, []);
 
   function reset() {
     setItems([]);
@@ -41,6 +59,7 @@ export default function SyncPositionsButton({ onDone, size = "middle", type = "d
     reset();
     setOpen(true);
     setRunning(true);
+    setIsTodaySynced(false);
 
     const es = new EventSource(`${BASE_URL}/positions/sync/stream`);
     esRef.current = es;
@@ -95,6 +114,14 @@ export default function SyncPositionsButton({ onDone, size = "middle", type = "d
     setOpen(false);
   }
 
+  function handleConfirmSync() {
+    modal.confirm({
+      title: "提示",
+      content: "今日已同步过，确定要再次同步吗？",
+      onOk: handleClick,
+    });
+  }
+
   const finishedCount = items.length;
   const percent = total > 0 ? Math.round((finishedCount / total) * 100) : 0;
   const issues = items.filter((i) => i.status !== "success");
@@ -102,8 +129,14 @@ export default function SyncPositionsButton({ onDone, size = "middle", type = "d
   return (
     <>
       {contextHolder}
-      <Button icon={<SyncOutlined spin={running} />} loading={running && !open} onClick={handleClick} size={size} type={type}>
-        一键同步
+      <Button
+        icon={<SyncOutlined spin={running} />}
+        loading={running && !open}
+        onClick={isTodaySynced ? handleConfirmSync : handleClick}
+        size={size}
+        type={isTodaySynced ? "default" : type}
+      >
+        {isTodaySynced ? "今日已同步" : "一键同步"}
       </Button>
       <Modal
         title="一键同步持仓"
@@ -115,7 +148,7 @@ export default function SyncPositionsButton({ onDone, size = "middle", type = "d
           </Button>,
         ]}
         width={560}
-        maskClosable={!running}
+        mask={{ closable: !running }}
       >
         {errorMsg ? (
           <div style={{ color: "#ff4d4f", padding: "16px 0" }}>同步失败：{errorMsg}</div>

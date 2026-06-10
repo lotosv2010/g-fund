@@ -33,7 +33,7 @@ export default function PositionTable({ data, loading, onBuy, onSell, onViewLog,
     { title: "基金名称", dataIndex: "fundName", ellipsis: true },
     {
       title: "持有份额", dataIndex: "shares", width: 120, align: "right", ellipsis: true,
-      render: (v) => parseFloat(v).toLocaleString(undefined, { minimumFractionDigits: 4 }),
+      render: (v) => parseFloat(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
     },
     {
       title: "成本价", dataIndex: "costPrice", width: 100, align: "right", ellipsis: true,
