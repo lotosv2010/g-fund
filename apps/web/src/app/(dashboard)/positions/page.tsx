@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import { Tabs, Typography, Flex, Button, Popconfirm, message, Form, Input, DatePicker, List, Card, Modal, Table, Tag } from "antd";
-import { PlusOutlined, EditOutlined, DeleteOutlined, ShoppingCartOutlined, FileAddOutlined } from "@ant-design/icons";
+import { PlusOutlined, EditOutlined, DeleteOutlined, ShoppingCartOutlined, FileAddOutlined, ReloadOutlined } from "@ant-design/icons";
 import type { PositionListItem, FundListItem, Transaction, CreateTransactionDto, DailyLog, CreateDailyLogDto, UpsertPositionDto } from "@g-fund/types";
 import type { ColumnsType } from "antd/es/table/interface";
 import { positionsApi, transactionsApi, fundsApi, dailyLogsApi, settingsApi } from "@/lib/api-client";
@@ -41,6 +41,10 @@ export default function PositionsPage() {
   const [targetTotalPosition, setTargetTotalPosition] = useState<string>("0");
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
   const [settingsSubmitting, setSettingsSubmitting] = useState(false);
+
+  const [positionSearch, setPositionSearch] = useState("");
+  const [logDateRange, setLogDateRange] = useState<[dayjs.Dayjs, dayjs.Dayjs] | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   const [txLogs, setTxLogs] = useState<Transaction[]>([]);
   const [txLoading, setTxLoading] = useState(false);
@@ -112,6 +116,27 @@ export default function PositionsPage() {
   }, [txDateRange, messageApi]);
 
   useEffect(() => { loadTxLogs(); }, [loadTxLogs]);
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    try {
+      await Promise.all([loadPositions(), loadFunds(), loadDailyLogs(), loadTxLogs(), loadSettings()]);
+    } finally {
+      setRefreshing(false);
+    }
+  }
+
+  const filteredPositions = positions.filter((p) => {
+    if (!positionSearch) return true;
+    const q = positionSearch.toLowerCase();
+    return p.fundCode.toLowerCase().includes(q) || p.fundName.toLowerCase().includes(q);
+  });
+
+  const filteredDailyLogs = dailyLogs.filter((log) => {
+    if (!logDateRange) return true;
+    const d = dayjs(log.logDate);
+    return d.isAfter(logDateRange[0].startOf("day").subtract(1, "ms")) && d.isBefore(logDateRange[1].endOf("day").add(1, "ms"));
+  });
 
   async function handleDeleteTransaction(id: number) {
     try {
@@ -308,14 +333,25 @@ export default function PositionsPage() {
       key: "positions",
       label: `当前持仓（${positions.length}）`,
       children: (
-        <PositionTable
-          data={positions}
-          loading={loading}
-          onBuy={handleRowBuy}
-          onSell={handleRowSell}
-          onViewLog={handleViewLog}
-          onEditSnapshot={openEditSnapshot}
-        />
+        <>
+          <Flex justify="flex-end" style={{ marginBottom: 12 }}>
+            <Input.Search
+              placeholder="搜索基金代码/名称"
+              allowClear
+              value={positionSearch}
+              onChange={(e) => setPositionSearch(e.target.value)}
+              style={{ width: 240 }}
+            />
+          </Flex>
+          <PositionTable
+            data={filteredPositions}
+            loading={loading}
+            onBuy={handleRowBuy}
+            onSell={handleRowSell}
+            onViewLog={handleViewLog}
+            onEditSnapshot={openEditSnapshot}
+          />
+        </>
       ),
     },
     {
@@ -346,17 +382,26 @@ export default function PositionsPage() {
     },
     {
       key: "daily-log",
-      label: `投资日记（${dailyLogs.length}）`,
+      label: `投资日记（${filteredDailyLogs.length}）`,
       children: (
         <>
-          <Flex justify="flex-end" style={{ marginBottom: 12 }}>
+          <Flex justify="space-between" style={{ marginBottom: 12 }}>
+            <DatePicker.RangePicker
+              value={logDateRange}
+              onChange={(dates) => {
+                if (dates && dates[0] && dates[1]) setLogDateRange([dates[0], dates[1]]);
+                else setLogDateRange(null);
+              }}
+              allowClear
+              placeholder={["开始日期", "结束日期"]}
+            />
             <Button type="primary" icon={<PlusOutlined />} onClick={openCreateLog}>
               写日记
             </Button>
           </Flex>
           <List
             loading={logLoading}
-            dataSource={dailyLogs}
+            dataSource={filteredDailyLogs}
             locale={{ emptyText: "暂无日记，点击「写日记」开始记录" }}
             renderItem={(log) => (
               <Card
@@ -403,6 +448,9 @@ export default function PositionsPage() {
           onEdit={() => setSettingsModalOpen(true)}
         />
         <Flex gap={8}>
+          <Button icon={<ReloadOutlined />} loading={refreshing} onClick={handleRefresh}>
+            刷新
+          </Button>
           <SyncPositionsButton onDone={() => loadPositions()} />
           <Button icon={<FileAddOutlined />} onClick={openCreateSnapshot}>
             建仓快照
