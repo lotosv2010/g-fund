@@ -3,18 +3,15 @@ import { Card, Timeline, Typography, Skeleton, Empty, Tag } from "antd";
 import {
   ClockCircleOutlined,
   CheckCircleOutlined,
-  WarningOutlined,
   CloseCircleOutlined,
-  RiseOutlined,
 } from "@ant-design/icons";
 import type { StopLossTakeProfitSignal } from "@g-fund/types";
 
 const { Text } = Typography;
 
-const LEVEL_CONFIG = {
-  green: { color: "#52c41a", icon: <CheckCircleOutlined /> },
-  yellow: { color: "#faad14", icon: <WarningOutlined /> },
-  red: { color: "#ff4d4f", icon: <CloseCircleOutlined /> },
+const SIGNAL_CONFIG = {
+  take_profit: { color: "#52c41a", icon: <CheckCircleOutlined />, label: "止盈" },
+  stop_loss: { color: "#ff4d4f", icon: <CloseCircleOutlined />, label: "止损" },
 };
 
 interface AlertTimelineProps {
@@ -48,21 +45,15 @@ export default function AlertTimeline({ data, loading }: AlertTimelineProps) {
       ) : (
         <Timeline
           items={triggered.map((signal) => {
-            const config = LEVEL_CONFIG[signal.level];
+            const config = SIGNAL_CONFIG[signal.signalType];
             return {
               dot: <span style={{ color: config.color }}>{config.icon}</span>,
               children: (
                 <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <Text strong style={{ fontSize: 13 }}>{signal.fundName}</Text>
-                    <Tag
-                      color={signal.signalType === "take_profit" ? "green" : "red"}
-                      style={{ margin: 0, fontSize: 11 }}
-                    >
-                      {signal.signalType === "take_profit" ? "止盈" : "止损"}
-                    </Tag>
                     <Tag color={config.color} style={{ margin: 0, fontSize: 11 }}>
-                      {config.icon} {signal.level === "green" ? "安全" : signal.level === "yellow" ? "警告" : "危险"}
+                      {config.label}
                     </Tag>
                   </div>
                   <Text type="secondary" style={{ fontSize: 12 }}>

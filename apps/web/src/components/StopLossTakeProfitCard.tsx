@@ -1,14 +1,13 @@
 "use client";
 import { Card, Tag, Typography, Skeleton, Empty } from "antd";
-import { AlertOutlined, CheckCircleOutlined, WarningOutlined, CloseCircleOutlined } from "@ant-design/icons";
+import { AlertOutlined, CheckCircleOutlined, CloseCircleOutlined } from "@ant-design/icons";
 import type { StopLossTakeProfitSignal } from "@g-fund/types";
 
 const { Text } = Typography;
 
-const LEVEL_CONFIG = {
-  green: { color: "#52c41a", icon: <CheckCircleOutlined />, label: "安全" },
-  yellow: { color: "#faad14", icon: <WarningOutlined />, label: "警告" },
-  red: { color: "#ff4d4f", icon: <CloseCircleOutlined />, label: "危险" },
+const SIGNAL_CONFIG = {
+  take_profit: { color: "#52c41a", icon: <CheckCircleOutlined />, label: "止盈" },
+  stop_loss: { color: "#ff4d4f", icon: <CloseCircleOutlined />, label: "止损" },
 };
 
 interface StopLossTakeProfitCardProps {
@@ -32,7 +31,7 @@ export default function StopLossTakeProfitCard({ data, loading }: StopLossTakePr
     <Card
       title={<><AlertOutlined /> 止盈止损</>}
       style={{ height: "100%" }}
-      styles={{ body: { padding: "12px 16px" } }}
+      styles={{ body: { padding: "12px 16px", maxHeight: 400, overflow: "auto" } }}
     >
       {!hasAlerts ? (
         <Empty
@@ -42,8 +41,8 @@ export default function StopLossTakeProfitCard({ data, loading }: StopLossTakePr
         />
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {triggered.slice(0, 5).map((signal) => {
-            const config = LEVEL_CONFIG[signal.level];
+          {triggered.map((signal) => {
+            const config = SIGNAL_CONFIG[signal.signalType];
             return (
               <div
                 key={`${signal.fundCode}-${signal.signalType}`}
@@ -69,17 +68,12 @@ export default function StopLossTakeProfitCard({ data, loading }: StopLossTakePr
                     {(parseFloat(signal.pnlRate) * 100).toFixed(2)}%
                   </Text>
                   <Tag color={config.color} style={{ margin: 0 }}>
-                    {signal.signalType === "take_profit" ? "止盈" : "止损"}
+                    {config.label}
                   </Tag>
                 </div>
               </div>
             );
           })}
-          {triggered.length > 5 && (
-            <Text type="secondary" style={{ textAlign: "center", fontSize: 12 }}>
-              还有 {triggered.length - 5} 个信号...
-            </Text>
-          )}
         </div>
       )}
     </Card>

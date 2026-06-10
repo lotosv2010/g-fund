@@ -212,7 +212,7 @@ export default function AssetAllocationCard({ data, loading }: AssetAllocationCa
     <Card
       title={<><PieChartOutlined /> 持仓分布</>}
       style={{ height: "100%" }}
-      styles={{ body: { padding: "12px 16px" } }}
+      styles={{ body: { padding: "12px 16px", maxHeight: 400, overflow: "auto" } }}
     >
       <Tabs items={tabItems} />
     </Card>
