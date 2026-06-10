@@ -12,7 +12,7 @@ export class FundsController {
 
   @Get()
   @ApiOperation({ summary: '获取基金列表' })
-  @ApiQuery({ name: 'category', required: false, enum: ['holding', 'longterm', 'watchlist'] })
+  @ApiQuery({ name: 'category', required: false, enum: ['all', 'longterm', 'watchlist'] })
   findAll(@Query('category') category?: string) {
     return this.fundsService.findAll(category);
   }

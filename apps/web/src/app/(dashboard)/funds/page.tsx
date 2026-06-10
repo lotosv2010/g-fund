@@ -6,20 +6,18 @@ import { PlusOutlined } from "@ant-design/icons";
 import type { SorterResult } from "antd/es/table/interface";
 import type { FundListItem, CreateFundDto, UpdateFundDto, FundCategory } from "@g-fund/types";
 import { FUND_CATEGORIES, FUND_CATEGORY_LABELS } from "@g-fund/types";
-import { fundsApi, settingsApi } from "@/lib/api-client";
+import { fundsApi } from "@/lib/api-client";
 import type { DragEndEvent } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
 import { FundsTable } from "./components/funds-table";
 import { FundFormModal } from "./components/fund-form-modal";
-import { SettingsModal } from "./components/settings-modal";
-import { TargetPositionCard } from "./components/target-position-card";
 
 const { Title } = Typography;
 
 export default function FundsPage() {
   const [funds, setFunds] = useState<FundListItem[]>([]);
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<FundCategory>("longterm");
+  const [activeTab, setActiveTab] = useState<FundCategory>("all");
   const [search, setSearch] = useState("");
   const [sortField, setSortField] = useState<string | null>(null);
   const [sortOrder, setSortOrder] = useState<"ascend" | "descend" | null>(null);
@@ -27,10 +25,6 @@ export default function FundsPage() {
   const [editingFund, setEditingFund] = useState<FundListItem | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [messageApi, contextHolder] = message.useMessage();
-
-  const [targetTotalPosition, setTargetTotalPosition] = useState<string>("0");
-  const [settingsModalOpen, setSettingsModalOpen] = useState(false);
-  const [settingsSubmitting, setSettingsSubmitting] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -46,22 +40,11 @@ export default function FundsPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  const loadSettings = useCallback(async () => {
-    try {
-      const setting = await settingsApi.get("target_total_position");
-      setTargetTotalPosition(setting.value);
-    } catch {
-      // setting may not exist yet
-    }
-  }, []);
-
-  useEffect(() => { loadSettings(); }, [loadSettings]);
-
   const isCustomSort = sortField !== null && sortOrder !== null;
 
   const categoryFunds = useMemo(() => {
-    let list = activeTab === "holding"
-      ? funds.filter((f) => f.hasPosition)
+    let list = activeTab === "all"
+      ? funds
       : funds.filter((f) => f.category === activeTab);
 
     if (search) {
@@ -85,10 +68,10 @@ export default function FundsPage() {
   }, [funds, activeTab, search, sortField, sortOrder, isCustomSort]);
 
   const categoryCounts = useMemo(() => {
-    const counts: Record<FundCategory, number> = { holding: 0, longterm: 0, watchlist: 0 };
+    const counts: Record<FundCategory, number> = { all: 0, longterm: 0, watchlist: 0 };
     for (const f of funds) {
       if (search && !f.name.toLowerCase().includes(search.toLowerCase()) && !f.code.includes(search)) continue;
-      if (f.hasPosition) counts.holding++;
+      counts.all++;
       if (f.category === "longterm") counts.longterm++;
       if (f.category === "watchlist") counts.watchlist++;
     }
@@ -173,21 +156,6 @@ export default function FundsPage() {
     }
   }
 
-  async function handleSettingsSave(values: { targetTotalPosition: number }) {
-    setSettingsSubmitting(true);
-    try {
-      await settingsApi.set("target_total_position", String(values.targetTotalPosition));
-      setTargetTotalPosition(String(values.targetTotalPosition));
-      messageApi.success("目标总仓位已更新");
-      setSettingsModalOpen(false);
-      load();
-    } catch (e) {
-      messageApi.error((e as Error).message);
-    } finally {
-      setSettingsSubmitting(false);
-    }
-  }
-
   function handleTableChange(
     _pagination: unknown,
     _filters: unknown,
@@ -224,12 +192,7 @@ export default function FundsPage() {
       {contextHolder}
       <Space orientation="vertical" size="middle" style={{ width: "100%" }}>
         <Flex justify="space-between" align="center">
-          <Title level={4} style={{ margin: 0, minWidth: 100 }}>基金列表</Title>
-          <TargetPositionCard
-            value={targetTotalPosition}
-            onEdit={() => setSettingsModalOpen(true)}
-          />
-          <div style={{ minWidth: 100 }} />
+          <Title level={4} style={{ margin: 0 }}>基金列表</Title>
         </Flex>
 
         <Flex justify="space-between" align="center">
@@ -271,14 +234,6 @@ export default function FundsPage() {
           setModalOpen(false);
           setEditingFund(null);
         }}
-      />
-
-      <SettingsModal
-        open={settingsModalOpen}
-        submitting={settingsSubmitting}
-        initialValue={parseFloat(targetTotalPosition)}
-        onSubmit={handleSettingsSave}
-        onCancel={() => setSettingsModalOpen(false)}
       />
     </>
   );

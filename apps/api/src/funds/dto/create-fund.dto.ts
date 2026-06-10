@@ -25,7 +25,7 @@ export class CreateFundDto {
   @Max(5)
   riskLevel?: number;
 
-  @ApiPropertyOptional({ example: 'holding', enum: FUND_CATEGORIES })
+  @ApiPropertyOptional({ example: 'all', enum: FUND_CATEGORIES })
   @IsOptional()
   @IsString()
   @IsIn(FUND_CATEGORIES)

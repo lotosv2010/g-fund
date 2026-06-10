@@ -30,7 +30,7 @@ function toListItem(row: PositionRow, fund?: FundRow): PositionListItem {
     pnlAmount,
     pnlRate,
     type: fund?.type ?? null,
-    category: fund?.category ?? 'holding',
+    category: fund?.category ?? 'all',
   };
 }
 

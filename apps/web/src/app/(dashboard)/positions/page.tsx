@@ -3,12 +3,14 @@ import { useState, useEffect, useCallback } from "react";
 import { Tabs, Typography, Flex, Button, Popconfirm, message, Form, Input, DatePicker, List, Card, Modal } from "antd";
 import { PlusOutlined, EditOutlined, DeleteOutlined, ShoppingCartOutlined, FileAddOutlined } from "@ant-design/icons";
 import type { PositionListItem, FundListItem, CreateTransactionDto, DailyLog, CreateDailyLogDto, UpsertPositionDto } from "@g-fund/types";
-import { positionsApi, transactionsApi, fundsApi, dailyLogsApi } from "@/lib/api-client";
+import { positionsApi, transactionsApi, fundsApi, dailyLogsApi, settingsApi } from "@/lib/api-client";
 import PositionTable from "@/components/PositionTable";
 import TransactionForm from "@/components/TransactionForm";
 import TransactionLogDrawer from "@/components/TransactionLogDrawer";
 import SyncPositionsButton from "@/components/SyncPositionsButton";
 import PositionSnapshotModal from "@/components/PositionSnapshotModal";
+import { TargetPositionCard } from "../funds/components/target-position-card";
+import { SettingsModal } from "../funds/components/settings-modal";
 import dayjs from "dayjs";
 
 const { Title, Text } = Typography;
@@ -34,6 +36,10 @@ export default function PositionsPage() {
   const [snapshotModalOpen, setSnapshotModalOpen] = useState(false);
   const [snapshotEditing, setSnapshotEditing] = useState<PositionListItem | null>(null);
   const [snapshotSubmitting, setSnapshotSubmitting] = useState(false);
+
+  const [targetTotalPosition, setTargetTotalPosition] = useState<string>("0");
+  const [settingsModalOpen, setSettingsModalOpen] = useState(false);
+  const [settingsSubmitting, setSettingsSubmitting] = useState(false);
 
   const loadPositions = useCallback(async () => {
     setLoading(true);
@@ -73,6 +79,17 @@ export default function PositionsPage() {
     loadFunds();
     loadDailyLogs();
   }, [loadPositions, loadFunds, loadDailyLogs]);
+
+  const loadSettings = useCallback(async () => {
+    try {
+      const setting = await settingsApi.get("target_total_position");
+      setTargetTotalPosition(setting.value);
+    } catch {
+      // setting may not exist yet
+    }
+  }, []);
+
+  useEffect(() => { loadSettings(); }, [loadSettings]);
 
   async function handleDeleteTransaction(id: number) {
     try {
@@ -187,6 +204,20 @@ export default function PositionsPage() {
     loadPositions();
   }
 
+  async function handleSettingsSave(values: { targetTotalPosition: number }) {
+    setSettingsSubmitting(true);
+    try {
+      await settingsApi.set("target_total_position", String(values.targetTotalPosition));
+      setTargetTotalPosition(String(values.targetTotalPosition));
+      messageApi.success("目标总仓位已更新");
+      setSettingsModalOpen(false);
+    } catch (e) {
+      messageApi.error((e as Error).message);
+    } finally {
+      setSettingsSubmitting(false);
+    }
+  }
+
   const tabItems = [
     {
       key: "positions",
@@ -256,6 +287,10 @@ export default function PositionsPage() {
       {contextHolder}
       <Flex justify="space-between" align="center" style={{ marginBottom: 16 }}>
         <Title level={4} style={{ margin: 0 }}>交易与持仓</Title>
+        <TargetPositionCard
+          value={targetTotalPosition}
+          onEdit={() => setSettingsModalOpen(true)}
+        />
         <Flex gap={8}>
           <SyncPositionsButton onDone={() => loadPositions()} />
           <Button icon={<FileAddOutlined />} onClick={openCreateSnapshot}>
@@ -326,6 +361,14 @@ export default function PositionsPage() {
           </Form.Item>
         </Form>
       </Modal>
+
+      <SettingsModal
+        open={settingsModalOpen}
+        submitting={settingsSubmitting}
+        initialValue={parseFloat(targetTotalPosition)}
+        onSubmit={handleSettingsSave}
+        onCancel={() => setSettingsModalOpen(false)}
+      />
     </>
   );
 }

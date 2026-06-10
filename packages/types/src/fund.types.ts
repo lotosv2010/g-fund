@@ -1,8 +1,8 @@
-export const FUND_CATEGORIES = ['holding', 'longterm', 'watchlist'] as const;
+export const FUND_CATEGORIES = ['all', 'longterm', 'watchlist'] as const;
 export type FundCategory = (typeof FUND_CATEGORIES)[number];
 
 export const FUND_CATEGORY_LABELS: Record<FundCategory, string> = {
-  holding: '持有',
+  all: '所有',
   longterm: '长期',
   watchlist: '关注',
 };
