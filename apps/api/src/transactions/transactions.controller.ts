@@ -12,11 +12,15 @@ export class TransactionsController {
   @ApiOperation({ summary: '获取交易流水' })
   @ApiQuery({ name: 'fundCode', required: false })
   @ApiQuery({ name: 'type', required: false, enum: ['buy', 'sell'] })
+  @ApiQuery({ name: 'startDate', required: false, description: '交易日期起始（YYYY-MM-DD）' })
+  @ApiQuery({ name: 'endDate', required: false, description: '交易日期截止（YYYY-MM-DD）' })
   findAll(
     @Query('fundCode') fundCode?: string,
     @Query('type') type?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
   ) {
-    return this.transactionsService.findAll(fundCode, type);
+    return this.transactionsService.findAll(fundCode, type, startDate, endDate);
   }
 
   @Post()

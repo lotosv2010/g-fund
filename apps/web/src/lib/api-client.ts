@@ -46,7 +46,7 @@ export const positionsApi = {
 };
 
 export const transactionsApi = {
-  list: (params?: { fundCode?: string; type?: string }) =>
+  list: (params?: { fundCode?: string; type?: string; startDate?: string; endDate?: string }) =>
     http.get<Transaction[]>("/transactions", { params }).then((r) => r.data),
   create: (dto: CreateTransactionDto) =>
     http.post<Transaction>("/transactions", dto).then((r) => r.data),

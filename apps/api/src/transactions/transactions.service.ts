@@ -1,5 +1,5 @@
 import { Injectable, Inject, NotFoundException, BadRequestException } from '@nestjs/common';
-import { eq, desc } from 'drizzle-orm';
+import { eq, and, gte, lte, desc, SQL } from 'drizzle-orm';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '@g-fund/db';
 import { DB } from '../db/db.module';
@@ -13,14 +13,16 @@ type PositionRow = typeof schema.positions.$inferSelect;
 export class TransactionsService {
   constructor(@Inject(DB) private readonly db: DbType) {}
 
-  async findAll(fundCode?: string, type?: string): Promise<TransactionRow[]> {
-    const conditions = [];
+  async findAll(fundCode?: string, type?: string, startDate?: string, endDate?: string): Promise<TransactionRow[]> {
+    const conditions: SQL[] = [];
     if (fundCode) conditions.push(eq(schema.transactions.fundCode, fundCode));
     if (type) conditions.push(eq(schema.transactions.type, type));
+    if (startDate) conditions.push(gte(schema.transactions.tradeDate, startDate));
+    if (endDate) conditions.push(lte(schema.transactions.tradeDate, endDate));
 
     let query = this.db.select().from(schema.transactions);
     if (conditions.length > 0) {
-      query = query.where(conditions[0]) as typeof query;
+      query = query.where(and(...conditions)) as typeof query;
     }
     return query.orderBy(desc(schema.transactions.tradeDate));
   }
@@ -74,9 +76,11 @@ export class TransactionsService {
     if (existing) {
       const oldShares = parseFloat(existing.shares ?? '0');
       const oldCostPrice = parseFloat(existing.costPrice);
+      const oldCurrentValue = parseFloat(existing.currentValue ?? '0');
       const newShares = oldShares + buyShares;
       const newCostAmount = parseFloat(existing.costAmount) + buyAmount;
       const newCostPrice = newShares > 0 ? newCostAmount / newShares : oldCostPrice;
+      const newCurrentValue = oldCurrentValue + buyAmount;
 
       await tx
         .update(schema.positions)
@@ -84,6 +88,8 @@ export class TransactionsService {
           shares: newShares.toFixed(4),
           costPrice: newCostPrice.toFixed(4),
           costAmount: newCostAmount.toFixed(2),
+          currentValue: newCurrentValue.toFixed(2),
+          navUnit: buyPrice > 0 ? buyPrice.toFixed(4) : existing.navUnit,
           updatedAt: new Date(),
         })
         .where(eq(schema.positions.fundCode, dto.fundCode));
@@ -95,6 +101,8 @@ export class TransactionsService {
         shares: buyShares.toFixed(4),
         costPrice: costPrice.toFixed(4),
         costAmount: buyAmount.toFixed(2),
+        currentValue: buyAmount.toFixed(2),
+        navUnit: costPrice > 0 ? costPrice.toFixed(4) : null,
       });
     }
   }
@@ -121,8 +129,12 @@ export class TransactionsService {
     }
 
     const oldCostPrice = parseFloat(existing.costPrice);
+    const oldCurrentValue = parseFloat(existing.currentValue ?? '0');
+    const oldNavUnit = parseFloat(existing.navUnit ?? '0');
     const newShares = oldShares - sellShares;
     const newCostAmount = newShares * oldCostPrice;
+    const sellValue = oldNavUnit > 0 ? sellShares * oldNavUnit : parseFloat(dto.amount);
+    const newCurrentValue = Math.max(0, oldCurrentValue - sellValue);
 
     if (newShares <= 0) {
       await tx
@@ -134,6 +146,7 @@ export class TransactionsService {
         .set({
           shares: newShares.toFixed(4),
           costAmount: newCostAmount.toFixed(2),
+          currentValue: newCurrentValue.toFixed(2),
           updatedAt: new Date(),
         })
         .where(eq(schema.positions.fundCode, dto.fundCode));
@@ -171,8 +184,10 @@ export class TransactionsService {
     const rollbackAmount = parseFloat(txRow.amount);
     const oldShares = parseFloat(position.shares ?? '0');
     const oldCostAmount = parseFloat(position.costAmount);
+    const oldCurrentValue = parseFloat(position.currentValue ?? '0');
     const newShares = oldShares - rollbackShares;
     const newCostAmount = oldCostAmount - rollbackAmount;
+    const newCurrentValue = Math.max(0, oldCurrentValue - rollbackAmount);
 
     if (newShares <= 0) {
       await tx
@@ -186,6 +201,7 @@ export class TransactionsService {
           shares: newShares.toFixed(4),
           costPrice: newCostPrice.toFixed(4),
           costAmount: newCostAmount.toFixed(2),
+          currentValue: newCurrentValue.toFixed(2),
           updatedAt: new Date(),
         })
         .where(eq(schema.positions.fundCode, txRow.fundCode));
@@ -208,9 +224,13 @@ export class TransactionsService {
     if (position) {
       const oldShares = parseFloat(position.shares ?? '0');
       const oldCostAmount = parseFloat(position.costAmount);
+      const oldCurrentValue = parseFloat(position.currentValue ?? '0');
       const newShares = oldShares + rollbackShares;
       const newCostAmount = oldCostAmount + rollbackAmount;
       const newCostPrice = newShares > 0 ? newCostAmount / newShares : 0;
+      const restoredValue = rollbackPrice > 0 ? rollbackShares * rollbackPrice : rollbackAmount;
+      const newCurrentValue = oldCurrentValue + restoredValue;
+      const newNavUnit = newShares > 0 ? newCurrentValue / newShares : 0;
 
       await tx
         .update(schema.positions)
@@ -218,6 +238,8 @@ export class TransactionsService {
           shares: newShares.toFixed(4),
           costPrice: newCostPrice.toFixed(4),
           costAmount: newCostAmount.toFixed(2),
+          currentValue: newCurrentValue.toFixed(2),
+          navUnit: newNavUnit.toFixed(4),
           updatedAt: new Date(),
         })
         .where(eq(schema.positions.fundCode, txRow.fundCode));
@@ -229,6 +251,8 @@ export class TransactionsService {
         shares: rollbackShares.toFixed(4),
         costPrice: costPrice.toFixed(4),
         costAmount: rollbackAmount.toFixed(2),
+        currentValue: rollbackAmount.toFixed(2),
+        navUnit: costPrice > 0 ? costPrice.toFixed(4) : null,
       });
     }
   }

@@ -1,8 +1,9 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
-import { Tabs, Typography, Flex, Button, Popconfirm, message, Form, Input, DatePicker, List, Card, Modal } from "antd";
+import { Tabs, Typography, Flex, Button, Popconfirm, message, Form, Input, DatePicker, List, Card, Modal, Table, Tag } from "antd";
 import { PlusOutlined, EditOutlined, DeleteOutlined, ShoppingCartOutlined, FileAddOutlined } from "@ant-design/icons";
-import type { PositionListItem, FundListItem, CreateTransactionDto, DailyLog, CreateDailyLogDto, UpsertPositionDto } from "@g-fund/types";
+import type { PositionListItem, FundListItem, Transaction, CreateTransactionDto, DailyLog, CreateDailyLogDto, UpsertPositionDto } from "@g-fund/types";
+import type { ColumnsType } from "antd/es/table/interface";
 import { positionsApi, transactionsApi, fundsApi, dailyLogsApi, settingsApi } from "@/lib/api-client";
 import PositionTable from "@/components/PositionTable";
 import TransactionForm from "@/components/TransactionForm";
@@ -40,6 +41,10 @@ export default function PositionsPage() {
   const [targetTotalPosition, setTargetTotalPosition] = useState<string>("0");
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
   const [settingsSubmitting, setSettingsSubmitting] = useState(false);
+
+  const [txLogs, setTxLogs] = useState<Transaction[]>([]);
+  const [txLoading, setTxLoading] = useState(false);
+  const [txDateRange, setTxDateRange] = useState<[dayjs.Dayjs, dayjs.Dayjs]>([dayjs(), dayjs()]);
 
   const loadPositions = useCallback(async () => {
     setLoading(true);
@@ -90,6 +95,23 @@ export default function PositionsPage() {
   }, []);
 
   useEffect(() => { loadSettings(); }, [loadSettings]);
+
+  const loadTxLogs = useCallback(async () => {
+    setTxLoading(true);
+    try {
+      const data = await transactionsApi.list({
+        startDate: txDateRange[0].format("YYYY-MM-DD"),
+        endDate: txDateRange[1].format("YYYY-MM-DD"),
+      });
+      setTxLogs(data);
+    } catch (e) {
+      messageApi.error((e as Error).message);
+    } finally {
+      setTxLoading(false);
+    }
+  }, [txDateRange, messageApi]);
+
+  useEffect(() => { loadTxLogs(); }, [loadTxLogs]);
 
   async function handleDeleteTransaction(id: number) {
     try {
@@ -218,6 +240,59 @@ export default function PositionsPage() {
     }
   }
 
+  const txColumns: ColumnsType<Transaction> = [
+    { title: "交易日期", dataIndex: "tradeDate", width: 110 },
+    { title: "基金名称", dataIndex: "fundName", width: 140, ellipsis: true },
+    { title: "基金代码", dataIndex: "fundCode", width: 100 },
+    {
+      title: "类型",
+      dataIndex: "type",
+      width: 70,
+      render: (v) => <Tag color={v === "buy" ? "green" : "red"}>{v === "buy" ? "买入" : "卖出"}</Tag>,
+    },
+    {
+      title: "金额",
+      dataIndex: "amount",
+      width: 120,
+      align: "right",
+      render: (v) => `¥${parseFloat(v).toLocaleString()}`,
+    },
+    {
+      title: "份额",
+      dataIndex: "shares",
+      width: 110,
+      align: "right",
+      render: (v) => (v ? parseFloat(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "—"),
+    },
+    {
+      title: "净值",
+      dataIndex: "price",
+      width: 90,
+      align: "right",
+      render: (v) => (v ? parseFloat(v).toFixed(4) : "—"),
+    },
+    { title: "备注", dataIndex: "note", ellipsis: true },
+    {
+      title: "操作",
+      width: 70,
+      fixed: "right",
+      render: (_, record) => (
+        <Popconfirm
+          title="确认删除？持仓将自动回滚"
+          onConfirm={async () => {
+            await handleDeleteTransaction(record.id);
+            setTxLogs((prev) => prev.filter((t) => t.id !== record.id));
+          }}
+          okText="删除"
+          okButtonProps={{ danger: true }}
+          cancelText="取消"
+        >
+          <Button type="link" danger size="small">删除</Button>
+        </Popconfirm>
+      ),
+    },
+  ];
+
   const tabItems = [
     {
       key: "positions",
@@ -231,6 +306,32 @@ export default function PositionsPage() {
           onViewLog={handleViewLog}
           onEditSnapshot={openEditSnapshot}
         />
+      ),
+    },
+    {
+      key: "tx-log",
+      label: `交易日志（${txLogs.length}）`,
+      children: (
+        <>
+          <Flex justify="flex-end" style={{ marginBottom: 12 }}>
+            <DatePicker.RangePicker
+              value={txDateRange}
+              onChange={(dates) => {
+                if (dates && dates[0] && dates[1]) setTxDateRange([dates[0], dates[1]]);
+              }}
+              allowClear={false}
+            />
+          </Flex>
+          <Table
+            rowKey="id"
+            columns={txColumns}
+            dataSource={txLogs}
+            loading={txLoading}
+            pagination={{ pageSize: 20, showTotal: (t) => `共 ${t} 条` }}
+            size="small"
+            scroll={{ x: 900 }}
+          />
+        </>
       ),
     },
     {
