@@ -39,6 +39,8 @@ export const transactions = pgTable('transactions', {
   price: numeric('price', { precision: 10, scale: 4 }),
   tradeDate: date('trade_date').notNull(),
   note: text('note'),
+  status: varchar('status', { length: 10 }).notNull().default('confirmed'),
+  confirmedAt: timestamp('confirmed_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 

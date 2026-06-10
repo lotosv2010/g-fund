@@ -1,5 +1,5 @@
 import { Injectable, Inject, NotFoundException, BadRequestException } from '@nestjs/common';
-import { eq, and, gte, lte, desc, SQL } from 'drizzle-orm';
+import { eq, and, gte, lte, lt, asc, desc, SQL } from 'drizzle-orm';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '@g-fund/db';
 import { DB } from '../db/db.module';
@@ -34,53 +34,93 @@ export class TransactionsService {
       .where(eq(schema.funds.code, dto.fundCode));
     if (!fund) throw new NotFoundException(`基金 ${dto.fundCode} 不存在`);
 
-    return this.db.transaction(async (tx) => {
-      const [txRow] = await tx
-        .insert(schema.transactions)
-        .values({
-          fundCode: dto.fundCode,
-          fundName: fund.name,
-          type: dto.type,
-          amount: dto.amount,
-          shares: dto.shares ?? null,
-          price: dto.price ?? null,
-          tradeDate: dto.tradeDate,
-          note: dto.note ?? null,
-        })
-        .returning();
+    const [txRow] = await this.db
+      .insert(schema.transactions)
+      .values({
+        fundCode: dto.fundCode,
+        fundName: fund.name,
+        type: dto.type,
+        amount: dto.amount,
+        shares: dto.shares ?? null,
+        price: dto.price ?? null,
+        tradeDate: dto.tradeDate,
+        note: dto.note ?? null,
+        status: 'pending',
+      })
+      .returning();
 
-      if (dto.type === 'buy') {
-        await this.handleBuy(tx, dto, fund.name);
-      } else {
-        await this.handleSell(tx, dto, fund.name);
-      }
-
-      return txRow;
-    });
+    return txRow;
   }
 
-  private async handleBuy(
+  async confirmPending(fundCode: string, navUnit: string, navDate?: string): Promise<number> {
+    const today = new Date().toISOString().slice(0, 10);
+    const pendingTxs = await this.db
+      .select()
+      .from(schema.transactions)
+      .where(
+        and(
+          eq(schema.transactions.fundCode, fundCode),
+          eq(schema.transactions.status, 'pending'),
+          lt(schema.transactions.tradeDate, today),
+        ),
+      )
+      .orderBy(asc(schema.transactions.tradeDate));
+
+    if (pendingTxs.length === 0) return 0;
+
+    const nav = parseFloat(navUnit);
+    if (!Number.isFinite(nav) || nav <= 0) return 0;
+
+    for (const tx of pendingTxs) {
+      await this.db.transaction(async (dbTx) => {
+        await this.confirmTransaction(dbTx, tx, nav, navDate);
+      });
+    }
+
+    return pendingTxs.length;
+  }
+
+  private async confirmTransaction(
     tx: Parameters<Parameters<DbType['transaction']>[0]>[0],
-    dto: CreateTransactionDto,
-    fundName: string,
+    txRow: TransactionRow,
+    navUnit: number,
+    navDate?: string,
   ): Promise<void> {
+    if (txRow.type === 'buy') {
+      await this.confirmBuy(tx, txRow, navUnit);
+    } else {
+      await this.confirmSell(tx, txRow, navUnit);
+    }
+
+    await tx
+      .update(schema.transactions)
+      .set({
+        status: 'confirmed',
+        price: navUnit.toFixed(4),
+        confirmedAt: new Date(),
+      })
+      .where(eq(schema.transactions.id, txRow.id));
+  }
+
+  private async confirmBuy(
+    tx: Parameters<Parameters<DbType['transaction']>[0]>[0],
+    txRow: TransactionRow,
+    navUnit: number,
+  ): Promise<void> {
+    const buyAmount = parseFloat(txRow.amount);
+    const buyShares = buyAmount / navUnit;
+
     const [existing] = await tx
       .select()
       .from(schema.positions)
-      .where(eq(schema.positions.fundCode, dto.fundCode));
-
-    const buyAmount = parseFloat(dto.amount);
-    const buyShares = dto.shares ? parseFloat(dto.shares) : 0;
-    const buyPrice = dto.price ? parseFloat(dto.price) : buyShares > 0 ? buyAmount / buyShares : 0;
+      .where(eq(schema.positions.fundCode, txRow.fundCode));
 
     if (existing) {
       const oldShares = parseFloat(existing.shares ?? '0');
-      const oldCostPrice = parseFloat(existing.costPrice);
-      const oldCurrentValue = parseFloat(existing.currentValue ?? '0');
       const newShares = oldShares + buyShares;
       const newCostAmount = parseFloat(existing.costAmount) + buyAmount;
-      const newCostPrice = newShares > 0 ? newCostAmount / newShares : oldCostPrice;
-      const newCurrentValue = oldCurrentValue + buyAmount;
+      const newCostPrice = newShares > 0 ? newCostAmount / newShares : 0;
+      const newCurrentValue = parseFloat(existing.currentValue ?? '0') + buyShares * navUnit;
 
       await tx
         .update(schema.positions)
@@ -89,57 +129,68 @@ export class TransactionsService {
           costPrice: newCostPrice.toFixed(4),
           costAmount: newCostAmount.toFixed(2),
           currentValue: newCurrentValue.toFixed(2),
-          navUnit: buyPrice > 0 ? buyPrice.toFixed(4) : existing.navUnit,
+          navUnit: navUnit.toFixed(4),
           updatedAt: new Date(),
         })
-        .where(eq(schema.positions.fundCode, dto.fundCode));
+        .where(eq(schema.positions.fundCode, txRow.fundCode));
     } else {
-      const costPrice = buyShares > 0 ? buyAmount / buyShares : 0;
+      const costPrice = navUnit;
       await tx.insert(schema.positions).values({
-        fundCode: dto.fundCode,
-        fundName,
+        fundCode: txRow.fundCode,
+        fundName: txRow.fundName,
         shares: buyShares.toFixed(4),
         costPrice: costPrice.toFixed(4),
         costAmount: buyAmount.toFixed(2),
-        currentValue: buyAmount.toFixed(2),
-        navUnit: costPrice > 0 ? costPrice.toFixed(4) : null,
+        currentValue: (buyShares * navUnit).toFixed(2),
+        navUnit: navUnit.toFixed(4),
       });
     }
+
+    await tx
+      .update(schema.transactions)
+      .set({ shares: buyShares.toFixed(4) })
+      .where(eq(schema.transactions.id, txRow.id));
   }
 
-  private async handleSell(
+  private async confirmSell(
     tx: Parameters<Parameters<DbType['transaction']>[0]>[0],
-    dto: CreateTransactionDto,
-    fundName: string,
+    txRow: TransactionRow,
+    navUnit: number,
   ): Promise<void> {
     const [existing] = await tx
       .select()
       .from(schema.positions)
-      .where(eq(schema.positions.fundCode, dto.fundCode));
+      .where(eq(schema.positions.fundCode, txRow.fundCode));
 
-    if (!existing) throw new BadRequestException(`基金 ${dto.fundCode} 无持仓，无法卖出`);
+    if (!existing) {
+      await tx
+        .update(schema.transactions)
+        .set({ status: 'cancelled', confirmedAt: new Date() })
+        .where(eq(schema.transactions.id, txRow.id));
+      return;
+    }
 
-    const sellShares = dto.shares ? parseFloat(dto.shares) : 0;
+    const sellAmount = parseFloat(txRow.amount);
+    const sellShares = sellAmount / navUnit;
     const oldShares = parseFloat(existing.shares ?? '0');
 
     if (sellShares > oldShares) {
-      throw new BadRequestException(
-        `卖出份额 ${sellShares} 超过持有份额 ${oldShares}`,
-      );
+      await tx
+        .update(schema.transactions)
+        .set({ status: 'cancelled', confirmedAt: new Date() })
+        .where(eq(schema.transactions.id, txRow.id));
+      return;
     }
 
     const oldCostPrice = parseFloat(existing.costPrice);
-    const oldCurrentValue = parseFloat(existing.currentValue ?? '0');
-    const oldNavUnit = parseFloat(existing.navUnit ?? '0');
     const newShares = oldShares - sellShares;
     const newCostAmount = newShares * oldCostPrice;
-    const sellValue = oldNavUnit > 0 ? sellShares * oldNavUnit : parseFloat(dto.amount);
-    const newCurrentValue = Math.max(0, oldCurrentValue - sellValue);
+    const newCurrentValue = Math.max(0, parseFloat(existing.currentValue ?? '0') - sellShares * navUnit);
 
     if (newShares <= 0) {
       await tx
         .delete(schema.positions)
-        .where(eq(schema.positions.fundCode, dto.fundCode));
+        .where(eq(schema.positions.fundCode, txRow.fundCode));
     } else {
       await tx
         .update(schema.positions)
@@ -147,10 +198,16 @@ export class TransactionsService {
           shares: newShares.toFixed(4),
           costAmount: newCostAmount.toFixed(2),
           currentValue: newCurrentValue.toFixed(2),
+          navUnit: navUnit.toFixed(4),
           updatedAt: new Date(),
         })
-        .where(eq(schema.positions.fundCode, dto.fundCode));
+        .where(eq(schema.positions.fundCode, txRow.fundCode));
     }
+
+    await tx
+      .update(schema.transactions)
+      .set({ shares: sellShares.toFixed(4), price: navUnit.toFixed(4) })
+      .where(eq(schema.transactions.id, txRow.id));
   }
 
   async remove(id: number): Promise<void> {
@@ -159,6 +216,11 @@ export class TransactionsService {
       .from(schema.transactions)
       .where(eq(schema.transactions.id, id));
     if (!txRow) throw new NotFoundException(`交易记录 ${id} 不存在`);
+
+    if (txRow.status === 'pending') {
+      await this.db.delete(schema.transactions).where(eq(schema.transactions.id, id));
+      return;
+    }
 
     await this.db.transaction(async (tx) => {
       if (txRow.type === 'buy') {

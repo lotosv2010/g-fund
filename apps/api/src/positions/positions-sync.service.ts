@@ -1,6 +1,6 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { Observable, Subscriber, firstValueFrom } from 'rxjs';
-import { eq, gt } from 'drizzle-orm';
+import { eq, and, gt, asc, lt } from 'drizzle-orm';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '@g-fund/db';
 import type { Tool, CallToolResult } from '@modelcontextprotocol/sdk/types';
@@ -283,6 +283,10 @@ export class PositionsSyncService {
             updatedAt: new Date(),
           })
           .where(eq(schema.positions.fundCode, pos.fundCode));
+
+        if (item.navUnit) {
+          await this.confirmPending(pos.fundCode, item.navUnit, item.navDate);
+        }
       }
 
       subscriber.next({ type: 'item', index: i, total: positions.length, result: item });
@@ -292,6 +296,10 @@ export class PositionsSyncService {
     const failed = items.filter((i) => i.status === 'failed').length;
     const skipped = items.filter((i) => i.status === 'skipped').length;
 
+    // 确认没有持仓但有 pending 交易的基金（首次买入）
+    const existingCodes = new Set(positions.map((p) => p.fundCode));
+    await this.confirmNewFundPending(existingCodes, navTool, codeArgName, codeArgIsArray);
+
     await this.settings.set('last_sync_at', syncedAt);
 
     subscriber.next({
@@ -299,6 +307,166 @@ export class PositionsSyncService {
       result: { total: items.length, succeeded, failed, skipped, syncedAt, items },
     });
     subscriber.complete();
+  }
+
+  private async confirmPending(fundCode: string, navUnit: string, navDate?: string): Promise<void> {
+    const nav = parseFloat(navUnit);
+    if (!Number.isFinite(nav) || nav <= 0) return;
+
+    const today = new Date().toISOString().slice(0, 10);
+
+    const pendingTxs = await this.db
+      .select()
+      .from(schema.transactions)
+      .where(
+        and(
+          eq(schema.transactions.fundCode, fundCode),
+          eq(schema.transactions.status, 'pending'),
+          lt(schema.transactions.tradeDate, today),
+        ),
+      )
+      .orderBy(asc(schema.transactions.tradeDate));
+
+    for (const txRow of pendingTxs) {
+      await this.db.transaction(async (tx) => {
+        if (txRow.type === 'buy') {
+          const buyAmount = parseFloat(txRow.amount);
+          const buyShares = buyAmount / nav;
+
+          const [existing] = await tx
+            .select()
+            .from(schema.positions)
+            .where(eq(schema.positions.fundCode, fundCode));
+
+          if (existing) {
+            const oldShares = parseFloat(existing.shares ?? '0');
+            const newShares = oldShares + buyShares;
+            const newCostAmount = parseFloat(existing.costAmount) + buyAmount;
+            const newCostPrice = newShares > 0 ? newCostAmount / newShares : 0;
+            const newCurrentValue = parseFloat(existing.currentValue ?? '0') + buyShares * nav;
+
+            await tx
+              .update(schema.positions)
+              .set({
+                shares: newShares.toFixed(4),
+                costPrice: newCostPrice.toFixed(4),
+                costAmount: newCostAmount.toFixed(2),
+                currentValue: newCurrentValue.toFixed(2),
+                navUnit: nav.toFixed(4),
+                updatedAt: new Date(),
+              })
+              .where(eq(schema.positions.fundCode, fundCode));
+          } else {
+            await tx.insert(schema.positions).values({
+              fundCode: txRow.fundCode,
+              fundName: txRow.fundName,
+              shares: buyShares.toFixed(4),
+              costPrice: nav.toFixed(4),
+              costAmount: buyAmount.toFixed(2),
+              currentValue: (buyShares * nav).toFixed(2),
+              navUnit: nav.toFixed(4),
+            });
+          }
+
+          await tx
+            .update(schema.transactions)
+            .set({ shares: buyShares.toFixed(4), price: nav.toFixed(4), status: 'confirmed', confirmedAt: new Date() })
+            .where(eq(schema.transactions.id, txRow.id));
+        } else {
+          // 卖出确认
+          const sellAmount = parseFloat(txRow.amount);
+          const sellShares = sellAmount / nav;
+
+          const [existing] = await tx
+            .select()
+            .from(schema.positions)
+            .where(eq(schema.positions.fundCode, fundCode));
+
+          if (!existing) {
+            await tx
+              .update(schema.transactions)
+              .set({ status: 'cancelled', confirmedAt: new Date() })
+              .where(eq(schema.transactions.id, txRow.id));
+            return;
+          }
+
+          const oldShares = parseFloat(existing.shares ?? '0');
+          if (sellShares > oldShares) {
+            await tx
+              .update(schema.transactions)
+              .set({ status: 'cancelled', confirmedAt: new Date() })
+              .where(eq(schema.transactions.id, txRow.id));
+            return;
+          }
+
+          const oldCostPrice = parseFloat(existing.costPrice);
+          const newShares = oldShares - sellShares;
+          const newCostAmount = newShares * oldCostPrice;
+          const newCurrentValue = Math.max(0, parseFloat(existing.currentValue ?? '0') - sellShares * nav);
+
+          if (newShares <= 0) {
+            await tx.delete(schema.positions).where(eq(schema.positions.fundCode, fundCode));
+          } else {
+            await tx
+              .update(schema.positions)
+              .set({
+                shares: newShares.toFixed(4),
+                costAmount: newCostAmount.toFixed(2),
+                currentValue: newCurrentValue.toFixed(2),
+                navUnit: nav.toFixed(4),
+                updatedAt: new Date(),
+              })
+              .where(eq(schema.positions.fundCode, fundCode));
+          }
+
+          await tx
+            .update(schema.transactions)
+            .set({ shares: sellShares.toFixed(4), price: nav.toFixed(4), status: 'confirmed', confirmedAt: new Date() })
+            .where(eq(schema.transactions.id, txRow.id));
+        }
+      });
+    }
+  }
+
+  private async confirmNewFundPending(
+    existingCodes: Set<string>,
+    navTool: Tool,
+    codeArgName: string,
+    codeArgIsArray: boolean,
+  ): Promise<void> {
+    const today = new Date().toISOString().slice(0, 10);
+    const allPending = await this.db
+      .select()
+      .from(schema.transactions)
+      .where(
+        and(
+          eq(schema.transactions.status, 'pending'),
+          lt(schema.transactions.tradeDate, today),
+        ),
+      )
+      .orderBy(asc(schema.transactions.tradeDate));
+
+    const pendingNewFunds = allPending.filter((tx) => !existingCodes.has(tx.fundCode));
+    if (pendingNewFunds.length === 0) return;
+
+    const fundCodes = [...new Set(pendingNewFunds.map((tx) => tx.fundCode))];
+    for (const fundCode of fundCodes) {
+      try {
+        const argValue = codeArgIsArray ? [fundCode] : fundCode;
+        const result = await this.mcp.callTool(navTool.name, { [codeArgName]: argValue });
+        const text = (result.content ?? [])
+          .filter((c): c is { type: 'text'; text: string } => c.type === 'text')
+          .map((c) => c.text)
+          .join('\n')
+          .trim();
+        const nav = parseNavFromText(text);
+        if (nav) {
+          await this.confirmPending(fundCode, nav.navUnit, nav.navDate);
+        }
+      } catch (err) {
+        this.logger.warn(`Failed to confirm pending for new fund ${fundCode}: ${(err as Error).message}`);
+      }
+    }
   }
 
   private emitFailAll(

@@ -271,6 +271,16 @@ export default function PositionsPage() {
       align: "right",
       render: (v) => (v ? parseFloat(v).toFixed(4) : "—"),
     },
+    {
+      title: "状态",
+      dataIndex: "status",
+      width: 80,
+      render: (v) => v === "pending"
+        ? <Tag color="orange">待确认</Tag>
+        : v === "cancelled"
+          ? <Tag color="default">已取消</Tag>
+          : <Tag color="green">已确认</Tag>,
+    },
     { title: "备注", dataIndex: "note", ellipsis: true },
     {
       title: "操作",
@@ -278,7 +288,7 @@ export default function PositionsPage() {
       fixed: "right",
       render: (_, record) => (
         <Popconfirm
-          title="确认删除？持仓将自动回滚"
+          title={record.status === "pending" ? "确认删除？交易将取消" : "确认删除？持仓将自动回滚"}
           onConfirm={async () => {
             await handleDeleteTransaction(record.id);
             setTxLogs((prev) => prev.filter((t) => t.id !== record.id));

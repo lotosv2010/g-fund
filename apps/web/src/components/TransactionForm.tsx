@@ -59,7 +59,7 @@ export default function TransactionForm({ funds, onSubmit, defaultFundCode, defa
         tradeDate: (values.tradeDate as dayjs.Dayjs).format("YYYY-MM-DD"),
         note: values.note as string | undefined,
       });
-      messageApi.success(txType === "buy" ? "买入成功" : "卖出成功");
+      messageApi.success(txType === "buy" ? "买入已提交，待确认" : "卖出已提交，待确认");
       form.resetFields();
     } catch (e) {
       messageApi.error((e as Error).message);

@@ -8,6 +8,8 @@ export interface Transaction {
   price: string | null;
   tradeDate: string;
   note: string | null;
+  status: 'pending' | 'confirmed' | 'cancelled';
+  confirmedAt: string | null;
   createdAt: string;
 }
 
