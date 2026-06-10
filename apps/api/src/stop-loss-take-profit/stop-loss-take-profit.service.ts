@@ -1,5 +1,5 @@
 import { Injectable, Inject } from '@nestjs/common';
-import { eq, and, gte, desc } from 'drizzle-orm';
+import { eq, ne, and, gte, desc } from 'drizzle-orm';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '@g-fund/db';
 import { DB } from '../db/db.module';
@@ -34,7 +34,7 @@ export class StopLossTakeProfitService {
     const positions = await this.db
       .select()
       .from(schema.positions)
-      .where(eq(schema.positions.shares, '0'));
+      .where(ne(schema.positions.shares, '0'));
 
     const signals: StopLossTakeProfitSignal[] = [];
 

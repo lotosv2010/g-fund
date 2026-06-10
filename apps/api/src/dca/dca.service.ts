@@ -1,5 +1,4 @@
 import { Injectable, Inject } from '@nestjs/common';
-import { eq } from 'drizzle-orm';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '@g-fund/db';
 import { DB } from '../db/db.module';
@@ -48,11 +47,10 @@ export class DcaService {
   constructor(@Inject(DB) private readonly db: DbType) {}
 
   async calculate(): Promise<DcaCalculation[]> {
-    // 获取所有有持仓的基金
+    // 获取所有基金
     const funds = await this.db
       .select()
-      .from(schema.funds)
-      .where(eq(schema.funds.category, 'longterm'));
+      .from(schema.funds);
 
     const calculations: DcaCalculation[] = [];
 

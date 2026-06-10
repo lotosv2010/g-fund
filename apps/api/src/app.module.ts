@@ -14,6 +14,7 @@ import { SettingsModule } from './settings/settings.module';
 import { ChatModule } from './chat/chat.module';
 import { StopLossTakeProfitModule } from './stop-loss-take-profit/stop-loss-take-profit.module';
 import { DcaModule } from './dca/dca.module';
+import { DashboardModule } from './dashboard/dashboard.module';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { DcaModule } from './dca/dca.module';
     ChatModule,
     StopLossTakeProfitModule,
     DcaModule,
+    DashboardModule,
   ],
 })
 export class AppModule {}

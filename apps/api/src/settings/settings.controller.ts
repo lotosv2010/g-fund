@@ -1,12 +1,16 @@
 import { Controller, Get, Put, Body, Param } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { SettingsService } from './settings.service';
+import { McpService } from '../mcp/mcp.service';
 import type { AiConfig, McpConfig } from '@g-fund/types';
 
 @ApiTags('settings')
 @Controller('settings')
 export class SettingsController {
-  constructor(private readonly settingsService: SettingsService) {}
+  constructor(
+    private readonly settingsService: SettingsService,
+    private readonly mcp: McpService,
+  ) {}
 
   @Get(':key')
   @ApiOperation({ summary: '获取配置' })
@@ -42,5 +46,15 @@ export class SettingsController {
   @ApiOperation({ summary: '更新 MCP 配置' })
   setMcpConfig(@Body() config: McpConfig) {
     return this.settingsService.setMcpConfig(config);
+  }
+
+  @Get('mcp/tools')
+  @ApiOperation({ summary: '列出 MCP 可用工具' })
+  getMcpTools() {
+    return this.mcp.getTools().map((t) => ({
+      name: t.name,
+      description: t.description,
+      inputSchema: t.inputSchema,
+    }));
   }
 }

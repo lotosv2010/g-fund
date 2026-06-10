@@ -6,11 +6,18 @@ import type { PositionListItem } from "@g-fund/types";
 
 const { Text } = Typography;
 
-function PnlCell({ value }: { value: string }) {
-  const n = parseFloat(value);
+function PnlCell({ value, raw, onClick }: { value: string; raw?: number; onClick?: () => void }) {
+  const n = raw ?? parseFloat(value);
   const color = n > 0 ? "#dc2626" : n < 0 ? "#16a34a" : "#6b7280";
   const prefix = n > 0 ? "+" : "";
-  return <span style={{ color }}>{prefix}{value}</span>;
+  return (
+    <span
+      style={{ color, cursor: onClick ? "pointer" : undefined, textDecoration: onClick ? "underline" : undefined }}
+      onClick={onClick}
+    >
+      {prefix}{value}
+    </span>
+  );
 }
 
 interface PositionTableProps {
@@ -20,9 +27,11 @@ interface PositionTableProps {
   onSell?: (fundCode: string) => void;
   onViewLog?: (fundCode: string) => void;
   onEditSnapshot?: (record: PositionListItem) => void;
+  onPnlClick?: (fundCode: string, fundName: string) => void;
+  onTotalPnlClick?: () => void;
 }
 
-export default function PositionTable({ data, loading, onBuy, onSell, onViewLog, onEditSnapshot }: PositionTableProps) {
+export default function PositionTable({ data, loading, onBuy, onSell, onViewLog, onEditSnapshot, onPnlClick, onTotalPnlClick }: PositionTableProps) {
   const totalCost = data.reduce((s, r) => s + parseFloat(r.costAmount), 0);
   const totalValue = data.reduce((s, r) => s + parseFloat(r.currentValue), 0);
   const totalPnl = totalValue - totalCost;
@@ -49,11 +58,17 @@ export default function PositionTable({ data, loading, onBuy, onSell, onViewLog,
     },
     {
       title: "盈亏金额", dataIndex: "pnlAmount", width: 120, align: "right", ellipsis: true,
-      render: (v) => <PnlCell value={`¥${parseFloat(v).toLocaleString()}`} />,
+      render: (v, record) => (
+        <PnlCell
+          value={`¥${parseFloat(v).toLocaleString()}`}
+          raw={parseFloat(v)}
+          onClick={onPnlClick ? () => onPnlClick(record.fundCode, record.fundName) : undefined}
+        />
+      ),
     },
     {
       title: "盈亏率", dataIndex: "pnlRate", width: 100, align: "right", ellipsis: true,
-      render: (v) => <PnlCell value={`${(parseFloat(v) * 100).toFixed(2)}%`} />,
+      render: (v) => <PnlCell value={`${(parseFloat(v) * 100).toFixed(2)}%`} raw={parseFloat(v)} />,
     },
     ...(onBuy || onSell || onViewLog || onEditSnapshot
       ? [
@@ -115,8 +130,11 @@ export default function PositionTable({ data, loading, onBuy, onSell, onViewLog,
                   <div style={{ whiteSpace: "nowrap", textAlign: "right" }}><Text strong>¥{totalValue.toLocaleString()}</Text></div>
                 </Table.Summary.Cell>
                 <Table.Summary.Cell index={6} align="right">
-                  <div style={{ whiteSpace: "nowrap", textAlign: "right" }}>
-                    <Text strong style={{ color: totalPnl >= 0 ? "#dc2626" : "#16a34a" }}>
+                  <div
+                    style={{ whiteSpace: "nowrap", textAlign: "right", cursor: onTotalPnlClick ? "pointer" : undefined }}
+                    onClick={onTotalPnlClick}
+                  >
+                    <Text strong style={{ color: totalPnl >= 0 ? "#dc2626" : "#16a34a", textDecoration: onTotalPnlClick ? "underline" : undefined }}>
                       {totalPnl >= 0 ? "+" : ""}¥{totalPnl.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                     </Text>
                   </div>

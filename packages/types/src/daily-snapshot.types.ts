@@ -19,3 +19,13 @@ export interface PositionSnapshotItem {
   pnlAmount: string;
   pnlRate: string;
 }
+
+export interface FundDailyPnl {
+  snapshotDate: string;
+  fundCode: string;
+  fundName: string;
+  pnlAmount: number;
+  pnlRate: number;
+  costAmount: number;
+  currentValue: number;
+}

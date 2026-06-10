@@ -6,6 +6,7 @@ import type {
   DailyLog, CreateDailyLogDto, UpdateDailyLogDto, DailySnapshot,
   AppSetting, AiConfig, McpConfig,
   ChatSessionSummary, ChatSessionDetail, PersistChatMessageDto, ChatMessage,
+  AssetAllocationResponse,
 } from "@g-fund/types";
 
 const http = axios.create({
@@ -90,14 +91,14 @@ export const stopLossTakeProfitApi = {
   list: () =>
     http.get<import("@g-fund/types").StopLossTakeProfitSignal[]>("/stop-loss-take-profit").then((r) => r.data),
   get: (fundCode: string) =>
-    http.get<import("@g-fund/types").StopLossTakeProfitSignal>(`/stop-loss-take-profit/${fundCode}`).then((r) => r.data),
+    http.get<import("@g-fund/types").StopLossTakeProfitSignal[]>(`/stop-loss-take-profit/${fundCode}`).then((r) => r.data),
 };
 
 export const dcaApi = {
   calculate: () =>
     http.get<import("@g-fund/types").DcaCalculation[]>("/dca").then((r) => r.data),
   calculateByFund: (fundCode: string) =>
-    http.get<import("@g-fund/types").DcaCalculation>(`/dca/${fundCode}`).then((r) => r.data),
+    http.get<import("@g-fund/types").DcaCalculation | null>(`/dca/${fundCode}`).then((r) => r.data),
 };
 
 export const chatApi = {
@@ -111,4 +112,9 @@ export const chatApi = {
   remove: (id: number) => http.delete(`/chat/sessions/${id}`),
   appendMessage: (id: number, dto: PersistChatMessageDto) =>
     http.post<ChatMessage>(`/chat/sessions/${id}/messages`, dto).then((r) => r.data),
+};
+
+export const dashboardApi = {
+  assetAllocation: () =>
+    http.get<AssetAllocationResponse>("/dashboard/asset-allocation", { timeout: 30000 }).then((r) => r.data),
 };

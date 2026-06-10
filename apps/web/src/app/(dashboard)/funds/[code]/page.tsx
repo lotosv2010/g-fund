@@ -7,24 +7,16 @@ import {
 } from "antd";
 import {
   ArrowLeftOutlined, FundOutlined, SafetyOutlined,
-  ScheduleOutlined, DollarOutlined, LineChartOutlined,
-  CheckCircleOutlined, WarningOutlined, CloseCircleOutlined,
+  ScheduleOutlined, DollarOutlined,
+  CheckCircleOutlined,
 } from "@ant-design/icons";
 import type {
   FundListItem, StopLossTakeProfitSignal, DcaCalculation,
 } from "@g-fund/types";
-import {
-  FUND_PHASE_LABELS, SIGNAL_LEVEL_LABELS,
-} from "@g-fund/types";
+import { FUND_PHASE_LABELS } from "@g-fund/types";
 import { fundsApi, stopLossTakeProfitApi, dcaApi } from "@/lib/api-client";
 
 const { Title, Text } = Typography;
-
-const LEVEL_CONFIG = {
-  green: { color: "#52c41a", icon: <CheckCircleOutlined /> },
-  yellow: { color: "#faad14", icon: <WarningOutlined /> },
-  red: { color: "#ff4d4f", icon: <CloseCircleOutlined /> },
-};
 
 export default function FundDiagnosisPage() {
   const params = useParams();
@@ -32,7 +24,7 @@ export default function FundDiagnosisPage() {
   const fundCode = params.code as string;
 
   const [fund, setFund] = useState<FundListItem | null>(null);
-  const [signal, setSignal] = useState<StopLossTakeProfitSignal | null>(null);
+  const [signal, setSignal] = useState<StopLossTakeProfitSignal[]>([]);
   const [dca, setDca] = useState<DcaCalculation | null>(null);
   const [loading, setLoading] = useState(true);
   const [messageApi, contextHolder] = message.useMessage();
@@ -82,109 +74,95 @@ export default function FundDiagnosisPage() {
   }
 
   const pnlRate = parseFloat(fund.pnlRate);
+  const pnlRatePercent = pnlRate * 100;
   const isProfit = pnlRate >= 0;
 
   return (
     <>
       {contextHolder}
-      <Space direction="vertical" size="large" style={{ width: "100%" }}>
-        <Space>
-          <Button
-            icon={<ArrowLeftOutlined />}
-            onClick={() => router.push("/funds")}
-          >
-            返回列表
-          </Button>
-        </Space>
-
-        <Card>
-          <Row gutter={[24, 24]}>
-            <Col xs={24} md={16}>
-              <Space direction="vertical" size="small">
-                <Space>
-                  <Title level={3} style={{ margin: 0 }}>{fund.name}</Title>
-                  <Tag>{fund.code}</Tag>
-                  <Tag color={fund.category === "longterm" ? "blue" : "default"}>
-                    {fund.category === "longterm" ? "长期" : "关注"}
+      <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+        <Card styles={{ body: { padding: "12px 24px" } }}>
+          <Row gutter={[16, 12]} align="middle">
+            <Col flex="none">
+              <Button
+                type="text"
+                icon={<ArrowLeftOutlined />}
+                onClick={() => router.push("/funds")}
+                size="small"
+              />
+            </Col>
+            <Col flex="auto">
+              <Space size={8} wrap>
+                <Title level={4} style={{ margin: 0 }}>{fund.name}</Title>
+                <Tag>{fund.code}</Tag>
+                <Tag color={fund.category === "longterm" ? "blue" : "default"}>
+                  {fund.category === "longterm" ? "长期" : "关注"}
+                </Tag>
+                {fund.type && <Tag>{fund.type}</Tag>}
+                {fund.riskLevel && (
+                  <Tag color={fund.riskLevel >= 4 ? "red" : fund.riskLevel >= 3 ? "orange" : "green"}>
+                    风险 {fund.riskLevel}
                   </Tag>
-                </Space>
-                <Space>
-                  {fund.type && <Tag>{fund.type}</Tag>}
-                  {fund.riskLevel && (
-                    <Tag color={fund.riskLevel >= 4 ? "red" : fund.riskLevel >= 3 ? "orange" : "green"}>
-                      风险等级 {fund.riskLevel}
-                    </Tag>
-                  )}
-                  {fund.phase && (
-                    <Tag color={fund.phase === "low" ? "green" : fund.phase === "high" ? "red" : "blue"}>
-                      {FUND_PHASE_LABELS[fund.phase]}
-                    </Tag>
-                  )}
-                </Space>
-                {fund.note && <Text type="secondary">{fund.note}</Text>}
+                )}
+                {fund.phase && (
+                  <Tag color={fund.phase === "low" ? "green" : fund.phase === "high" ? "red" : "blue"}>
+                    {FUND_PHASE_LABELS[fund.phase]}
+                  </Tag>
+                )}
               </Space>
             </Col>
-            <Col xs={24} md={8}>
-              <Space direction="vertical" size="small" style={{ textAlign: "right", width: "100%" }}>
-                <Statistic
-                  title="当前收益"
-                  value={pnlRate}
-                  precision={2}
-                  suffix="%"
-                  valueStyle={{ color: isProfit ? "#dc2626" : "#16a34a" }}
-                />
-                <Text type="secondary">
-                  成本 ¥{parseFloat(fund.costAmount).toLocaleString()} → 市值 ¥{parseFloat(fund.currentValue).toLocaleString()}
-                </Text>
-              </Space>
+            <Col xs={24} md={6} style={{ textAlign: "right" }}>
+              <Statistic
+                title="当前收益"
+                value={pnlRatePercent}
+                precision={2}
+                suffix="%"
+                valueStyle={{ color: isProfit ? "#dc2626" : "#16a34a", fontSize: 20 }}
+              />
             </Col>
           </Row>
+          {fund.note && <Text type="secondary" style={{ fontSize: 12 }}>{fund.note}</Text>}
         </Card>
 
         <Row gutter={[16, 16]}>
           <Col xs={24} lg={12}>
             <Card title={<><SafetyOutlined /> 止盈止损分析</>} style={{ height: "100%" }}>
-              {!signal ? (
-                <Text type="secondary">暂无持仓，无法分析</Text>
+              {signal.length === 0 ? (
+                <Text type="secondary">暂无信号，持仓收益在安全区间</Text>
               ) : (
                 <Space direction="vertical" size="middle" style={{ width: "100%" }}>
                   <Descriptions column={2} size="small">
-                    <Descriptions.Item label="成本价">¥{signal.costPrice}</Descriptions.Item>
-                    <Descriptions.Item label="当前价">¥{signal.currentPrice}</Descriptions.Item>
+                    <Descriptions.Item label="成本价">¥{signal[0].costPrice}</Descriptions.Item>
+                    <Descriptions.Item label="当前价">¥{signal[0].currentPrice}</Descriptions.Item>
                     <Descriptions.Item label="收益率">
                       <Text style={{ color: isProfit ? "#dc2626" : "#16a34a", fontWeight: 600 }}>
-                        {signal.pnlRate}
+                        {(parseFloat(signal[0].pnlRate) * 100).toFixed(2)}%
                       </Text>
                     </Descriptions.Item>
-                    <Descriptions.Item label="信号类型">
-                      <Tag color={signal.signalType === "take_profit" ? "green" : "red"}>
-                        {signal.signalType === "take_profit" ? "止盈" : "止损"}
-                      </Tag>
+                    <Descriptions.Item label="信号数">
+                      <Tag>{signal.length} 个</Tag>
                     </Descriptions.Item>
                   </Descriptions>
 
                   <Divider style={{ margin: "8px 0" }} />
 
-                  <div>
-                    <Text strong>信号状态：</Text>
-                    {signal.triggered ? (
-                      <Alert
-                        type={signal.level === "red" ? "error" : "warning"}
-                        message={signal.message}
-                        style={{ marginTop: 8 }}
-                        showIcon
-                      />
-                    ) : (
-                      <Tag color="success" style={{ marginLeft: 8 }}>
-                        <CheckCircleOutlined /> 安全
-                      </Tag>
-                    )}
-                  </div>
-
-                  <div>
-                    <Text strong>阈值：</Text>
-                    <Text style={{ marginLeft: 8 }}>{signal.threshold}</Text>
-                  </div>
+                  {signal.map((s, i) => (
+                    <Alert
+                      key={i}
+                      type={s.level === "red" ? "error" : s.level === "yellow" ? "warning" : "info"}
+                      message={
+                        <Space>
+                          <Tag color={s.signalType === "take_profit" ? "green" : "red"}>
+                            {s.signalType === "take_profit" ? "止盈" : "止损"}
+                          </Tag>
+                          {s.message}
+                        </Space>
+                      }
+                      description={`阈值：${s.threshold}`}
+                      showIcon
+                      style={{ marginBottom: i < signal.length - 1 ? 0 : undefined }}
+                    />
+                  ))}
                 </Space>
               )}
             </Card>
@@ -193,7 +171,7 @@ export default function FundDiagnosisPage() {
           <Col xs={24} lg={12}>
             <Card title={<><ScheduleOutlined /> 定投建议</>} style={{ height: "100%" }}>
               {!dca ? (
-                <Text type="secondary">未配置定投</Text>
+                <Text type="secondary">未配置定投基础金额，请在基金编辑中设置</Text>
               ) : (
                 <Space direction="vertical" size="middle" style={{ width: "100%" }}>
                   <Descriptions column={2} size="small">
@@ -314,7 +292,7 @@ export default function FundDiagnosisPage() {
             </Descriptions.Item>
             <Descriptions.Item label="收益率">
               <Text style={{ color: isProfit ? "#dc2626" : "#16a34a", fontWeight: 600 }}>
-                {fund.pnlRate}
+                {isProfit ? "+" : ""}{pnlRatePercent.toFixed(2)}%
               </Text>
             </Descriptions.Item>
             <Descriptions.Item label="目标金额">

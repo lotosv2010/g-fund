@@ -1,11 +1,11 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import { Col, Row, Space, Typography, message } from "antd";
-import type { PositionListItem, Transaction, DailySnapshot, StopLossTakeProfitSignal, DcaCalculation } from "@g-fund/types";
-import { positionsApi, transactionsApi, dailySnapshotsApi, stopLossTakeProfitApi, dcaApi } from "@/lib/api-client";
+import type { PositionListItem, Transaction, DailySnapshot, StopLossTakeProfitSignal, DcaCalculation, AssetAllocationResponse } from "@g-fund/types";
+import { positionsApi, transactionsApi, dailySnapshotsApi, stopLossTakeProfitApi, dcaApi, dashboardApi } from "@/lib/api-client";
 import StatCards from "@/components/StatCards";
 import PnLChart from "@/components/PnLChart";
-import PositionPie from "@/components/PositionPie";
+import AssetAllocationCard from "@/components/AssetAllocationCard";
 import RecentTrades from "@/components/RecentTrades";
 import SyncPositionsButton from "@/components/SyncPositionsButton";
 import StopLossTakeProfitCard from "@/components/StopLossTakeProfitCard";
@@ -20,11 +20,13 @@ export default function DashboardPage() {
   const [snapshots, setSnapshots] = useState<DailySnapshot[]>([]);
   const [signals, setSignals] = useState<StopLossTakeProfitSignal[]>([]);
   const [dcaData, setDcaData] = useState<DcaCalculation[]>([]);
+  const [assetAllocation, setAssetAllocation] = useState<AssetAllocationResponse | null>(null);
   const [posLoading, setPosLoading] = useState(false);
   const [txLoading, setTxLoading] = useState(false);
   const [snapLoading, setSnapLoading] = useState(false);
   const [signalLoading, setSignalLoading] = useState(false);
   const [dcaLoading, setDcaLoading] = useState(false);
+  const [allocLoading, setAllocLoading] = useState(false);
   const [messageApi, contextHolder] = message.useMessage();
 
   const loadPositions = useCallback(async () => {
@@ -87,13 +89,26 @@ export default function DashboardPage() {
     }
   }, []);
 
+  const loadAssetAllocation = useCallback(async () => {
+    setAllocLoading(true);
+    try {
+      const data = await dashboardApi.assetAllocation();
+      setAssetAllocation(data);
+    } catch {
+      // may not have data yet
+    } finally {
+      setAllocLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     loadPositions();
     loadTransactions();
     loadSnapshots();
     loadSignals();
     loadDca();
-  }, [loadPositions, loadTransactions, loadSnapshots, loadSignals, loadDca]);
+    loadAssetAllocation();
+  }, [loadPositions, loadTransactions, loadSnapshots, loadSignals, loadDca, loadAssetAllocation]);
 
   const todayStr = new Date().toISOString().slice(0, 10);
   const todaySnapshot = snapshots.find((s) => s.snapshotDate === todayStr) ?? null;
@@ -113,7 +128,7 @@ export default function DashboardPage() {
           <PnLChart data={snapshots} loading={snapLoading} />
         </Col>
         <Col xs={24} lg={10}>
-          <PositionPie data={positions} loading={posLoading} />
+          <AssetAllocationCard data={assetAllocation} loading={allocLoading} />
         </Col>
       </Row>
       <Row gutter={[16, 16]} style={{ marginTop: 16 }} align="stretch">
