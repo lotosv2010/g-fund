@@ -1,5 +1,5 @@
 import { Injectable, Inject, NotFoundException, ConflictException } from '@nestjs/common';
-import { eq, asc, SQL } from 'drizzle-orm';
+import { eq, asc, inArray, SQL } from 'drizzle-orm';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '@g-fund/db';
 import { DB } from '../db/db.module';
@@ -9,10 +9,13 @@ import { FundListItem } from '@g-fund/types';
 
 type DbType = NodePgDatabase<typeof schema>;
 type FundRow = typeof schema.funds.$inferSelect;
+type PositionRow = typeof schema.positions.$inferSelect;
 
-function toListItem(r: FundRow): FundListItem {
-  const cost = parseFloat(r.costAmount ?? '0');
-  const current = parseFloat(r.currentValue ?? '0');
+function toListItem(r: FundRow, position?: PositionRow): FundListItem {
+  const costAmount = position?.costAmount ?? '0';
+  const currentValue = position?.currentValue ?? '0';
+  const cost = parseFloat(costAmount);
+  const current = parseFloat(currentValue);
   const pnlAmount = (current - cost).toFixed(2);
   const pnlRate = cost > 0 ? ((current - cost) / cost).toFixed(4) : '0.0000';
   return {
@@ -23,15 +26,16 @@ function toListItem(r: FundRow): FundListItem {
     riskLevel: r.riskLevel ?? null,
     category: (r.category ?? 'holding') as FundListItem['category'],
     sortOrder: Number(r.sortOrder ?? 0),
-    costAmount: r.costAmount ?? '0',
-    currentValue: r.currentValue ?? '0',
     targetAmount: r.targetAmount ?? '0',
     targetRatio: r.targetRatio ?? '0',
     note: r.note ?? null,
     createdAt: r.createdAt.toISOString(),
     updatedAt: r.updatedAt.toISOString(),
+    costAmount,
+    currentValue,
     pnlAmount,
     pnlRate,
+    hasPosition: !!position,
   };
 }
 
@@ -48,7 +52,16 @@ export class FundsService {
       ? this.db.select().from(schema.funds).where(conditions[0])
       : this.db.select().from(schema.funds);
     const rows = await base.orderBy(asc(schema.funds.sortOrder));
-    return rows.map(toListItem);
+
+    if (rows.length === 0) return [];
+
+    const positions = await this.db
+      .select()
+      .from(schema.positions)
+      .where(inArray(schema.positions.fundCode, rows.map((r) => r.code)));
+    const positionMap = new Map(positions.map((p) => [p.fundCode, p]));
+
+    return rows.map((r) => toListItem(r, positionMap.get(r.code)));
   }
 
   async findOne(code: string): Promise<FundListItem> {
@@ -57,7 +70,11 @@ export class FundsService {
       .from(schema.funds)
       .where(eq(schema.funds.code, code));
     if (!row) throw new NotFoundException(`基金 ${code} 不存在`);
-    return toListItem(row);
+    const [position] = await this.db
+      .select()
+      .from(schema.positions)
+      .where(eq(schema.positions.fundCode, code));
+    return toListItem(row, position);
   }
 
   async create(dto: CreateFundDto): Promise<FundListItem> {
@@ -81,8 +98,6 @@ export class FundsService {
         type: dto.type ?? null,
         riskLevel: dto.riskLevel ?? null,
         category: dto.category ?? 'holding',
-        costAmount: dto.costAmount ?? '0',
-        currentValue: dto.currentValue ?? '0',
         targetAmount,
         targetRatio: dto.targetRatio ?? '0',
         note: dto.note ?? null,
@@ -109,7 +124,19 @@ export class FundsService {
       })
       .where(eq(schema.funds.code, code))
       .returning();
-    return toListItem(row);
+
+    if (dto.name !== undefined) {
+      await this.db
+        .update(schema.positions)
+        .set({ fundName: dto.name, updatedAt: new Date() })
+        .where(eq(schema.positions.fundCode, code));
+    }
+
+    const [position] = await this.db
+      .select()
+      .from(schema.positions)
+      .where(eq(schema.positions.fundCode, code));
+    return toListItem(row, position);
   }
 
   async remove(code: string): Promise<void> {

@@ -1,6 +1,6 @@
 "use client";
 import { Table, Typography, Button, Space } from "antd";
-import { ShoppingCartOutlined, TagOutlined, FileTextOutlined } from "@ant-design/icons";
+import { ShoppingCartOutlined, TagOutlined, FileTextOutlined, EditOutlined } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table/interface";
 import type { PositionListItem } from "@g-fund/types";
 
@@ -19,9 +19,10 @@ interface PositionTableProps {
   onBuy?: (fundCode: string) => void;
   onSell?: (fundCode: string) => void;
   onViewLog?: (fundCode: string) => void;
+  onEditSnapshot?: (record: PositionListItem) => void;
 }
 
-export default function PositionTable({ data, loading, onBuy, onSell, onViewLog }: PositionTableProps) {
+export default function PositionTable({ data, loading, onBuy, onSell, onViewLog, onEditSnapshot }: PositionTableProps) {
   const totalCost = data.reduce((s, r) => s + parseFloat(r.costAmount), 0);
   const totalValue = data.reduce((s, r) => s + parseFloat(r.currentValue), 0);
   const totalPnl = totalValue - totalCost;
@@ -54,11 +55,11 @@ export default function PositionTable({ data, loading, onBuy, onSell, onViewLog 
       title: "盈亏率", dataIndex: "pnlRate", width: 100, align: "right",
       render: (v) => <PnlCell value={`${(parseFloat(v) * 100).toFixed(2)}%`} />,
     },
-    ...(onBuy || onSell || onViewLog
+    ...(onBuy || onSell || onViewLog || onEditSnapshot
       ? [
           {
             title: "操作",
-            width: 180,
+            width: 280,
             fixed: "right" as const,
             render: (_: unknown, record: PositionListItem) => (
               <Space size={0}>
@@ -70,6 +71,11 @@ export default function PositionTable({ data, loading, onBuy, onSell, onViewLog 
                 {onSell && (
                   <Button type="link" size="small" icon={<TagOutlined />} onClick={() => onSell(record.fundCode)}>
                     卖出
+                  </Button>
+                )}
+                {onEditSnapshot && (
+                  <Button type="link" size="small" icon={<EditOutlined />} onClick={() => onEditSnapshot(record)}>
+                    修正
                   </Button>
                 )}
                 {onViewLog && (
@@ -94,31 +100,34 @@ export default function PositionTable({ data, loading, onBuy, onSell, onViewLog 
         pagination={false}
         size="middle"
         scroll={{ x: 900 }}
-        summary={() => (
-          <Table.Summary fixed>
-            <Table.Summary.Row>
-              <Table.Summary.Cell index={0} colSpan={onBuy || onSell || onViewLog ? 5 : 4}>
-                <Text strong>合计</Text>
-              </Table.Summary.Cell>
-              <Table.Summary.Cell index={4} align="right">
-                <Text strong>¥{totalCost.toLocaleString()}</Text>
-              </Table.Summary.Cell>
-              <Table.Summary.Cell index={5} align="right">
-                <Text strong>¥{totalValue.toLocaleString()}</Text>
-              </Table.Summary.Cell>
-              <Table.Summary.Cell index={6} align="right">
-                <Text strong style={{ color: totalPnl >= 0 ? "#dc2626" : "#16a34a" }}>
-                  {totalPnl >= 0 ? "+" : ""}¥{totalPnl.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                </Text>
-              </Table.Summary.Cell>
-              <Table.Summary.Cell index={7} align="right">
-                <Text strong style={{ color: totalPnlRate >= 0 ? "#dc2626" : "#16a34a" }}>
-                  {totalPnlRate >= 0 ? "+" : ""}{(totalPnlRate * 100).toFixed(2)}%
-                </Text>
-              </Table.Summary.Cell>
-            </Table.Summary.Row>
-          </Table.Summary>
-        )}
+        summary={() => {
+          const hasActions = !!(onBuy || onSell || onViewLog || onEditSnapshot);
+          return (
+            <Table.Summary fixed>
+              <Table.Summary.Row>
+                <Table.Summary.Cell index={0} colSpan={hasActions ? 5 : 4}>
+                  <Text strong>合计</Text>
+                </Table.Summary.Cell>
+                <Table.Summary.Cell index={4} align="right">
+                  <Text strong>¥{totalCost.toLocaleString()}</Text>
+                </Table.Summary.Cell>
+                <Table.Summary.Cell index={5} align="right">
+                  <Text strong>¥{totalValue.toLocaleString()}</Text>
+                </Table.Summary.Cell>
+                <Table.Summary.Cell index={6} align="right">
+                  <Text strong style={{ color: totalPnl >= 0 ? "#dc2626" : "#16a34a" }}>
+                    {totalPnl >= 0 ? "+" : ""}¥{totalPnl.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  </Text>
+                </Table.Summary.Cell>
+                <Table.Summary.Cell index={7} align="right">
+                  <Text strong style={{ color: totalPnlRate >= 0 ? "#dc2626" : "#16a34a" }}>
+                    {totalPnlRate >= 0 ? "+" : ""}{(totalPnlRate * 100).toFixed(2)}%
+                  </Text>
+                </Table.Summary.Cell>
+              </Table.Summary.Row>
+            </Table.Summary>
+          );
+        }}
       />
     </>
   );

@@ -52,7 +52,7 @@ export class DailySnapshotsService {
     const today = new Date().toISOString().slice(0, 10);
 
     const posRows = await this.db.select().from(schema.positions);
-    let items: PositionSnapshotItem[] = [];
+    const items: PositionSnapshotItem[] = [];
     let totalCost = 0;
     let totalValue = 0;
 
@@ -64,45 +64,23 @@ export class DailySnapshotsService {
         .where(inArray(schema.funds.code, fundCodes));
       const fundMap = new Map(funds.map((f) => [f.code, f]));
 
-      items = posRows.map((pos) => {
+      for (const pos of posRows) {
         const fund = fundMap.get(pos.fundCode);
         const cost = parseFloat(pos.costAmount ?? '0');
-        const current = parseFloat(fund?.currentValue ?? '0');
+        const current = parseFloat(pos.currentValue ?? '0');
         const pnl = current - cost;
         totalCost += cost;
         totalValue += current;
-        return {
+        items.push({
           fundCode: pos.fundCode,
-          fundName: pos.fundName,
+          fundName: fund?.name ?? pos.fundName,
           shares: pos.shares ?? '0',
           costAmount: pos.costAmount ?? '0',
-          currentValue: fund?.currentValue ?? '0',
+          currentValue: pos.currentValue ?? '0',
           pnlAmount: pnl.toFixed(2),
           pnlRate: cost > 0 ? (pnl / cost).toFixed(4) : '0.0000',
-        };
-      });
-    } else {
-      // positions 为空时降级读 funds
-      const holdingFunds = await this.db.select().from(schema.funds);
-
-      items = holdingFunds
-        .filter((f) => parseFloat(f.costAmount ?? '0') > 0)
-        .map((f) => {
-          const cost = parseFloat(f.costAmount);
-          const current = parseFloat(f.currentValue ?? '0');
-          const pnl = current - cost;
-          totalCost += cost;
-          totalValue += current;
-          return {
-            fundCode: f.code,
-            fundName: f.name,
-            shares: '0',
-            costAmount: f.costAmount,
-            currentValue: f.currentValue ?? '0',
-            pnlAmount: pnl.toFixed(2),
-            pnlRate: cost > 0 ? (pnl / cost).toFixed(4) : '0.0000',
-          };
         });
+      }
     }
 
     const totalPnl = totalValue - totalCost;

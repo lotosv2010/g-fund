@@ -15,8 +15,6 @@ export interface Fund {
   riskLevel: number | null;
   category: FundCategory;
   sortOrder: number;
-  costAmount: string;
-  currentValue: string;
   targetAmount: string;
   targetRatio: string;
   note: string | null;
@@ -25,8 +23,11 @@ export interface Fund {
 }
 
 export interface FundListItem extends Fund {
+  costAmount: string;
+  currentValue: string;
   pnlAmount: string;
   pnlRate: string;
+  hasPosition: boolean;
 }
 
 export interface CreateFundDto {
@@ -35,8 +36,6 @@ export interface CreateFundDto {
   type?: string;
   riskLevel?: number;
   category?: FundCategory;
-  costAmount?: string;
-  currentValue?: string;
   targetAmount?: string;
   targetRatio?: string;
   note?: string;
@@ -48,8 +47,6 @@ export interface UpdateFundDto {
   riskLevel?: number;
   category?: FundCategory;
   sortOrder?: number;
-  costAmount?: string;
-  currentValue?: string;
   targetAmount?: string;
   targetRatio?: string;
   note?: string;

@@ -13,7 +13,7 @@ ADR 记录重要的技术决策。格式：背景 → 决策 → 后果。
 | ADR-005 | 导航结构重构：Dashboard + 合并页面 + AI 抽屉 | Accepted |
 | ADR-006 | AI 功能体系：双源数据 + 止盈止损 + 定投提醒 + 定时同步 | Accepted |
 | ADR-008 | AI 设置页面 + 动态 LLM 配置（DB 驱动，运行时生效） | Accepted |
-| ADR-009 | 一键同步仓位 + Markdown 渲染美化 + 历史会话管理 | Proposed |
+| ADR-009 | 一键同步仓位 + Markdown 渲染美化 + 历史会话管理 | Accepted |
 | ADR-010 | 止盈止损规则引擎 + 定投叠加算法 + Cron 双源数据同步 | Proposed |
 | ADR-011 | AI 体验增强：多轮上下文 + SSE 重连 + 快捷指令 + 全局唤起 | Proposed |
 | ADR-012 | Dashboard 增强：止盈止损速览 + 定投预估 + 预警时间线 + 基金诊断 | Proposed |

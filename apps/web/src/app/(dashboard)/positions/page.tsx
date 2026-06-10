@@ -1,12 +1,14 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import { Tabs, Typography, Flex, Button, Popconfirm, message, Form, Input, DatePicker, List, Card, Modal } from "antd";
-import { PlusOutlined, EditOutlined, DeleteOutlined, ShoppingCartOutlined } from "@ant-design/icons";
-import type { PositionListItem, FundListItem, CreateTransactionDto, DailyLog, CreateDailyLogDto } from "@g-fund/types";
+import { PlusOutlined, EditOutlined, DeleteOutlined, ShoppingCartOutlined, FileAddOutlined } from "@ant-design/icons";
+import type { PositionListItem, FundListItem, CreateTransactionDto, DailyLog, CreateDailyLogDto, UpsertPositionDto } from "@g-fund/types";
 import { positionsApi, transactionsApi, fundsApi, dailyLogsApi } from "@/lib/api-client";
 import PositionTable from "@/components/PositionTable";
 import TransactionForm from "@/components/TransactionForm";
 import TransactionLogDrawer from "@/components/TransactionLogDrawer";
+import SyncPositionsButton from "@/components/SyncPositionsButton";
+import PositionSnapshotModal from "@/components/PositionSnapshotModal";
 import dayjs from "dayjs";
 
 const { Title, Text } = Typography;
@@ -28,6 +30,10 @@ export default function PositionsPage() {
   const [tradeType, setTradeType] = useState<"buy" | "sell">("buy");
   const [logDrawerOpen, setLogDrawerOpen] = useState(false);
   const [logFundCode, setLogFundCode] = useState<string>("");
+
+  const [snapshotModalOpen, setSnapshotModalOpen] = useState(false);
+  const [snapshotEditing, setSnapshotEditing] = useState<PositionListItem | null>(null);
+  const [snapshotSubmitting, setSnapshotSubmitting] = useState(false);
 
   const loadPositions = useCallback(async () => {
     setLoading(true);
@@ -150,6 +156,31 @@ export default function PositionsPage() {
     setTradeModalOpen(true);
   }
 
+  function openCreateSnapshot() {
+    setSnapshotEditing(null);
+    setSnapshotModalOpen(true);
+  }
+
+  function openEditSnapshot(record: PositionListItem) {
+    setSnapshotEditing(record);
+    setSnapshotModalOpen(true);
+  }
+
+  async function handleSnapshotSubmit(dto: UpsertPositionDto) {
+    setSnapshotSubmitting(true);
+    try {
+      await positionsApi.upsert(dto);
+      messageApi.success(snapshotEditing ? "持仓已修正" : "建仓成功");
+      setSnapshotModalOpen(false);
+      setSnapshotEditing(null);
+      loadPositions();
+    } catch (e) {
+      messageApi.error((e as Error).message);
+    } finally {
+      setSnapshotSubmitting(false);
+    }
+  }
+
   async function handleTradeSubmit(dto: CreateTransactionDto) {
     await transactionsApi.create(dto);
     setTradeModalOpen(false);
@@ -167,6 +198,7 @@ export default function PositionsPage() {
           onBuy={handleRowBuy}
           onSell={handleRowSell}
           onViewLog={handleViewLog}
+          onEditSnapshot={openEditSnapshot}
         />
       ),
     },
@@ -224,9 +256,15 @@ export default function PositionsPage() {
       {contextHolder}
       <Flex justify="space-between" align="center" style={{ marginBottom: 16 }}>
         <Title level={4} style={{ margin: 0 }}>交易与持仓</Title>
-        <Button type="primary" icon={<ShoppingCartOutlined />} onClick={openTradeModal}>
-          新建交易
-        </Button>
+        <Flex gap={8}>
+          <SyncPositionsButton onDone={() => loadPositions()} />
+          <Button icon={<FileAddOutlined />} onClick={openCreateSnapshot}>
+            建仓快照
+          </Button>
+          <Button type="primary" icon={<ShoppingCartOutlined />} onClick={openTradeModal}>
+            新建交易
+          </Button>
+        </Flex>
       </Flex>
       <Tabs items={tabItems} />
 
@@ -252,6 +290,20 @@ export default function PositionsPage() {
         open={logDrawerOpen}
         onClose={() => setLogDrawerOpen(false)}
         onDelete={handleDeleteTransaction}
+      />
+
+      <PositionSnapshotModal
+        open={snapshotModalOpen}
+        funds={funds}
+        defaultFundCode={snapshotEditing?.fundCode}
+        defaultCostAmount={snapshotEditing?.costAmount}
+        defaultCostPrice={snapshotEditing?.costPrice}
+        submitting={snapshotSubmitting}
+        onSubmit={handleSnapshotSubmit}
+        onCancel={() => {
+          setSnapshotModalOpen(false);
+          setSnapshotEditing(null);
+        }}
       />
 
       <Modal

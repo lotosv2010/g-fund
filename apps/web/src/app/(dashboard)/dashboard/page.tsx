@@ -1,12 +1,13 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
-import { Col, Row, Typography, message } from "antd";
+import { Col, Row, Space, Typography, message } from "antd";
 import type { PositionListItem, Transaction, DailySnapshot } from "@g-fund/types";
 import { positionsApi, transactionsApi, dailySnapshotsApi } from "@/lib/api-client";
 import StatCards from "@/components/StatCards";
 import PnLChart from "@/components/PnLChart";
 import PositionPie from "@/components/PositionPie";
 import RecentTrades from "@/components/RecentTrades";
+import SyncPositionsButton from "@/components/SyncPositionsButton";
 
 const { Title } = Typography;
 
@@ -67,7 +68,12 @@ export default function DashboardPage() {
   return (
     <>
       {contextHolder}
-      <Title level={4} style={{ marginBottom: 16 }}>总览</Title>
+      <Row justify="space-between" align="middle" style={{ marginBottom: 16 }}>
+        <Title level={4} style={{ margin: 0 }}>总览</Title>
+        <Space>
+          <SyncPositionsButton onDone={() => loadPositions()} />
+        </Space>
+      </Row>
       <StatCards data={positions} loading={posLoading} todaySnapshot={todaySnapshot} />
       <Row gutter={[16, 16]} style={{ marginTop: 16 }} align="stretch">
         <Col xs={24} lg={14}>

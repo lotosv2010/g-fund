@@ -1,7 +1,8 @@
 import axios from "axios";
 import type {
   FundListItem, CreateFundDto, UpdateFundDto, FundCategory, ReorderFundDto,
-  PositionListItem, Transaction, CreateTransactionDto,
+  PositionListItem, SyncPositionsResult, UpsertPositionDto,
+  Transaction, CreateTransactionDto,
   DailyLog, CreateDailyLogDto, UpdateDailyLogDto, DailySnapshot,
   AppSetting, AiConfig, McpConfig,
   ChatSessionSummary, ChatSessionDetail, PersistChatMessageDto, ChatMessage,
@@ -35,6 +36,11 @@ export const fundsApi = {
 export const positionsApi = {
   list: () => http.get<PositionListItem[]>("/positions").then((r) => r.data),
   get: (fundCode: string) => http.get<PositionListItem>(`/positions/${fundCode}`).then((r) => r.data),
+  upsert: (dto: UpsertPositionDto) =>
+    http.put<PositionListItem>("/positions", dto).then((r) => r.data),
+  remove: (fundCode: string) => http.delete(`/positions/${fundCode}`),
+  sync: () =>
+    http.post<SyncPositionsResult>("/positions/sync", undefined, { timeout: 60000 }).then((r) => r.data),
 };
 
 export const transactionsApi = {

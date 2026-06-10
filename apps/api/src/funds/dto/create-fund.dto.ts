@@ -31,16 +31,6 @@ export class CreateFundDto {
   @IsIn(FUND_CATEGORIES)
   category?: string;
 
-  @ApiPropertyOptional({ example: '10000.00' })
-  @IsOptional()
-  @IsNumberString()
-  costAmount?: string;
-
-  @ApiPropertyOptional({ example: '10500.00' })
-  @IsOptional()
-  @IsNumberString()
-  currentValue?: string;
-
   @ApiPropertyOptional({ example: '20000.00' })
   @IsOptional()
   @IsNumberString()

@@ -48,15 +48,15 @@ export class AgentToolsService {
         description: '获取当前持仓概览：基金代码、名称、持仓金额、成本、盈亏',
         schema: z.object({}),
         func: async () => {
-          const funds = await this.db.select().from(schema.funds);
-          if (funds.length === 0) return '暂无持仓数据';
-          return funds
-            .map((f) => {
-              const cost = parseFloat(f.costAmount ?? '0');
-              const current = parseFloat(f.currentValue ?? '0');
+          const rows = await this.db.select().from(schema.positions);
+          if (rows.length === 0) return '暂无持仓数据';
+          return rows
+            .map((p) => {
+              const cost = parseFloat(p.costAmount ?? '0');
+              const current = parseFloat(p.currentValue ?? '0');
               const pnl = (current - cost).toFixed(2);
               const pnlRate = cost > 0 ? (((current - cost) / cost) * 100).toFixed(2) : '0.00';
-              return `${f.code} ${f.name}: 成本¥${cost}, 现值¥${current}, 盈亏¥${pnl}(${pnlRate}%)`;
+              return `${p.fundCode} ${p.fundName}: 成本¥${cost}, 现值¥${current}, 盈亏¥${pnl}(${pnlRate}%)`;
             })
             .join('\n');
         },

@@ -60,7 +60,9 @@ export default function FundsPage() {
   const isCustomSort = sortField !== null && sortOrder !== null;
 
   const categoryFunds = useMemo(() => {
-    let list = activeTab === "holding" ? funds : funds.filter((f) => f.category === activeTab);
+    let list = activeTab === "holding"
+      ? funds.filter((f) => f.hasPosition)
+      : funds.filter((f) => f.category === activeTab);
 
     if (search) {
       const q = search.toLowerCase();
@@ -85,10 +87,10 @@ export default function FundsPage() {
   const categoryCounts = useMemo(() => {
     const counts: Record<FundCategory, number> = { holding: 0, longterm: 0, watchlist: 0 };
     for (const f of funds) {
-      if (!search || f.name.toLowerCase().includes(search.toLowerCase()) || f.code.includes(search)) {
-        counts.holding++;
-        if (f.category !== "holding") counts[f.category]++;
-      }
+      if (search && !f.name.toLowerCase().includes(search.toLowerCase()) && !f.code.includes(search)) continue;
+      if (f.hasPosition) counts.holding++;
+      if (f.category === "longterm") counts.longterm++;
+      if (f.category === "watchlist") counts.watchlist++;
     }
     return counts;
   }, [funds, search]);
@@ -124,8 +126,6 @@ export default function FundsPage() {
       await fundsApi.create({
         ...values,
         category: values.category ?? activeTab,
-        costAmount: values.costAmount ? String(values.costAmount) : undefined,
-        currentValue: values.currentValue ? String(values.currentValue) : undefined,
         targetRatio: values.targetRatio ? String(values.targetRatio) : undefined,
       });
       messageApi.success("添加成功");
@@ -148,9 +148,7 @@ export default function FundsPage() {
         type: values.type,
         riskLevel: values.riskLevel,
         category: values.category,
-        costAmount: values.costAmount ? String(values.costAmount) : undefined,
-        currentValue: values.currentValue ? String(values.currentValue) : undefined,
-        targetRatio: values.targetRatio ? String(values.targetRatio) : undefined,
+        targetRatio: values.targetRatio !== undefined ? String(values.targetRatio) : undefined,
         note: values.note,
       };
       await fundsApi.update(editingFund.code, dto);

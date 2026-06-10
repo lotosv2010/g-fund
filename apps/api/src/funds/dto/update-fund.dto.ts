@@ -30,16 +30,6 @@ export class UpdateFundDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsNumberString()
-  costAmount?: string;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsNumberString()
-  currentValue?: string;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsNumberString()
   targetAmount?: string;
 
   @ApiPropertyOptional()

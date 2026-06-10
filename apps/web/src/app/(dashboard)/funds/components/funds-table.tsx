@@ -16,7 +16,6 @@ import {
   SortableContext,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { PnlCell } from "./pnl-cell";
 import { DragHandle } from "./drag-handle";
 import { SortableRow } from "./sortable-row";
 import { RISK_LABELS } from "../constants";
@@ -55,7 +54,7 @@ export function FundsTable({
       render: (_, record) => (isCustomSort ? null : <DragHandle id={record.code} />),
     },
     { title: "基金代码", dataIndex: "code", width: 100 },
-    { title: "基金名称", dataIndex: "name", ellipsis: true, sorter: true },
+    { title: "基金名称", dataIndex: "name", width: 220, ellipsis: true, sorter: true },
     { title: "类型", dataIndex: "type", width: 100, render: (v) => v ?? "—" },
     {
       title: "风险等级",
@@ -63,38 +62,6 @@ export function FundsTable({
       width: 100,
       render: (v) =>
         v ? <Tag color={RISK_LABELS[v]?.color}>{RISK_LABELS[v]?.label}</Tag> : "—",
-    },
-    {
-      title: "持仓金额",
-      dataIndex: "costAmount",
-      width: 120,
-      align: "right",
-      sorter: true,
-      render: (v) => `¥${parseFloat(v).toLocaleString()}`,
-    },
-    {
-      title: "当前市值",
-      dataIndex: "currentValue",
-      width: 120,
-      align: "right",
-      sorter: true,
-      render: (v) => `¥${parseFloat(v).toLocaleString()}`,
-    },
-    {
-      title: "持仓收益",
-      dataIndex: "pnlAmount",
-      width: 120,
-      align: "right",
-      sorter: true,
-      render: (v) => <PnlCell value={`¥${parseFloat(v).toLocaleString()}`} />,
-    },
-    {
-      title: "收益率",
-      dataIndex: "pnlRate",
-      width: 100,
-      align: "right",
-      sorter: true,
-      render: (v) => <PnlCell value={`${(parseFloat(v) * 100).toFixed(2)}%`} />,
     },
     {
       title: "目标金额",
@@ -111,8 +78,14 @@ export function FundsTable({
       render: (v) => `${v}%`,
     },
     {
+      title: "备注",
+      dataIndex: "note",
+      ellipsis: true,
+      render: (v) => v ?? "—",
+    },
+    {
       title: "操作",
-      width: 120,
+      width: 160,
       fixed: "right",
       render: (_, record) => (
         <Space size="small">

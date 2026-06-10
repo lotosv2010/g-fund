@@ -51,6 +51,55 @@ Base URL：`http://localhost:4000/api`
 ### DELETE /positions/:fundCode
 清仓，自动生成 sell 记录。
 
+### POST /positions/sync
+一键同步：从 MCP 拉取最新公布净值并按 `份额 × 净值` 更新各基金市值（`funds.currentValue`）。
+
+响应：
+```json
+{
+  "total": 5,
+  "succeeded": 4,
+  "failed": 0,
+  "skipped": 1,
+  "syncedAt": "2026-06-10T08:30:00.000Z",
+  "items": [
+    {
+      "fundCode": "110022",
+      "fundName": "易方达消费行业",
+      "status": "success",
+      "oldValue": "50000.00",
+      "newValue": "54397.16",
+      "navUnit": "2.3100",
+      "navDate": "2026-06-09"
+    },
+    {
+      "fundCode": "001102",
+      "fundName": "前海开源国家比较优势",
+      "status": "skipped",
+      "oldValue": "0.00",
+      "navUnit": "1.5230",
+      "navDate": "2026-06-09",
+      "reason": "缺少份额或成本净值，无法计算市值"
+    }
+  ]
+}
+```
+
+`status`：`success` 已更新；`skipped` 拿到净值但缺份额/成本无法折算市值；`failed` 工具调用或解析失败。MCP 未连接 / 无可用净值工具时全部 `failed`，HTTP 仍返回 200。
+
+### GET /positions/sync/stream
+SSE 流式同步，per-fund 推送进度。无需请求体，浏览器端用 `EventSource` 订阅即可。
+
+事件格式（每条 `data:` 为一个 JSON）：
+```
+data: {"type":"started","total":5,"toolName":"fund_history_nav","codeArgName":"fundCode"}
+data: {"type":"item","index":0,"total":5,"result":{"fundCode":"110022","fundName":"易方达消费行业","status":"success","oldValue":"50000.00","newValue":"54397.16","navUnit":"2.3100","navDate":"2026-06-09"}}
+data: {"type":"item","index":1,"total":5,"result":{"fundCode":"001102","status":"skipped","reason":"缺少份额或成本净值，无法计算市值",...}}
+data: {"type":"done","result":{"total":5,"succeeded":4,"failed":0,"skipped":1,"syncedAt":"2026-06-10T08:30:00.000Z","items":[...]}}
+```
+
+异常时推 `{"type":"error","message":"..."}` 后流终止；MCP 未连接 / 无净值工具时仍走 `started → item × N → done` 流程，全部 item 为 `failed`。
+
 ## 交易记录
 
 ### GET /transactions
