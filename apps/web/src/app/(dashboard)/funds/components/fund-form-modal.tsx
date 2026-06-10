@@ -34,7 +34,6 @@ export function FundFormModal({
         type: editingFund.type ?? undefined,
         riskLevel: editingFund.riskLevel ?? undefined,
         targetRatio: editingFund.targetRatio ?? undefined,
-        targetAmount: editingFund.targetAmount ?? undefined,
         baseAmount: editingFund.baseAmount ?? undefined,
         priority: editingFund.priority ?? undefined,
         note: editingFund.note ?? undefined,
@@ -94,11 +93,8 @@ export function FundFormModal({
             ))}
           </Select>
         </Form.Item>
-        <Form.Item name="targetRatio" label="目标比例（%）" tooltip="占总仓位的目标占比，用于计算目标金额">
+        <Form.Item name="targetRatio" label="目标比例（%）" tooltip="占总仓位的目标占比，目标金额将自动计算">
           <InputNumber min={0} max={100} precision={2} style={{ width: "100%" }} placeholder="0.00" />
-        </Form.Item>
-        <Form.Item name="targetAmount" label="目标金额" tooltip="目标持仓金额">
-          <InputNumber min={0} precision={2} style={{ width: "100%" }} placeholder="0.00" addonAfter="元" />
         </Form.Item>
         <Form.Item name="baseAmount" label="定投基础金额" tooltip="每期定投的基础金额，设为 0 或留空表示不定投">
           <InputNumber min={0} precision={2} style={{ width: "100%" }} placeholder="0.00" addonAfter="元" />

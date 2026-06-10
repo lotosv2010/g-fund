@@ -66,7 +66,7 @@ export default function StopLossTakeProfitCard({ data, loading }: StopLossTakePr
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <Text style={{ color: config.color, fontWeight: 600 }}>
-                    {signal.pnlRate}
+                    {(parseFloat(signal.pnlRate) * 100).toFixed(2)}%
                   </Text>
                   <Tag color={config.color} style={{ margin: 0 }}>
                     {signal.signalType === "take_profit" ? "止盈" : "止损"}

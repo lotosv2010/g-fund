@@ -1,7 +1,8 @@
 "use client";
 
-import { Table, Button, Space, Popconfirm, Tag } from "antd";
+import { Table, Button, Space, Popconfirm, Tag, Progress } from "antd";
 import { EditOutlined, FundOutlined } from "@ant-design/icons";
+import { FUND_PHASE_LABELS, type FundPhase } from "@g-fund/types";
 import { useRouter } from "next/navigation";
 import type { ColumnsType, SorterResult } from "antd/es/table/interface";
 import type { FundListItem } from "@g-fund/types";
@@ -80,6 +81,59 @@ export function FundsTable({
       render: (v) => `${v}%`,
     },
     {
+      title: "定投金额",
+      dataIndex: "baseAmount",
+      width: 100,
+      align: "right",
+      render: (v) => {
+        const n = parseFloat(v);
+        return n > 0 ? `¥${n.toLocaleString()}` : "—";
+      },
+    },
+    {
+      title: "优先级",
+      dataIndex: "priority",
+      width: 80,
+      align: "center",
+      render: (v) => {
+        const labels: Record<number, string> = { 0: "低", 1: "普通", 2: "较高", 3: "高" };
+        const colors: Record<number, string> = { 0: "default", 1: "blue", 2: "orange", 3: "red" };
+        return <Tag color={colors[v] ?? "default"}>{labels[v] ?? v}</Tag>;
+      },
+    },
+    {
+      title: "估值阶段",
+      dataIndex: "phase",
+      width: 90,
+      align: "center",
+      render: (v) => {
+        const phase = v as FundPhase | null;
+        return phase ? (
+          <Tag color={phase === "low" ? "green" : phase === "high" ? "red" : "blue"}>
+            {FUND_PHASE_LABELS[phase]}
+          </Tag>
+        ) : "—";
+      },
+    },
+    {
+      title: "估值百分位",
+      dataIndex: "valuationPercentile",
+      width: 100,
+      align: "center",
+      render: (v) => {
+        if (v === null || v === undefined) return "—";
+        const p = parseFloat(v);
+        return (
+          <Progress
+            percent={p}
+            size="small"
+            strokeColor={p <= 30 ? "#52c41a" : p >= 70 ? "#ff4d4f" : "#1677ff"}
+            format={(val) => `${val}%`}
+          />
+        );
+      },
+    },
+    {
       title: "备注",
       dataIndex: "note",
       ellipsis: true,
@@ -135,7 +189,7 @@ export function FundsTable({
           columns={columns}
           dataSource={dataSource}
           loading={loading}
-          scroll={{ x: 1200 }}
+          scroll={{ x: 1600 }}
           pagination={{ pageSize: 50, showTotal: (t) => `共 ${t} 支` }}
           size="middle"
           onChange={onTableChange}

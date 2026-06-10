@@ -70,7 +70,7 @@ export default function AlertTimeline({ data, loading }: AlertTimelineProps) {
                   </Text>
                   <div style={{ display: "flex", gap: 12 }}>
                     <Text type="secondary" style={{ fontSize: 12 }}>
-                      收益率：<Text style={{ color: config.color }}>{signal.pnlRate}</Text>
+                      收益率：<Text style={{ color: config.color }}>{(parseFloat(signal.pnlRate) * 100).toFixed(2)}%</Text>
                     </Text>
                     <Text type="secondary" style={{ fontSize: 12 }}>
                       阈值：{signal.threshold}

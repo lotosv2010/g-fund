@@ -46,8 +46,9 @@ export class StopLossTakeProfitService {
 
       const pnlRate = (currentPrice - costPrice) / costPrice;
 
-      // 检查止盈信号
-      for (const threshold of TAKE_PROFIT_THRESHOLDS) {
+      // 检查止盈信号（只保留最严重的一档，从高阈值往低阈值遍历）
+      for (let i = TAKE_PROFIT_THRESHOLDS.length - 1; i >= 0; i--) {
+        const threshold = TAKE_PROFIT_THRESHOLDS[i];
         if (pnlRate >= threshold.threshold) {
           signals.push({
             fundCode: position.fundCode,
@@ -61,11 +62,13 @@ export class StopLossTakeProfitService {
             threshold: (threshold.threshold * 100).toFixed(0) + '%',
             message: threshold.message,
           });
+          break;
         }
       }
 
-      // 检查止损信号
-      for (const threshold of STOP_LOSS_THRESHOLDS) {
+      // 检查止损信号（只保留最严重的一档，从低阈值往高阈值遍历）
+      for (let i = STOP_LOSS_THRESHOLDS.length - 1; i >= 0; i--) {
+        const threshold = STOP_LOSS_THRESHOLDS[i];
         if (pnlRate <= threshold.threshold) {
           signals.push({
             fundCode: position.fundCode,
@@ -79,6 +82,7 @@ export class StopLossTakeProfitService {
             threshold: (Math.abs(threshold.threshold) * 100).toFixed(0) + '%',
             message: threshold.message,
           });
+          break;
         }
       }
 
@@ -144,6 +148,7 @@ export class StopLossTakeProfitService {
         threshold: '3日',
         message: REBOUND_THRESHOLDS.daily.message,
       });
+      return signals; // 已触发最强反弹信号，跳过周累计检查
     }
 
     // 检查周累计涨幅
