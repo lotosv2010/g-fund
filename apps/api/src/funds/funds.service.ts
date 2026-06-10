@@ -28,6 +28,12 @@ function toListItem(r: FundRow, position?: PositionRow): FundListItem {
     sortOrder: Number(r.sortOrder ?? 0),
     targetAmount: r.targetAmount ?? '0',
     targetRatio: r.targetRatio ?? '0',
+    valuationPercentile: r.valuationPercentile ?? null,
+    phase: (r.phase as FundListItem['phase']) ?? null,
+    priority: Number(r.priority ?? 0),
+    baseAmount: r.baseAmount ?? '0',
+    weeklyReturn: r.weeklyReturn ?? null,
+    monthlyReturn: r.monthlyReturn ?? null,
     note: r.note ?? null,
     createdAt: r.createdAt.toISOString(),
     updatedAt: r.updatedAt.toISOString(),
@@ -100,6 +106,10 @@ export class FundsService {
         category: dto.category ?? 'all',
         targetAmount,
         targetRatio: dto.targetRatio ?? '0',
+        valuationPercentile: dto.valuationPercentile ?? null,
+        phase: dto.phase ?? 'normal',
+        priority: dto.priority ?? 0,
+        baseAmount: dto.baseAmount ?? '0',
         note: dto.note ?? null,
       })
       .returning();
@@ -115,13 +125,20 @@ export class FundsService {
       targetAmount = (total * parseFloat(dto.targetRatio) / 100).toFixed(2);
     }
 
+    const updateData: Record<string, unknown> = {
+      ...dto,
+      ...(targetAmount !== undefined ? { targetAmount } : {}),
+      updatedAt: new Date(),
+    };
+
+    // Convert sortOrder from number to string for Drizzle
+    if (dto.sortOrder !== undefined) {
+      updateData.sortOrder = String(dto.sortOrder);
+    }
+
     const [row] = await this.db
       .update(schema.funds)
-      .set({
-        ...dto,
-        ...(targetAmount !== undefined ? { targetAmount } : {}),
-        updatedAt: new Date(),
-      })
+      .set(updateData)
       .where(eq(schema.funds.code, code))
       .returning();
 

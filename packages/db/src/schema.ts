@@ -10,6 +10,12 @@ export const funds = pgTable('funds', {
   sortOrder: numeric('sort_order').notNull().default('0'),
   targetAmount: numeric('target_amount', { precision: 18, scale: 2 }).notNull().default('0'),
   targetRatio: numeric('target_ratio', { precision: 5, scale: 2 }).notNull().default('0'),
+  valuationPercentile: numeric('valuation_percentile', { precision: 5, scale: 2 }),
+  phase: varchar('phase', { length: 20 }).default('normal'),
+  priority: integer('priority').notNull().default(0),
+  baseAmount: numeric('base_amount', { precision: 18, scale: 2 }).notNull().default('0'),
+  weeklyReturn: numeric('weekly_return', { precision: 8, scale: 4 }),
+  monthlyReturn: numeric('monthly_return', { precision: 8, scale: 4 }),
   note: text('note'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
@@ -86,5 +92,13 @@ export const chatMessages = pgTable('chat_messages', {
   content: text('content').notNull(),
   tool: varchar('tool', { length: 80 }),
   truncated: boolean('truncated').notNull().default(false),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const fundNavHistory = pgTable('fund_nav_history', {
+  id: serial('id').primaryKey(),
+  fundCode: varchar('fund_code', { length: 20 }).notNull(),
+  navDate: date('nav_date').notNull(),
+  navUnit: numeric('nav_unit', { precision: 10, scale: 4 }).notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });

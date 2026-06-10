@@ -12,6 +12,8 @@ import { DailyLogsModule } from './daily-logs/daily-logs.module';
 import { DailySnapshotsModule } from './daily-snapshots/daily-snapshots.module';
 import { SettingsModule } from './settings/settings.module';
 import { ChatModule } from './chat/chat.module';
+import { StopLossTakeProfitModule } from './stop-loss-take-profit/stop-loss-take-profit.module';
+import { DcaModule } from './dca/dca.module';
 
 @Module({
   imports: [
@@ -30,6 +32,8 @@ import { ChatModule } from './chat/chat.module';
     DailySnapshotsModule,
     SettingsModule,
     ChatModule,
+    StopLossTakeProfitModule,
+    DcaModule,
   ],
 })
 export class AppModule {}
