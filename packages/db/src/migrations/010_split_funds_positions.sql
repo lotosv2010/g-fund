@@ -4,29 +4,6 @@ ALTER TABLE positions
   ADD COLUMN IF NOT EXISTS nav_unit numeric(10, 4),
   ADD COLUMN IF NOT EXISTS nav_date date;
 
--- 把 funds 的 current_value 拷贝到对应 positions（流水路径权威，先以 funds 为兜底）
-UPDATE positions p
-SET current_value = COALESCE(f.current_value, 0)
-FROM funds f
-WHERE p.fund_code = f.code
-  AND p.current_value = 0
-  AND COALESCE(f.current_value, 0) > 0;
-
--- 没有 transactions 流水、但 funds 上录了快照的，补建 positions 行
-INSERT INTO positions (fund_code, fund_name, shares, cost_price, cost_amount, current_value, created_at, updated_at)
-SELECT
-  f.code,
-  f.name,
-  0,
-  0,
-  f.cost_amount,
-  COALESCE(f.current_value, 0),
-  NOW(),
-  NOW()
-FROM funds f
-WHERE COALESCE(f.cost_amount, 0) > 0
-  AND NOT EXISTS (SELECT 1 FROM positions p WHERE p.fund_code = f.code);
-
 -- 移除 funds 上的金额字段（彻底分层）
 ALTER TABLE funds
   DROP COLUMN IF EXISTS cost_amount,
