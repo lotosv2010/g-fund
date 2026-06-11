@@ -16,6 +16,7 @@ import { StopLossTakeProfitModule } from './stop-loss-take-profit/stop-loss-take
 import { DcaModule } from './dca/dca.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { RealtimeQuoteModule } from './realtime-quote/realtime-quote.module';
+import { MarketIndexModule } from './market-index/market-index.module';
 
 @Module({
   imports: [
@@ -38,6 +39,7 @@ import { RealtimeQuoteModule } from './realtime-quote/realtime-quote.module';
     DcaModule,
     DashboardModule,
     RealtimeQuoteModule,
+    MarketIndexModule,
   ],
 })
 export class AppModule {}

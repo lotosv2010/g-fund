@@ -1,4 +1,4 @@
-import { pgTable, serial, varchar, numeric, smallint, text, timestamp, date, integer, jsonb, boolean } from 'drizzle-orm/pg-core';
+import { pgTable, serial, varchar, numeric, smallint, text, timestamp, date, integer, jsonb, boolean, unique } from 'drizzle-orm/pg-core';
 
 export const funds = pgTable('funds', {
   id: serial('id').primaryKey(),
@@ -105,5 +105,21 @@ export const fundNavHistory = pgTable('fund_nav_history', {
   fundCode: varchar('fund_code', { length: 20 }).notNull(),
   navDate: date('nav_date').notNull(),
   navUnit: numeric('nav_unit', { precision: 10, scale: 4 }).notNull(),
+  dailyReturn: numeric('daily_return', { precision: 8, scale: 4 }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => [
+  unique('unique_fund_nav_code_date').on(t.fundCode, t.navDate),
+]);
+
+export const marketIndexHistory = pgTable('market_index_history', {
+  id: serial('id').primaryKey(),
+  indexCode: varchar('index_code', { length: 20 }).notNull(),
+  name: varchar('name', { length: 50 }).notNull(),
+  close: numeric('close', { precision: 10, scale: 4 }).notNull(),
+  changePct: numeric('change_pct', { precision: 8, scale: 4 }),
+  turnover: numeric('turnover', { precision: 18, scale: 2 }),
+  tradeDate: date('trade_date').notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  unique('unique_market_index_code_date').on(t.indexCode, t.tradeDate),
+]);

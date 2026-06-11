@@ -1,6 +1,6 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { Observable, Subscriber, firstValueFrom } from 'rxjs';
-import { eq, and, gt, asc, lt } from 'drizzle-orm';
+import { eq, and, gt, asc, lt, desc } from 'drizzle-orm';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '@g-fund/db';
 import type { Tool, CallToolResult } from '@modelcontextprotocol/sdk/types';
@@ -284,7 +284,8 @@ export class PositionsSyncService {
           })
           .where(eq(schema.positions.fundCode, pos.fundCode));
 
-        if (item.navUnit) {
+        if (item.navUnit && item.navDate) {
+          await this.upsertNavHistory(pos.fundCode, item.navDate, item.navUnit);
           await this.confirmPending(pos.fundCode, item.navUnit, item.navDate);
         }
       }
@@ -307,6 +308,42 @@ export class PositionsSyncService {
       result: { total: items.length, succeeded, failed, skipped, syncedAt, items },
     });
     subscriber.complete();
+  }
+
+  private async upsertNavHistory(fundCode: string, navDate: string, navUnit: string): Promise<void> {
+    const nav = parseFloat(navUnit);
+    if (!Number.isFinite(nav) || nav <= 0) return;
+
+    // 获取前一日净值计算日收益率
+    const [prev] = await this.db
+      .select({ navUnit: schema.fundNavHistory.navUnit })
+      .from(schema.fundNavHistory)
+      .where(
+        and(
+          eq(schema.fundNavHistory.fundCode, fundCode),
+          lt(schema.fundNavHistory.navDate, navDate),
+        ),
+      )
+      .orderBy(desc(schema.fundNavHistory.navDate))
+      .limit(1);
+
+    const prevNav = prev ? parseFloat(prev.navUnit) : null;
+    const dailyReturn = prevNav && prevNav > 0
+      ? ((nav - prevNav) / prevNav * 100).toFixed(4)
+      : null;
+
+    await this.db
+      .insert(schema.fundNavHistory)
+      .values({
+        fundCode,
+        navDate,
+        navUnit,
+        dailyReturn,
+      })
+      .onConflictDoUpdate({
+        target: [schema.fundNavHistory.fundCode, schema.fundNavHistory.navDate],
+        set: { navUnit, dailyReturn },
+      });
   }
 
   private async confirmPending(fundCode: string, navUnit: string, navDate?: string): Promise<void> {
