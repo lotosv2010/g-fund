@@ -79,17 +79,25 @@ export class DashboardService {
         ? this.parseCategoryTree(treeResult.value)
         : [];
 
+    // 按 fundCode 映射 MCP 结果（holdingList 可能比 positions 短）
+    const resultMap = new Map<string, unknown>();
+    for (let i = 0; i < holdingList.length; i++) {
+      const result = fundResults[i];
+      resultMap.set(
+        holdingList[i].fundCode,
+        result.status === 'fulfilled' ? result.value : null,
+      );
+    }
+
     // 解析每只基金的分类
     const fundDetails: FundAssetDetail[] = [];
-    for (let i = 0; i < positions.length; i++) {
-      const pos = positions[i];
-      const result = fundResults[i];
+    for (const pos of positions) {
       const fund = fundMap.get(pos.fundCode);
       const detail = this.parseFundDetail(
         pos.fundCode,
         pos.fundName,
         pos.currentValue ?? '0',
-        result.status === 'fulfilled' ? result.value : null,
+        resultMap.get(pos.fundCode) ?? null,
         fund?.assetType ?? null,
       );
       fundDetails.push(detail);
