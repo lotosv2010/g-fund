@@ -1,30 +1,11 @@
 "use client";
 import { Card, Timeline, Typography, Skeleton, Empty, Tag } from "antd";
-import {
-  ClockCircleOutlined,
-  CheckCircleOutlined,
-  CloseCircleOutlined,
-  WarningOutlined,
-  InfoCircleOutlined,
-} from "@ant-design/icons";
-import type { SlpSignalLog, SignalLevel } from "@g-fund/types";
+import { ClockCircleOutlined } from "@ant-design/icons";
+import type { SlpSignalLog } from "@g-fund/types";
 import { DEEP_LOSS_DECISION_LABELS } from "@g-fund/types";
+import { SIGNAL_CONFIG, LEVEL_COLORS, formatPnlRate } from "@/lib/signal-config";
 
 const { Text } = Typography;
-
-const SIGNAL_CONFIG: Record<string, { color: string; icon: React.ReactNode; label: string }> = {
-  take_profit: { color: "#52c41a", icon: <CheckCircleOutlined />, label: "止盈" },
-  stop_loss: { color: "#ff4d4f", icon: <CloseCircleOutlined />, label: "止损" },
-  warning: { color: "#faad14", icon: <WarningOutlined />, label: "预警" },
-  deep_loss: { color: "#ff4d4f", icon: <CloseCircleOutlined />, label: "深度套牢" },
-};
-
-const LEVEL_COLORS: Record<SignalLevel, string> = {
-  green: "#52c41a",
-  blue: "#1677ff",
-  yellow: "#faad14",
-  red: "#ff4d4f",
-};
 
 interface AlertTimelineProps {
   data: SlpSignalLog[];
@@ -77,7 +58,7 @@ export default function AlertTimeline({ data, loading }: AlertTimelineProps) {
                   <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
                     {log.pnlRate && (
                       <Text type="secondary" style={{ fontSize: 12 }}>
-                        收益率：<Text style={{ color: LEVEL_COLORS[log.level] }}>{(parseFloat(log.pnlRate) * 100).toFixed(2)}%</Text>
+                        收益率：<Text style={{ color: LEVEL_COLORS[log.level] }}>{formatPnlRate(log.pnlRate)}</Text>
                       </Text>
                     )}
                     {log.deepLossDecision && (

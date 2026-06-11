@@ -5,7 +5,6 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { DbModule } from './db/db.module';
 import { McpModule } from './mcp/mcp.module';
 import { AgentModule } from './agent/agent.module';
-import { AnalysisModule } from './analysis/analysis.module';
 import { FundsModule } from './funds/funds.module';
 import { PositionsModule } from './positions/positions.module';
 import { TransactionsModule } from './transactions/transactions.module';
@@ -30,7 +29,6 @@ import { RulesModule } from './rules/rules.module';
     DbModule,
     McpModule,
     AgentModule,
-    AnalysisModule,
     FundsModule,
     PositionsModule,
     TransactionsModule,

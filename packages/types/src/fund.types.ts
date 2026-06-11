@@ -127,8 +127,6 @@ export interface Fund {
   stageChangedAt: string | null;
   priority: number;
   baseAmount: string;
-  weeklyReturn: string | null;
-  monthlyReturn: string | null;
   note: string | null;
   createdAt: string;
   updatedAt: string;
@@ -175,8 +173,6 @@ export interface UpdateFundDto {
   assetType?: AssetType;
   priority?: number;
   baseAmount?: string;
-  weeklyReturn?: string | null;
-  monthlyReturn?: string | null;
   note?: string;
 }
 

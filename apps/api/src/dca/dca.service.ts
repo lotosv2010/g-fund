@@ -16,6 +16,16 @@ import type {
   AssetType,
   LifecycleStage,
 } from '@g-fund/types';
+import {
+  calcP2,
+  calcP3MonthlyAdjustment,
+  calcP4,
+  checkBiweeklyThursday,
+  computeNextDcaDate,
+  calcTFactorPriority,
+  isFirstDcaOfMonth,
+  isOverrideEnabled,
+} from './dca-calc';
 
 type DbType = NodePgDatabase<typeof schema>;
 
@@ -35,8 +45,8 @@ export class DcaService {
   async calculate(): Promise<DcaCalculation[]> {
     const rules = await this.rulesService.getDcaRules();
     const today = new Date().toISOString().split('T')[0];
-    const isBiweeklyThursday = this.checkBiweeklyThursday(rules.biweeklyAnchorDate);
-    const nextDcaDate = this.computeNextDcaDate(rules.biweeklyAnchorDate);
+    const isBiweeklyThursday = checkBiweeklyThursday(rules.biweeklyAnchorDate);
+    const nextDcaDate = computeNextDcaDate(rules.biweeklyAnchorDate);
 
     if (!isBiweeklyThursday) {
       return [];
@@ -69,7 +79,7 @@ export class DcaService {
       const lifecycleStage = (fund.lifecycleStage ?? 'dca') as LifecycleStage;
 
       // 例外规则：暂停调速
-      if (this.isOverrideEnabled(fundOverrides, 'pause_speed')) {
+      if (isOverrideEnabled(fundOverrides, 'pause_speed')) {
         calculations.push(this.buildSkippedResult(fund.code, fund.name, baseAmount, today, nextDcaDate, isBiweeklyThursday, '已暂停调速'));
         continue;
       }
@@ -110,13 +120,13 @@ export class DcaService {
         ? parseFloat(fund.valuationPercentile)
         : null;
       const p2 = valuationPercentile !== null
-        ? this.calcP2(valuationPercentile, rules.valuationPercentiles)
+        ? calcP2(valuationPercentile, rules.valuationPercentiles)
         : 1.0;
 
       // P3: 估值水平系数 × 月涨幅调整系数
       const p3Base = rules.valuationLevelMultipliers[valuationLevel] ?? 1.0;
-      const monthlyReturn = fund.monthlyReturn ? parseFloat(fund.monthlyReturn) : null;
-      const p3MonthlyAdj = this.calcP3MonthlyAdjustment(monthlyReturn);
+      const monthlyReturn = await this.calcMonthlyReturn(fund.code);
+      const p3MonthlyAdj = calcP3MonthlyAdjustment(monthlyReturn);
       // 纯债不调速（P3 固定为 1.0）
       const p3 = assetType === 'bond' ? 1.0 : p3Base * p3MonthlyAdj;
 
@@ -126,14 +136,16 @@ export class DcaService {
       if (rebalanceAdj !== 0) {
         priority = Math.max(0, priority + rebalanceAdj);
       }
-      const p4 = this.calcP4(priority, rules.priorityMultipliers);
+      const p4 = calcP4(priority, rules.priorityMultipliers);
 
       // T 因子: 大盘趋势 × 优先级调整
-      const tFactorPriority = this.calcTFactorPriority(
+      const costAmount = position ? parseFloat(position.costAmount ?? '0') : 0;
+      const targetAmt = parseFloat(fund.targetAmount ?? '0');
+      const tFactorPriority = calcTFactorPriority(
         valuationPercentile,
         lifecycleStage,
-        position,
-        fund.targetAmount,
+        costAmount,
+        targetAmt,
         monthlyReturn,
         rules,
       );
@@ -197,38 +209,9 @@ export class DcaService {
 
   async getNextDcaDate(): Promise<{ nextDate: string; isToday: boolean }> {
     const rules = await this.rulesService.getDcaRules();
-    const nextDate = this.computeNextDcaDate(rules.biweeklyAnchorDate);
+    const nextDate = computeNextDcaDate(rules.biweeklyAnchorDate);
     const today = new Date().toISOString().split('T')[0];
     return { nextDate, isToday: nextDate === today };
-  }
-
-  // --- Biweekly Thursday ---
-
-  private checkBiweeklyThursday(anchorDate: string): boolean {
-    const today = new Date();
-    const anchor = new Date(anchorDate);
-    const diffDays = Math.floor((today.getTime() - anchor.getTime()) / 86_400_000);
-    const dayOfWeek = today.getDay();
-    return dayOfWeek === 4 && diffDays % 14 === 0 && diffDays >= 0;
-  }
-
-  private computeNextDcaDate(anchorDate: string): string {
-    const today = new Date();
-    const anchor = new Date(anchorDate);
-    const diffDays = Math.floor((today.getTime() - anchor.getTime()) / 86_400_000);
-
-    if (diffDays < 0) return anchorDate;
-
-    const cyclesElapsed = Math.floor(diffDays / 14);
-    let next = new Date(anchor);
-    next.setDate(next.getDate() + (cyclesElapsed + 1) * 14);
-
-    // 如果今天就是双周四，返回今天
-    if (today.getDay() === 4 && diffDays % 14 === 0) {
-      return today.toISOString().split('T')[0];
-    }
-
-    return next.toISOString().split('T')[0];
   }
 
   // --- P0: QDII 申购检查 ---
@@ -307,57 +290,45 @@ export class DcaService {
     }
   }
 
-  private calcTFactorPriority(
-    valuationPercentile: number | null,
-    lifecycleStage: LifecycleStage,
-    position: typeof schema.positions.$inferSelect | undefined,
-    targetAmount: string | null,
-    monthlyReturn: number | null,
-    rules: DcaRules,
-  ): number {
-    const costAmount = position ? parseFloat(position.costAmount ?? '0') : 0;
-    const target = parseFloat(targetAmount ?? '0');
-    const progress = target > 0 ? costAmount / target : 0;
+  // --- 月收益率实时计算 ---
 
-    // 超配：持仓 / 目标 > 100%
-    if (progress > 1.0) return 0;
+  private async calcMonthlyReturn(fundCode: string): Promise<number | null> {
+    try {
+      const rows = await this.db
+        .select({ navUnit: schema.fundNavHistory.navUnit, navDate: schema.fundNavHistory.navDate })
+        .from(schema.fundNavHistory)
+        .where(eq(schema.fundNavHistory.fundCode, fundCode))
+        .orderBy(desc(schema.fundNavHistory.navDate))
+        .limit(1);
 
-    // 接近止盈：收益率 > 20%（距止盈第一档 25% 差距 5% 以内）
-    if (monthlyReturn !== null && monthlyReturn > 0.20) return 0.5;
+      if (rows.length === 0) return null;
+      const latestNav = parseFloat(rows[0].navUnit);
 
-    // 低估 + 大缺口：估值百分位 < 20% 且持仓 / 目标 < 50%
-    if (valuationPercentile !== null && valuationPercentile < 20 && progress < 0.5) return 1.2;
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const cutoff = thirtyDaysAgo.toISOString().split('T')[0];
 
-    return 1.0;
-  }
+      const [oldest] = await this.db
+        .select({ navUnit: schema.fundNavHistory.navUnit })
+        .from(schema.fundNavHistory)
+        .where(
+          and(
+            eq(schema.fundNavHistory.fundCode, fundCode),
+            gte(schema.fundNavHistory.navDate, cutoff),
+          ),
+        )
+        .orderBy(schema.fundNavHistory.navDate)
+        .limit(1);
 
-  // --- P2: 估值百分位系数 ---
+      if (!oldest) return null;
+      const oldestNav = parseFloat(oldest.navUnit);
+      if (oldestNav === 0) return null;
 
-  private calcP2(percentile: number, rules: Array<{ max: number; multiplier: number }>): number {
-    for (const rule of rules) {
-      if (percentile <= rule.max) return rule.multiplier;
+      return (latestNav - oldestNav) / oldestNav;
+    } catch {
+      this.logger.warn(`计算 ${fundCode} 月收益率失败，返回 null`);
+      return null;
     }
-    return rules[rules.length - 1]?.multiplier ?? 1.0;
-  }
-
-  // --- P3: 月涨幅调整系数 ---
-
-  private calcP3MonthlyAdjustment(monthlyReturn: number | null): number {
-    if (monthlyReturn === null) return 1.0;
-    if (monthlyReturn > 0.20) return 0;
-    if (monthlyReturn > 0.10) return 0.5;
-    if (monthlyReturn < -0.10) return 1.5;
-    if (monthlyReturn < -0.05) return 1.3;
-    return 1.0;
-  }
-
-  // --- P4: 优先级系数 ---
-
-  private calcP4(priority: number, rules: Array<{ minPriority: number; multiplier: number }>): number {
-    for (const rule of rules) {
-      if (priority >= rule.minPriority) return rule.multiplier;
-    }
-    return rules[rules.length - 1]?.multiplier ?? 1.0;
   }
 
   // --- 季度再平衡 ---
@@ -368,8 +339,8 @@ export class DcaService {
     today: string,
   ): number {
     const month = new Date(today).getMonth() + 1;
-    const isFirstDcaOfMonth = this.isFirstDcaOfMonth(today);
-    if (![3, 6, 9, 12].includes(month) || !isFirstDcaOfMonth) return 0;
+    const firstDca = isFirstDcaOfMonth(today);
+    if (![3, 6, 9, 12].includes(month) || !firstDca) return 0;
 
     const costAmount = position ? parseFloat(position.costAmount ?? '0') : 0;
     const targetRatio = parseFloat(fund.targetRatio ?? '0');
@@ -379,11 +350,6 @@ export class DcaService {
     // 实际偏差在 calculate() 中批量计算更准确
     // 这里用一个简化版本：targetRatio 作为基准
     return 0;
-  }
-
-  private isFirstDcaOfMonth(dateStr: string): boolean {
-    const date = new Date(dateStr);
-    return date.getDate() <= 7;
   }
 
   // --- 子弹仓 ---
@@ -436,10 +402,6 @@ export class DcaService {
     }
 
     return map;
-  }
-
-  private isOverrideEnabled(overrides: FundRuleOverride[], type: FundRuleOverrideType): boolean {
-    return overrides.some((o) => o.overrideType === type && o.enabled);
   }
 
   // --- 快照查询 ---

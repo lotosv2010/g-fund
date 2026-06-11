@@ -1,16 +1,10 @@
 "use client";
 import { Card, Tag, Typography, Skeleton, Empty } from "antd";
-import { AlertOutlined, CheckCircleOutlined, CloseCircleOutlined, WarningOutlined } from "@ant-design/icons";
+import { AlertOutlined } from "@ant-design/icons";
 import type { StopLossTakeProfitSignal } from "@g-fund/types";
+import { SIGNAL_CONFIG, formatPnlRate } from "@/lib/signal-config";
 
 const { Text } = Typography;
-
-const SIGNAL_CONFIG: Record<StopLossTakeProfitSignal['signalType'], { color: string; icon: React.ReactNode; label: string }> = {
-  take_profit: { color: "#52c41a", icon: <CheckCircleOutlined />, label: "止盈" },
-  stop_loss: { color: "#ff4d4f", icon: <CloseCircleOutlined />, label: "止损" },
-  warning: { color: "#faad14", icon: <WarningOutlined />, label: "预警" },
-  deep_loss: { color: "#ff4d4f", icon: <CloseCircleOutlined />, label: "深度套牢" },
-};
 
 function formatNextTierGap(gap: number | undefined): string {
   if (gap === undefined || gap === null) return "";
@@ -74,7 +68,7 @@ export default function StopLossTakeProfitCard({ data, loading }: StopLossTakePr
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <Text style={{ color: config.color, fontWeight: 600 }}>
-                      {(parseFloat(signal.pnlRate) * 100).toFixed(2)}%
+                      {formatPnlRate(signal.pnlRate)}
                     </Text>
                     <Tag color={config.color} style={{ margin: 0 }}>
                       {config.label}

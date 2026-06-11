@@ -18,8 +18,6 @@ export const funds = pgTable('funds', {
   stageChangedAt: timestamp('stage_changed_at', { withTimezone: true }),
   priority: integer('priority').notNull().default(0),
   baseAmount: numeric('base_amount', { precision: 18, scale: 2 }).notNull().default('0'),
-  weeklyReturn: numeric('weekly_return', { precision: 8, scale: 4 }),
-  monthlyReturn: numeric('monthly_return', { precision: 8, scale: 4 }),
   note: text('note'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),

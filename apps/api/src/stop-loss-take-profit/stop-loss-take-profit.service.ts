@@ -13,6 +13,7 @@ import {
   SlpRules,
   FundRuleOverride,
 } from '@g-fund/types';
+import { computeAlertSignal, computeNextTierGap, isLowValuationIndex } from './slp-calc';
 
 type DbType = NodePgDatabase<typeof schema>;
 
@@ -73,24 +74,30 @@ export class StopLossTakeProfitService {
       const showAction = lifecycleStage === 'holding';
 
       // 1. 四态预警信号
-      const alertSignal = this.computeAlertSignal(
-        position.fundCode,
-        position.fundName,
-        position.costPrice,
-        position.navUnit ?? '0',
-        pnlRate,
-        rules,
+      const alert = computeAlertSignal(pnlRate, rules, valuationPercentile);
+      const alertSignal: StopLossTakeProfitSignal = {
+        fundCode: position.fundCode,
+        fundName: position.fundName,
+        costPrice: position.costPrice,
+        currentPrice: position.navUnit ?? '0',
+        pnlRate: pnlRate.toFixed(4),
+        signalType: alert.signalType,
+        level: alert.level,
+        triggered: alert.level !== 'green',
+        threshold: '',
+        message: alert.message,
         lifecycleStage,
+        showAction: lifecycleStage === 'holding' && alert.level !== 'green',
         valuationPercentile,
-      );
-      if (alertSignal) signals.push(alertSignal);
+      };
+      signals.push(alertSignal);
 
       // 2. 止盈信号（仅 holding 阶段触发操作）
       if (showAction) {
         for (let i = rules.takeProfitTiers.length - 1; i >= 0; i--) {
           const tier = rules.takeProfitTiers[i];
           if (pnlRate >= tier.threshold) {
-            const nextTierGap = this.computeNextTierGap(pnlRate, rules.takeProfitTiers, i, 'take_profit');
+            const nextTierGap = computeNextTierGap(pnlRate, rules.takeProfitTiers, i, 'take_profit');
             signals.push({
               fundCode: position.fundCode,
               fundName: position.fundName,
@@ -116,7 +123,7 @@ export class StopLossTakeProfitService {
       const noStopLoss = overrideMap.get('no_stop_loss');
       const relaxedStopLoss = overrideMap.get('relaxed_stop_loss');
 
-      if (showAction && !(noStopLoss?.enabled && this.isLowValuationIndex(assetType, valuationPercentile))) {
+      if (showAction && !(noStopLoss?.enabled && isLowValuationIndex(assetType, valuationPercentile))) {
         const adjustedThreshold = relaxedStopLoss?.enabled
           ? relaxedStopLoss.value ?? -0.15
           : undefined;
@@ -126,7 +133,7 @@ export class StopLossTakeProfitService {
           const threshold = adjustedThreshold ?? tier.threshold;
 
           if (pnlRate <= threshold) {
-            const nextTierGap = this.computeNextTierGap(pnlRate, rules.stopLossTiers, i, 'stop_loss');
+            const nextTierGap = computeNextTierGap(pnlRate, rules.stopLossTiers, i, 'stop_loss');
             signals.push({
               fundCode: position.fundCode,
               fundName: position.fundName,
@@ -187,60 +194,6 @@ export class StopLossTakeProfitService {
   async getSignalsByFund(fundCode: string): Promise<StopLossTakeProfitSignal[]> {
     const allSignals = await this.getSignals();
     return allSignals.filter((s) => s.fundCode === fundCode);
-  }
-
-  // 计算四态预警信号
-  private computeAlertSignal(
-    fundCode: string,
-    fundName: string,
-    costPrice: string,
-    currentPrice: string,
-    pnlRate: number,
-    rules: SlpRules,
-    lifecycleStage: LifecycleStage,
-    valuationPercentile: number | null,
-  ): StopLossTakeProfitSignal | null {
-    const { alertThresholds } = rules;
-    let level: SignalLevel;
-    let message: string;
-    let signalType: StopLossTakeProfitSignal['signalType'];
-
-    if (pnlRate >= alertThresholds.takeProfit) {
-      level = 'red';
-      signalType = 'warning';
-      message = `接近止盈线（${(alertThresholds.takeProfit * 100).toFixed(0)}%），当前收益${(pnlRate * 100).toFixed(1)}%`;
-    } else if (pnlRate <= alertThresholds.stopLoss) {
-      level = 'yellow';
-      signalType = 'warning';
-      message = `接近止损线（${(Math.abs(alertThresholds.stopLoss) * 100).toFixed(0)}%），当前亏损${(Math.abs(pnlRate) * 100).toFixed(1)}%`;
-    } else if (
-      valuationPercentile !== null &&
-      valuationPercentile < alertThresholds.undervalue * 100
-    ) {
-      level = 'blue';
-      signalType = 'warning';
-      message = `低估区间（估值分位${valuationPercentile.toFixed(0)}%<${(alertThresholds.undervalue * 100).toFixed(0)}%）`;
-    } else {
-      level = 'green';
-      signalType = 'warning';
-      message = '正常区间';
-    }
-
-    return {
-      fundCode,
-      fundName,
-      costPrice,
-      currentPrice,
-      pnlRate: pnlRate.toFixed(4),
-      signalType,
-      level,
-      triggered: level !== 'green',
-      threshold: '',
-      message,
-      lifecycleStage,
-      showAction: lifecycleStage === 'holding' && level !== 'green',
-      valuationPercentile,
-    };
   }
 
   // 计算深度套牢决策
@@ -394,29 +347,6 @@ export class StopLossTakeProfitService {
     });
   }
 
-  // 计算距离下一档差距
-  private computeNextTierGap(
-    pnlRate: number,
-    tiers: { threshold: number }[],
-    currentIndex: number,
-    signalType: 'take_profit' | 'stop_loss',
-  ): number | undefined {
-    if (signalType === 'take_profit') {
-      // 止盈：下一档是更高阈值
-      if (currentIndex < tiers.length - 1) {
-        const nextThreshold = tiers[currentIndex + 1].threshold;
-        return ((nextThreshold - pnlRate) / pnlRate * 100);
-      }
-    } else {
-      // 止损：下一档是更低阈值（更负）
-      if (currentIndex < tiers.length - 1) {
-        const nextThreshold = tiers[currentIndex + 1].threshold;
-        return ((pnlRate - nextThreshold) / Math.abs(pnlRate) * 100);
-      }
-    }
-    return undefined;
-  }
-
   // 检查反弹信号（使用 daily_return 字段 + 实时数据）
   private async checkReboundSignals(
     fundCode: string,
@@ -527,13 +457,6 @@ export class StopLossTakeProfitService {
     }
 
     return signals;
-  }
-
-  // 判断是否是低估指数基金（不止损例外）
-  private isLowValuationIndex(assetType: string, valuationPercentile: number | null): boolean {
-    if (assetType !== 'index') return false;
-    if (valuationPercentile === null) return false;
-    return valuationPercentile < 30;
   }
 
   // 获取信号历史

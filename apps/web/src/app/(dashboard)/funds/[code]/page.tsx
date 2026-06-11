@@ -341,22 +341,6 @@ export default function FundDiagnosisPage() {
             <Descriptions.Item label="优先级">
               <Tag>{fund.priority}</Tag>
             </Descriptions.Item>
-            <Descriptions.Item label="周收益率">
-              {fund.weeklyReturn !== null ? (
-                <Text style={{ color: parseFloat(fund.weeklyReturn) >= 0 ? "#dc2626" : "#16a34a" }}>
-                  {parseFloat(fund.weeklyReturn) >= 0 ? "+" : ""}
-                  {(parseFloat(fund.weeklyReturn) * 100).toFixed(2)}%
-                </Text>
-              ) : "—"}
-            </Descriptions.Item>
-            <Descriptions.Item label="月收益率">
-              {fund.monthlyReturn !== null ? (
-                <Text style={{ color: parseFloat(fund.monthlyReturn) >= 0 ? "#dc2626" : "#16a34a" }}>
-                  {parseFloat(fund.monthlyReturn) >= 0 ? "+" : ""}
-                  {(parseFloat(fund.monthlyReturn) * 100).toFixed(2)}%
-                </Text>
-              ) : "—"}
-            </Descriptions.Item>
             <Descriptions.Item label="目标仓位">
               {fund.targetRatio ? `${fund.targetRatio}%` : "—"}
             </Descriptions.Item>

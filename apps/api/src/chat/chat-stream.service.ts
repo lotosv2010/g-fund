@@ -11,8 +11,8 @@ export interface StreamEvent {
 }
 
 @Injectable()
-export class AnalysisService {
-  private readonly logger = new Logger(AnalysisService.name);
+export class ChatStreamService {
+  private readonly logger = new Logger(ChatStreamService.name);
 
   constructor(
     private readonly toolsService: AgentToolsService,

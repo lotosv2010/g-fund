@@ -46,8 +46,6 @@ function toListItem(r: FundRow, position?: PositionRow): FundListItem {
     stageChangedAt: r.stageChangedAt ? r.stageChangedAt.toISOString() : null,
     priority: Number(r.priority ?? 0),
     baseAmount: r.baseAmount ?? '0',
-    weeklyReturn: r.weeklyReturn ?? null,
-    monthlyReturn: r.monthlyReturn ?? null,
     note: r.note ?? null,
     createdAt: r.createdAt.toISOString(),
     updatedAt: r.updatedAt.toISOString(),

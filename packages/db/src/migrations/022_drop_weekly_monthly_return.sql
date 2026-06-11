@@ -1,0 +1,2 @@
+ALTER TABLE funds DROP COLUMN IF EXISTS weekly_return;
+ALTER TABLE funds DROP COLUMN IF EXISTS monthly_return;

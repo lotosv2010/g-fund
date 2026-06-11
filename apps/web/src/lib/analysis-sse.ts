@@ -66,7 +66,7 @@ export function startAnalysisStream(
   const open = async () => {
     if (aborted || completed) return;
     try {
-      const res = await fetch(`${BASE_URL}/analysis/sessions`, {
+      const res = await fetch(`${BASE_URL}/chat/stream/sessions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(options),
@@ -77,7 +77,7 @@ export function startAnalysisStream(
       const { sessionId } = (await res.json()) as { sessionId: string };
       if (aborted || completed) return;
 
-      const url = `${BASE_URL}/analysis/stream?sessionId=${encodeURIComponent(sessionId)}`;
+      const url = `${BASE_URL}/chat/stream?sessionId=${encodeURIComponent(sessionId)}`;
       es = new EventSource(url);
 
       es.onmessage = (e: MessageEvent) => {

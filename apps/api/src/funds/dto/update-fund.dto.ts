@@ -90,16 +90,6 @@ export class UpdateFundDto {
 
   @ApiPropertyOptional()
   @IsOptional()
-  @IsNumberString()
-  weeklyReturn?: string;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsNumberString()
-  monthlyReturn?: string;
-
-  @ApiPropertyOptional()
-  @IsOptional()
   @IsString()
   note?: string;
 }
