@@ -28,10 +28,9 @@ interface PositionTableProps {
   onViewLog?: (fundCode: string) => void;
   onEditSnapshot?: (record: PositionListItem) => void;
   onPnlClick?: (fundCode: string, fundName: string) => void;
-  onTotalPnlClick?: () => void;
 }
 
-export default function PositionTable({ data, loading, onBuy, onSell, onViewLog, onEditSnapshot, onPnlClick, onTotalPnlClick }: PositionTableProps) {
+export default function PositionTable({ data, loading, onBuy, onSell, onViewLog, onEditSnapshot, onPnlClick }: PositionTableProps) {
   const totalCost = data.reduce((s, r) => s + parseFloat(r.costAmount), 0);
   const totalValue = data.reduce((s, r) => s + parseFloat(r.currentValue), 0);
   const totalPnl = totalValue - totalCost;
@@ -130,11 +129,8 @@ export default function PositionTable({ data, loading, onBuy, onSell, onViewLog,
                   <div style={{ whiteSpace: "nowrap", textAlign: "right" }}><Text strong>¥{totalValue.toLocaleString()}</Text></div>
                 </Table.Summary.Cell>
                 <Table.Summary.Cell index={6} align="right">
-                  <div
-                    style={{ whiteSpace: "nowrap", textAlign: "right", cursor: onTotalPnlClick ? "pointer" : undefined }}
-                    onClick={onTotalPnlClick}
-                  >
-                    <Text strong style={{ color: totalPnl >= 0 ? "#dc2626" : "#16a34a", textDecoration: onTotalPnlClick ? "underline" : undefined }}>
+                  <div style={{ whiteSpace: "nowrap", textAlign: "right" }}>
+                    <Text strong style={{ color: totalPnl >= 0 ? "#dc2626" : "#16a34a" }}>
                       {totalPnl >= 0 ? "+" : ""}¥{totalPnl.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                     </Text>
                   </div>

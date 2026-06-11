@@ -2,9 +2,12 @@
 import { Card, Tabs, Skeleton, Empty, Typography } from "antd";
 import { PieChartOutlined } from "@ant-design/icons";
 import { useMemo } from "react";
+import dynamic from "next/dynamic";
 import type { AssetAllocationResponse, FundAssetDetail } from "@g-fund/types";
 import { classifyFund, getGroupColor, getLevel2Color, ALLOCATION_GROUP_LABELS } from "@/lib/asset-class-mapping";
 import type { AllocationGroup } from "@/lib/asset-class-mapping";
+
+const Column = dynamic(() => import("@ant-design/charts").then((m) => m.Column), { ssr: false });
 
 const { Text } = Typography;
 
@@ -13,54 +16,90 @@ interface AssetAllocationCardProps {
   loading: boolean;
 }
 
-interface BarItem {
-  name: string;
+interface ChartItem {
+  category: string;
   amount: number;
   ratio: number;
   color: string;
+  funds: { fundCode: string; fundName: string; currentValue: string }[];
 }
 
-function BarChart({ items, total }: { items: BarItem[]; total: number }) {
+function CategoryChart({
+  items,
+  total,
+}: {
+  items: ChartItem[];
+  total: number;
+}) {
+  const sorted = useMemo(() => [...items].sort((a, b) => b.amount - a.amount), [items]);
+
+  const chartData = useMemo(
+    () => sorted.map((i) => ({ category: i.category, amount: Math.round(i.amount) })),
+    [sorted],
+  );
+
+  const colorMap = useMemo(() => {
+    const m: Record<string, string> = {};
+    for (const i of sorted) m[i.category] = i.color;
+    return m;
+  }, [sorted]);
+
+  const fundMap = useMemo(() => {
+    const m: Record<string, ChartItem> = {};
+    for (const i of sorted) m[i.category] = i;
+    return m;
+  }, [sorted]);
+
   if (items.length === 0) {
     return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无数据" />;
   }
 
-  const sorted = [...items].sort((a, b) => b.amount - a.amount);
-  const maxRatio = sorted[0]?.ratio ?? 1;
-
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      {sorted.map((item) => (
-        <div key={item.name}>
-          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-            <Text style={{ fontSize: 13 }}>{item.name}</Text>
-            <Text style={{ fontSize: 13 }}>
-              <span style={{ color: "#888", marginRight: 8 }}>
-                {`¥${item.amount.toLocaleString()}`}
-              </span>
-              <Text strong>{(item.ratio * 100).toFixed(1)}%</Text>
-            </Text>
-          </div>
-          <div
-            style={{
-              height: 8,
-              borderRadius: 4,
-              background: "#f0f0f0",
-              overflow: "hidden",
-            }}
-          >
-            <div
-              style={{
-                height: "100%",
-                borderRadius: 4,
-                width: `${Math.max((item.ratio / maxRatio) * 100, 2)}%`,
-                background: item.color,
-                transition: "width 0.3s ease",
-              }}
-            />
-          </div>
-        </div>
-      ))}
+    <div>
+      <div style={{ fontSize: 11, color: "#999", paddingLeft: 4, marginBottom: 2 }}>¥ (万元)</div>
+      <Column
+        data={chartData}
+        xField="category"
+        yField="amount"
+        colorField="category"
+        color={(cat: string) => colorMap[cat] ?? "#6b7280"}
+        legend={false}
+        axis={{
+          x: { labelAutoRotate: false, style: { labelFontSize: 11 } },
+          y: {
+            title: false,
+            line: true,
+            lineStroke: "#d9d9d9",
+            lineLineWidth: 1,
+            tick: true,
+            tickStroke: "#d9d9d9",
+            labelFormatter: (v: number) => `${(v / 10000).toFixed(1)}`,
+          },
+        }}
+        style={{ radiusTopLeft: 4, radiusTopRight: 4 }}
+        tooltip={{
+          title: false,
+          render: (
+            _event: unknown,
+            { title, items: tipItems }: { title?: string; items: { name?: string; value?: string | number }[] },
+          ) => {
+            const cat = String(title ?? tipItems?.[0]?.name ?? "");
+            const item = fundMap[cat];
+            const wrapper = document.createElement("div");
+            if (!item) return wrapper;
+            const rows = item.funds
+              .map(
+                (f) =>
+                  `<div style="display:flex;justify-content:space-between;font-size:12px;line-height:22px;gap:12px"><span>${f.fundName}</span><span style="color:#999;white-space:nowrap">¥${Math.round(parseFloat(f.currentValue)).toLocaleString()}</span></div>`,
+              )
+              .join("");
+            wrapper.innerHTML = `<div style="padding:4px 0;min-width:220px"><div style="font-weight:600;font-size:13px;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid #f0f0f0">${item.category}：¥${Math.round(item.amount).toLocaleString()}</div>${rows}</div>`;
+            return wrapper;
+          },
+        }}
+        maxColumnWidth={48}
+        height={200}
+      />
       <div style={{ textAlign: "right", marginTop: 4 }}>
         <Text type="secondary" style={{ fontSize: 12 }}>
           合计：¥{total.toLocaleString()}
@@ -73,26 +112,26 @@ function BarChart({ items, total }: { items: BarItem[]; total: number }) {
 function groupByLevel2(
   details: FundAssetDetail[],
   group: AllocationGroup,
-): BarItem[] {
-  const map = new Map<string, { amount: number; count: number }>();
+): ChartItem[] {
+  const map = new Map<string, { amount: number; funds: ChartItem["funds"] }>();
   let totalAmount = 0;
 
   for (const d of details) {
     if (classifyFund(d) !== group) continue;
     const amount = parseFloat(d.currentValue);
     totalAmount += amount;
-    const existing = map.get(d.level2Category) ?? { amount: 0, count: 0 };
-    map.set(d.level2Category, {
-      amount: existing.amount + amount,
-      count: existing.count + 1,
-    });
+    const existing = map.get(d.level2Category) ?? { amount: 0, funds: [] };
+    existing.amount += amount;
+    existing.funds.push({ fundCode: d.fundCode, fundName: d.fundName, currentValue: d.currentValue });
+    map.set(d.level2Category, existing);
   }
 
-  return Array.from(map, ([name, { amount }]) => ({
-    name,
+  return Array.from(map, ([name, { amount, funds }]) => ({
+    category: name,
     amount: Math.round(amount * 100) / 100,
     ratio: totalAmount > 0 ? Math.round((amount / totalAmount) * 10000) / 10000 : 0,
     color: getLevel2Color(name),
+    funds,
   }));
 }
 
@@ -152,7 +191,7 @@ export default function AssetAllocationCard({ data, loading }: AssetAllocationCa
           </Text>
         </span>
       ),
-      children: <BarChart items={conservativeItems} total={conservativeTotal} />,
+      children: <CategoryChart items={conservativeItems} total={conservativeTotal} />,
     },
     {
       key: "aggressive",
@@ -188,7 +227,7 @@ export default function AssetAllocationCard({ data, loading }: AssetAllocationCa
                   </Text>
                 </span>
               ),
-              children: <BarChart items={coreItems} total={coreTotal} />,
+              children: <CategoryChart items={coreItems} total={coreTotal} />,
             },
             {
               key: "satellite",
@@ -200,7 +239,7 @@ export default function AssetAllocationCard({ data, loading }: AssetAllocationCa
                   </Text>
                 </span>
               ),
-              children: <BarChart items={satelliteItems} total={satelliteTotal} />,
+              children: <CategoryChart items={satelliteItems} total={satelliteTotal} />,
             },
           ]}
         />

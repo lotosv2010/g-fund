@@ -8,7 +8,6 @@ import { positionsApi, transactionsApi, fundsApi, dailyLogsApi, settingsApi } fr
 import PositionTable from "@/components/PositionTable";
 import TransactionForm from "@/components/TransactionForm";
 import TransactionLogDrawer from "@/components/TransactionLogDrawer";
-import TotalProfitDrawer from "@/components/TotalProfitDrawer";
 import FundProfitDrawer from "@/components/FundProfitDrawer";
 import SyncPositionsButton from "@/components/SyncPositionsButton";
 import PositionSnapshotModal from "@/components/PositionSnapshotModal";
@@ -36,7 +35,6 @@ export default function PositionsPage() {
   const [logDrawerOpen, setLogDrawerOpen] = useState(false);
   const [logFundCode, setLogFundCode] = useState<string>("");
 
-  const [totalProfitOpen, setTotalProfitOpen] = useState(false);
   const [fundProfitOpen, setFundProfitOpen] = useState(false);
   const [fundProfitCode, setFundProfitCode] = useState<string>("");
   const [fundProfitName, setFundProfitName] = useState<string>("");
@@ -227,13 +225,6 @@ export default function PositionsPage() {
     setFundProfitOpen(true);
   }
 
-  function handleTotalViewFundDetail(fundCode: string, fundName: string) {
-    setTotalProfitOpen(false);
-    setFundProfitCode(fundCode);
-    setFundProfitName(fundName);
-    setFundProfitOpen(true);
-  }
-
   function openTradeModal() {
     setTradeFundCode("");
     setTradeType("buy");
@@ -371,7 +362,6 @@ export default function PositionsPage() {
             onViewLog={handleViewLog}
             onEditSnapshot={openEditSnapshot}
             onPnlClick={handlePnlClick}
-            onTotalPnlClick={() => setTotalProfitOpen(true)}
           />
         </>
       ),
@@ -512,13 +502,6 @@ export default function PositionsPage() {
         open={logDrawerOpen}
         onClose={() => setLogDrawerOpen(false)}
         onDelete={handleDeleteTransaction}
-      />
-
-      <TotalProfitDrawer
-        open={totalProfitOpen}
-        onClose={() => setTotalProfitOpen(false)}
-        data={positions}
-        onViewFundDetail={handleTotalViewFundDetail}
       />
 
       <FundProfitDrawer

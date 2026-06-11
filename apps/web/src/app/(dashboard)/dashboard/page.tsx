@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { Col, Row, Space, Typography, message } from "antd";
 import type { PositionListItem, Transaction, DailySnapshot, StopLossTakeProfitSignal, DcaCalculation, AssetAllocationResponse } from "@g-fund/types";
 import { positionsApi, transactionsApi, dailySnapshotsApi, stopLossTakeProfitApi, dcaApi, dashboardApi } from "@/lib/api-client";
@@ -11,10 +12,13 @@ import SyncPositionsButton from "@/components/SyncPositionsButton";
 import StopLossTakeProfitCard from "@/components/StopLossTakeProfitCard";
 import DcaEstimateCard from "@/components/DcaEstimateCard";
 import AlertTimeline from "@/components/AlertTimeline";
+import TotalProfitDrawer from "@/components/TotalProfitDrawer";
+import FundProfitDrawer from "@/components/FundProfitDrawer";
 
 const { Title } = Typography;
 
 export default function DashboardPage() {
+  const router = useRouter();
   const [positions, setPositions] = useState<PositionListItem[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [snapshots, setSnapshots] = useState<DailySnapshot[]>([]);
@@ -28,6 +32,11 @@ export default function DashboardPage() {
   const [dcaLoading, setDcaLoading] = useState(false);
   const [allocLoading, setAllocLoading] = useState(false);
   const [messageApi, contextHolder] = message.useMessage();
+
+  const [totalProfitOpen, setTotalProfitOpen] = useState(false);
+  const [fundProfitOpen, setFundProfitOpen] = useState(false);
+  const [fundProfitCode, setFundProfitCode] = useState<string>("");
+  const [fundProfitName, setFundProfitName] = useState<string>("");
 
   const loadPositions = useCallback(async () => {
     setPosLoading(true);
@@ -113,6 +122,17 @@ export default function DashboardPage() {
   const todayStr = new Date().toISOString().slice(0, 10);
   const todaySnapshot = snapshots.find((s) => s.snapshotDate === todayStr) ?? null;
 
+  function handleTotalAssetsClick() {
+    router.push("/positions");
+  }
+
+  function handleTotalViewFundDetail(fundCode: string, fundName: string) {
+    setTotalProfitOpen(false);
+    setFundProfitCode(fundCode);
+    setFundProfitName(fundName);
+    setFundProfitOpen(true);
+  }
+
   return (
     <>
       {contextHolder}
@@ -122,7 +142,13 @@ export default function DashboardPage() {
           <SyncPositionsButton onDone={() => loadPositions()} />
         </Space>
       </Row>
-      <StatCards data={positions} loading={posLoading} todaySnapshot={todaySnapshot} />
+      <StatCards
+        data={positions}
+        loading={posLoading}
+        todaySnapshot={todaySnapshot}
+        onTotalAssetsClick={handleTotalAssetsClick}
+        onTotalPnlClick={() => setTotalProfitOpen(true)}
+      />
       <Row gutter={[16, 16]} style={{ marginTop: 16 }} align="stretch">
         <Col xs={24} lg={14}>
           <PnLChart data={snapshots} loading={snapLoading} />
@@ -145,6 +171,20 @@ export default function DashboardPage() {
       <div style={{ marginTop: 16 }}>
         <RecentTrades data={transactions} loading={txLoading} />
       </div>
+
+      <TotalProfitDrawer
+        open={totalProfitOpen}
+        onClose={() => setTotalProfitOpen(false)}
+        data={positions}
+        onViewFundDetail={handleTotalViewFundDetail}
+      />
+
+      <FundProfitDrawer
+        fundCode={fundProfitCode || null}
+        fundName={fundProfitName}
+        open={fundProfitOpen}
+        onClose={() => setFundProfitOpen(false)}
+      />
     </>
   );
 }

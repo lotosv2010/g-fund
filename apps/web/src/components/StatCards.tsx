@@ -11,9 +11,11 @@ interface StatCardsProps {
   data: PositionListItem[];
   loading: boolean;
   todaySnapshot?: DailySnapshot | null;
+  onTotalAssetsClick?: () => void;
+  onTotalPnlClick?: () => void;
 }
 
-export default function StatCards({ data, loading, todaySnapshot }: StatCardsProps) {
+export default function StatCards({ data, loading, todaySnapshot, onTotalAssetsClick, onTotalPnlClick }: StatCardsProps) {
   const totalAssets = data.reduce((s, r) => s + parseFloat(r.currentValue), 0);
   const totalCost = data.reduce((s, r) => s + parseFloat(r.costAmount), 0);
   const totalPnl = totalAssets - totalCost;
@@ -29,12 +31,14 @@ export default function StatCards({ data, loading, todaySnapshot }: StatCardsPro
       content: `¥${totalAssets.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
       sub: `${data.length} 只基金`,
       color: undefined as string | undefined,
+      onClick: onTotalAssetsClick,
     },
     {
       title: "总盈亏",
       content: `${totalPnl >= 0 ? "+" : ""}¥${totalPnl.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
       sub: `${totalPnlRate >= 0 ? "+" : ""}${(totalPnlRate * 100).toFixed(2)}%`,
       color: isProfit ? PROFIT_COLOR : LOSS_COLOR,
+      onClick: onTotalPnlClick,
     },
     {
       title: "今日盈亏",
@@ -43,12 +47,14 @@ export default function StatCards({ data, loading, todaySnapshot }: StatCardsPro
         : "—",
       sub: todaySnapshot ? `市值 ¥${parseFloat(todaySnapshot.totalValue).toLocaleString(undefined, { maximumFractionDigits: 0 })}` : "暂无快照",
       color: todayProfit !== null ? (todayProfit ? PROFIT_COLOR : LOSS_COLOR) : undefined,
+      onClick: undefined,
     },
     {
       title: "持仓数量",
       content: `${data.length}`,
       sub: "只基金",
       color: undefined as string | undefined,
+      onClick: undefined,
     },
   ];
 
@@ -70,7 +76,11 @@ export default function StatCards({ data, loading, todaySnapshot }: StatCardsPro
     <Row gutter={[16, 16]} align="stretch">
       {cards.map((card) => (
         <Col key={card.title} xs={24} sm={12} lg={6}>
-          <Card style={{ height: "100%" }}>
+          <Card
+            style={{ height: "100%", cursor: card.onClick ? "pointer" : undefined }}
+            onClick={card.onClick}
+            hoverable={!!card.onClick}
+          >
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
               <Text type="secondary" style={{ fontSize: 13 }}>{card.title}</Text>
               <Text strong style={{ fontSize: 24, color: card.color, lineHeight: 1.3 }}>
