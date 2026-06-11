@@ -98,6 +98,8 @@ export const stopLossTakeProfitApi = {
     http.get<import("@g-fund/types").StopLossTakeProfitSignal[]>("/stop-loss-take-profit").then((r) => r.data),
   get: (fundCode: string) =>
     http.get<import("@g-fund/types").StopLossTakeProfitSignal[]>(`/stop-loss-take-profit/${fundCode}`).then((r) => r.data),
+  history: (params?: { fundCode?: string; days?: number }) =>
+    http.get<import("@g-fund/types").SlpSignalLog[]>("/stop-loss-take-profit/history", { params }).then((r) => r.data),
 };
 
 export const dcaApi = {
@@ -107,6 +109,10 @@ export const dcaApi = {
     http.get<import("@g-fund/types").DcaCalculation | null>(`/dca/${fundCode}`).then((r) => r.data),
   getNextDate: () =>
     http.get<{ nextDate: string; isToday: boolean }>("/dca/next-date").then((r) => r.data),
+  getSnapshots: (planDate: string) =>
+    http.get<import("@g-fund/types").DcaSnapshot[]>(`/dca/snapshots/${planDate}`).then((r) => r.data),
+  markExecuted: (id: number) =>
+    http.patch<import("@g-fund/types").DcaSnapshot>(`/dca/snapshots/${id}/execute`).then((r) => r.data),
 };
 
 export const rulesApi = {

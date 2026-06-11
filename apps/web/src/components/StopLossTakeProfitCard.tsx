@@ -12,6 +12,12 @@ const SIGNAL_CONFIG: Record<StopLossTakeProfitSignal['signalType'], { color: str
   deep_loss: { color: "#ff4d4f", icon: <CloseCircleOutlined />, label: "深度套牢" },
 };
 
+function formatNextTierGap(gap: number | undefined): string {
+  if (gap === undefined || gap === null) return "";
+  const prefix = gap > 0 ? "距止盈" : "距止损";
+  return `${prefix} ${Math.abs(gap * 100).toFixed(1)}%`;
+}
+
 interface StopLossTakeProfitCardProps {
   data: StopLossTakeProfitSignal[];
   loading: boolean;
@@ -65,13 +71,20 @@ export default function StopLossTakeProfitCard({ data, loading }: StopLossTakePr
                     <Text type="secondary" style={{ fontSize: 12, marginLeft: 8 }}>{signal.fundCode}</Text>
                   </div>
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <Text style={{ color: config.color, fontWeight: 600 }}>
-                    {(parseFloat(signal.pnlRate) * 100).toFixed(2)}%
-                  </Text>
-                  <Tag color={config.color} style={{ margin: 0 }}>
-                    {config.label}
-                  </Tag>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <Text style={{ color: config.color, fontWeight: 600 }}>
+                      {(parseFloat(signal.pnlRate) * 100).toFixed(2)}%
+                    </Text>
+                    <Tag color={config.color} style={{ margin: 0 }}>
+                      {config.label}
+                    </Tag>
+                  </div>
+                  {signal.nextTierGap !== undefined && (
+                    <Text type="secondary" style={{ fontSize: 11 }}>
+                      {formatNextTierGap(signal.nextTierGap)}
+                    </Text>
+                  )}
                 </div>
               </div>
             );

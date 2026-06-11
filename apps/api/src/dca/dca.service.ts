@@ -8,6 +8,7 @@ import { MarketIndexService } from '../market-index/market-index.service';
 import { SettingsService } from '../settings/settings.service';
 import type {
   DcaCalculation,
+  DcaSnapshot,
   DcaRules,
   FundRuleOverride,
   FundRuleOverrideType,
@@ -439,6 +440,59 @@ export class DcaService {
 
   private isOverrideEnabled(overrides: FundRuleOverride[], type: FundRuleOverrideType): boolean {
     return overrides.some((o) => o.overrideType === type && o.enabled);
+  }
+
+  // --- 快照查询 ---
+
+  async getSnapshots(planDate: string): Promise<DcaSnapshot[]> {
+    const rows = await this.db
+      .select()
+      .from(schema.dcaSnapshots)
+      .where(eq(schema.dcaSnapshots.planDate, planDate));
+
+    return rows.map((row) => ({
+      id: row.id,
+      planDate: row.planDate,
+      fundCode: row.fundCode,
+      baseAmount: row.baseAmount,
+      p0: row.p0,
+      p1: row.p1,
+      p2: row.p2,
+      p3: row.p3,
+      p4: row.p4,
+      tFactor: row.tFactor,
+      finalAmount: row.finalAmount,
+      executed: row.executed,
+      createdAt: row.createdAt.toISOString(),
+    }));
+  }
+
+  async markSnapshotExecuted(id: number): Promise<DcaSnapshot> {
+    const [updated] = await this.db
+      .update(schema.dcaSnapshots)
+      .set({ executed: true })
+      .where(eq(schema.dcaSnapshots.id, id))
+      .returning();
+
+    if (!updated) {
+      throw new Error(`Snapshot ${id} not found`);
+    }
+
+    return {
+      id: updated.id,
+      planDate: updated.planDate,
+      fundCode: updated.fundCode,
+      baseAmount: updated.baseAmount,
+      p0: updated.p0,
+      p1: updated.p1,
+      p2: updated.p2,
+      p3: updated.p3,
+      p4: updated.p4,
+      tFactor: updated.tFactor,
+      finalAmount: updated.finalAmount,
+      executed: updated.executed,
+      createdAt: updated.createdAt.toISOString(),
+    };
   }
 
   // --- 快照写入 ---

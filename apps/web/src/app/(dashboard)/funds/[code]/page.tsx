@@ -17,6 +17,7 @@ import type {
 import {
   FUND_PHASE_LABELS, VALUATION_LEVEL_LABELS, LIFECYCLE_STAGE_LABELS,
   ASSET_TYPE_LABELS, FUND_RULE_OVERRIDE_TYPES, FUND_RULE_OVERRIDE_LABELS,
+  SIGNAL_LEVEL_LABELS, DEEP_LOSS_DECISION_LABELS,
 } from "@g-fund/types";
 import { fundsApi, stopLossTakeProfitApi, dcaApi, rulesApi } from "@/lib/api-client";
 
@@ -182,23 +183,54 @@ export default function FundDiagnosisPage() {
 
                   <Divider style={{ margin: "8px 0" }} />
 
-                  {signal.map((s, i) => (
-                    <Alert
-                      key={i}
-                      type={s.level === "red" ? "error" : s.level === "yellow" ? "warning" : "info"}
-                      message={
-                        <Space>
-                          <Tag color={s.signalType === "take_profit" ? "green" : "red"}>
-                            {s.signalType === "take_profit" ? "止盈" : "止损"}
-                          </Tag>
-                          {s.message}
-                        </Space>
-                      }
-                      description={`阈值：${s.threshold}`}
-                      showIcon
-                      style={{ marginBottom: i < signal.length - 1 ? 0 : undefined }}
-                    />
-                  ))}
+                  {signal.map((s, i) => {
+                    const typeLabels: Record<string, string> = {
+                      take_profit: "止盈",
+                      stop_loss: "止损",
+                      warning: "预警",
+                      deep_loss: "深度套牢",
+                    };
+                    const typeColors: Record<string, string> = {
+                      take_profit: "green",
+                      stop_loss: "red",
+                      warning: "orange",
+                      deep_loss: "red",
+                    };
+                    return (
+                      <Alert
+                        key={i}
+                        type={s.level === "red" ? "error" : s.level === "yellow" ? "warning" : "info"}
+                        message={
+                          <Space>
+                            <Tag color={typeColors[s.signalType]}>
+                              {typeLabels[s.signalType]}
+                            </Tag>
+                            <Tag color={s.level === "red" ? "red" : s.level === "yellow" ? "orange" : s.level === "blue" ? "blue" : "green"}>
+                              {SIGNAL_LEVEL_LABELS[s.level]}
+                            </Tag>
+                            {s.message}
+                          </Space>
+                        }
+                        description={
+                          <Space direction="vertical" size={4}>
+                            <Text type="secondary">阈值：{s.threshold}</Text>
+                            {s.nextTierGap !== undefined && (
+                              <Text type="secondary">
+                                距下一档：{Math.abs(s.nextTierGap * 100).toFixed(1)}%
+                              </Text>
+                            )}
+                            {s.deepLossDecision && (
+                              <Text type="secondary">
+                                决策：{DEEP_LOSS_DECISION_LABELS[s.deepLossDecision]}
+                              </Text>
+                            )}
+                          </Space>
+                        }
+                        showIcon
+                        style={{ marginBottom: i < signal.length - 1 ? 0 : undefined }}
+                      />
+                    );
+                  })}
                 </Space>
               )}
             </Card>

@@ -2,8 +2,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Col, Row, Space, Typography, message } from "antd";
-import type { PositionListItem, Transaction, DailySnapshot, StopLossTakeProfitSignal, DcaCalculation, AssetAllocationResponse } from "@g-fund/types";
-import { positionsApi, transactionsApi, dailySnapshotsApi, stopLossTakeProfitApi, dcaApi, dashboardApi } from "@/lib/api-client";
+import type { PositionListItem, Transaction, DailySnapshot, StopLossTakeProfitSignal, SlpSignalLog, DcaCalculation, DcaSnapshot, AssetAllocationResponse, FundListItem } from "@g-fund/types";
+import { positionsApi, transactionsApi, dailySnapshotsApi, stopLossTakeProfitApi, dcaApi, dashboardApi, fundsApi } from "@/lib/api-client";
 import StatCards from "@/components/StatCards";
 import PnLChart from "@/components/PnLChart";
 import AssetAllocationCard from "@/components/AssetAllocationCard";
@@ -12,6 +12,7 @@ import SyncPositionsButton from "@/components/SyncPositionsButton";
 import StopLossTakeProfitCard from "@/components/StopLossTakeProfitCard";
 import DcaEstimateCard from "@/components/DcaEstimateCard";
 import AlertTimeline from "@/components/AlertTimeline";
+import StageProgressCard from "@/components/StageProgressCard";
 import TotalProfitDrawer from "@/components/TotalProfitDrawer";
 import FundProfitDrawer from "@/components/FundProfitDrawer";
 
@@ -23,14 +24,18 @@ export default function DashboardPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [snapshots, setSnapshots] = useState<DailySnapshot[]>([]);
   const [signals, setSignals] = useState<StopLossTakeProfitSignal[]>([]);
+  const [signalHistory, setSignalHistory] = useState<SlpSignalLog[]>([]);
   const [dcaData, setDcaData] = useState<DcaCalculation[]>([]);
+  const [dcaSnapshots, setDcaSnapshots] = useState<DcaSnapshot[]>([]);
   const [assetAllocation, setAssetAllocation] = useState<AssetAllocationResponse | null>(null);
+  const [funds, setFunds] = useState<FundListItem[]>([]);
   const [posLoading, setPosLoading] = useState(false);
   const [txLoading, setTxLoading] = useState(false);
   const [snapLoading, setSnapLoading] = useState(false);
   const [signalLoading, setSignalLoading] = useState(false);
   const [dcaLoading, setDcaLoading] = useState(false);
   const [allocLoading, setAllocLoading] = useState(false);
+  const [fundsLoading, setFundsLoading] = useState(false);
   const [messageApi, contextHolder] = message.useMessage();
 
   const [totalProfitOpen, setTotalProfitOpen] = useState(false);
@@ -77,8 +82,12 @@ export default function DashboardPage() {
   const loadSignals = useCallback(async () => {
     setSignalLoading(true);
     try {
-      const data = await stopLossTakeProfitApi.list();
-      setSignals(data);
+      const [signalsData, historyData] = await Promise.all([
+        stopLossTakeProfitApi.list(),
+        stopLossTakeProfitApi.history({ days: 30 }),
+      ]);
+      setSignals(signalsData);
+      setSignalHistory(historyData);
     } catch {
       // may not have data yet
     } finally {
@@ -89,8 +98,13 @@ export default function DashboardPage() {
   const loadDca = useCallback(async () => {
     setDcaLoading(true);
     try {
-      const data = await dcaApi.calculate();
-      setDcaData(data);
+      const today = new Date().toISOString().slice(0, 10);
+      const [dcaData, snapshotsData] = await Promise.all([
+        dcaApi.calculate(),
+        dcaApi.getSnapshots(today).catch(() => []),
+      ]);
+      setDcaData(dcaData);
+      setDcaSnapshots(snapshotsData);
     } catch {
       // may not have data yet
     } finally {
@@ -110,6 +124,18 @@ export default function DashboardPage() {
     }
   }, []);
 
+  const loadFunds = useCallback(async () => {
+    setFundsLoading(true);
+    try {
+      const data = await fundsApi.list();
+      setFunds(data);
+    } catch {
+      // may not have data yet
+    } finally {
+      setFundsLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     loadPositions();
     loadTransactions();
@@ -117,7 +143,8 @@ export default function DashboardPage() {
     loadSignals();
     loadDca();
     loadAssetAllocation();
-  }, [loadPositions, loadTransactions, loadSnapshots, loadSignals, loadDca, loadAssetAllocation]);
+    loadFunds();
+  }, [loadPositions, loadTransactions, loadSnapshots, loadSignals, loadDca, loadAssetAllocation, loadFunds]);
 
   const todayStr = new Date().toISOString().slice(0, 10);
   const todaySnapshot = snapshots.find((s) => s.snapshotDate === todayStr) ?? null;
@@ -150,11 +177,16 @@ export default function DashboardPage() {
         onTotalPnlClick={() => setTotalProfitOpen(true)}
       />
       <Row gutter={[16, 16]} style={{ marginTop: 16 }} align="stretch">
-        <Col xs={24} lg={14}>
-          <PnLChart data={snapshots} loading={snapLoading} />
+        <Col xs={24} lg={8}>
+          <StageProgressCard data={funds} loading={fundsLoading} />
         </Col>
-        <Col xs={24} lg={10}>
+        <Col xs={24} lg={16}>
           <AssetAllocationCard data={assetAllocation} loading={allocLoading} />
+        </Col>
+      </Row>
+      <Row gutter={[16, 16]} style={{ marginTop: 16 }} align="stretch">
+        <Col xs={24}>
+          <PnLChart data={snapshots} loading={snapLoading} />
         </Col>
       </Row>
       <Row gutter={[16, 16]} style={{ marginTop: 16 }} align="stretch">
@@ -162,10 +194,15 @@ export default function DashboardPage() {
           <StopLossTakeProfitCard data={signals} loading={signalLoading} />
         </Col>
         <Col xs={24} lg={8}>
-          <DcaEstimateCard data={dcaData} loading={dcaLoading} />
+          <DcaEstimateCard
+            data={dcaData}
+            loading={dcaLoading}
+            snapshots={dcaSnapshots}
+            onSnapshotUpdate={loadDca}
+          />
         </Col>
         <Col xs={24} lg={8}>
-          <AlertTimeline data={signals} loading={signalLoading} />
+          <AlertTimeline data={signalHistory} loading={signalLoading} />
         </Col>
       </Row>
       <div style={{ marginTop: 16 }}>

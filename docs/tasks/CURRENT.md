@@ -1,34 +1,16 @@
 # 当前任务（CURRENT）
 
-
-## Milestone 14：AI Agent 工具集扩充（P2）
-
-> 目标：把规则与实时数据暴露给 AI，让回答有据可依，消除 prompt 与代码两处维护。
-
-| ID | 任务 | 状态 | 估时 |
-|----|------|------|------|
-| T14.1.1 | Tool: getDcaPlan（返回本期定投计划，含 P0~P4 / T 系数明细） | [x] | 0.5d |
-| T14.1.2 | Tool: getStopLossSignals（当前所有触发 / 接近触发的信号） | [x] | 0.25d |
-| T14.1.3 | Tool: getRebalanceSuggestion（实际占比 vs target_ratio 偏差报告） | [x] | 0.5d |
-| T14.1.4 | Tool: getDeepLossDiagnosis（亏损>20% 基金的 A/B/C 决策上下文） | [x] | 0.5d |
-| T14.1.5 | Tool: getRealtimeQuote（天天基金盘中估值 + daily_return） | [x] | 0.25d |
-| T14.1.6 | Tool: getRules（返回 dca_rules / slp_rules 当前生效配置） | [x] | 0.25d |
-| T14.1.7 | Tool: getFundStage（单基金阶段：dca / holding + 进度） | [x] | 0.25d |
-| T14.1.8 | prompt.ts 改造：移除硬编码规则文本，改为引导调用 getRules；强化 A/B/C 输出约束 | [x] | 0.5d |
-| T14.1.9 | LangSmith trace metadata：节点级 fundCode / phase / signal 上报 | [x] | 0.25d |
-
-
 ## Milestone 15：UI 完善与可视化（P2）
 
 | ID | 任务 | 状态 | 估时 |
 |----|------|------|------|
-| T16.1.1 | Dashboard 新增"阶段进度"卡（持仓金额/目标 80% 进度条 + dca/holding 标签） | [ ] | 0.5d |
-| T16.1.2 | StopLossTakeProfitCard 升级为四态预警 + 距下一档差距 | [ ] | 0.5d |
-| T16.1.3 | DcaEstimateCard 展开 P0~P4 / T 各系数明细（折叠面板 / hover 提示） | [ ] | 0.5d |
-| T16.1.4 | Funds 列表新增列：当前阶段 / 当前预警等级 | [ ] | 0.25d |
-| T16.1.5 | /funds/[code] 详情展示当前所处档位 + 距离下一档差距 | [ ] | 0.5d |
-| T16.1.6 | AlertTimeline 切换数据源到 slp_signals_log（历史信号） | [ ] | 0.5d |
-| T16.1.7 | 定投执行状态：本期 dca_snapshots 标记"已执行 / 待执行"+ 一键标记按钮 | [ ] | 0.5d |
+| T16.1.1 | Dashboard 新增"阶段进度"卡（持仓金额/目标 80% 进度条 + dca/holding 标签） | [x] | 0.5d |
+| T16.1.2 | StopLossTakeProfitCard 升级为四态预警 + 距下一档差距 | [x] | 0.5d |
+| T16.1.3 | DcaEstimateCard 展开 P0~P4 / T 各系数明细（折叠面板 / hover 提示） | [x] | 0.5d |
+| T16.1.4 | Funds 列表新增列：当前阶段 / 当前预警等级 | [x] | 0.25d |
+| T16.1.5 | /funds/[code] 详情展示当前所处档位 + 距离下一档差距 | [x] | 0.5d |
+| T16.1.6 | AlertTimeline 切换数据源到 slp_signals_log（历史信号） | [x] | 0.5d |
+| T16.1.7 | 定投执行状态：本期 dca_snapshots 标记"已执行 / 待执行"+ 一键标记按钮 | [x] | 0.5d |
 
 ## Milestone 17：大盘指数实时看板（P1）
 
