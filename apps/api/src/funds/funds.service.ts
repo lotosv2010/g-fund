@@ -5,7 +5,7 @@ import * as schema from '@g-fund/db';
 import { DB } from '../db/db.module';
 import { CreateFundDto } from './dto/create-fund.dto';
 import { UpdateFundDto } from './dto/update-fund.dto';
-import { FundListItem, LifecycleStage } from '@g-fund/types';
+import { FundListItem, LifecycleStage, StageChange } from '@g-fund/types';
 
 const STAGE_THRESHOLD = 0.8;
 
@@ -13,6 +13,8 @@ export interface StageInfo {
   lifecycleStage: LifecycleStage;
   stageChangedAt: string | null;
   progress: number;
+  stageChanged: boolean;
+  previousStage: LifecycleStage | null;
 }
 
 type DbType = NodePgDatabase<typeof schema>;
@@ -223,8 +225,10 @@ export class FundsService {
     const targetAmount = parseFloat(fund.targetAmount ?? '0');
     const progress = targetAmount > 0 ? costAmount / targetAmount : 0;
     const computedStage: LifecycleStage = progress >= STAGE_THRESHOLD ? 'holding' : 'dca';
+    const stageChanged = fund.lifecycleStage !== computedStage;
+    const previousStage = fund.lifecycleStage as LifecycleStage;
 
-    if (fund.lifecycleStage !== computedStage) {
+    if (stageChanged) {
       await this.db
         .update(schema.funds)
         .set({
@@ -239,6 +243,8 @@ export class FundsService {
       lifecycleStage: computedStage,
       stageChangedAt: fund.stageChangedAt ? fund.stageChangedAt.toISOString() : null,
       progress: Math.round(progress * 10000) / 100,
+      stageChanged,
+      previousStage: stageChanged ? previousStage : null,
     };
   }
 
@@ -246,6 +252,49 @@ export class FundsService {
     const funds = await this.db.select().from(schema.funds);
     for (const fund of funds) {
       await this.computeLifecycleStage(fund.code);
+    }
+  }
+
+  async recordStageChange(
+    fundCode: string,
+    fundName: string,
+    fromStage: LifecycleStage,
+    toStage: LifecycleStage,
+    progress: number,
+    trigger: StageChange['trigger'],
+  ): Promise<void> {
+    const today = new Date().toISOString().slice(0, 10);
+    const change: StageChange = {
+      fundCode,
+      fundName,
+      fromStage,
+      toStage,
+      progress,
+      trigger,
+      timestamp: new Date().toISOString(),
+    };
+
+    const [existing] = await this.db
+      .select()
+      .from(schema.dailyLogs)
+      .where(eq(schema.dailyLogs.logDate, today));
+
+    if (existing) {
+      const currentChanges = (existing.stageChanges as StageChange[]) || [];
+      await this.db
+        .update(schema.dailyLogs)
+        .set({
+          stageChanges: [...currentChanges, change],
+          updatedAt: new Date(),
+        })
+        .where(eq(schema.dailyLogs.logDate, today));
+    } else {
+      await this.db
+        .insert(schema.dailyLogs)
+        .values({
+          logDate: today,
+          stageChanges: [change],
+        });
     }
   }
 

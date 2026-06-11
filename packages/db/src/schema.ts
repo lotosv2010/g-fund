@@ -59,6 +59,7 @@ export const dailyLogs = pgTable('daily_logs', {
   logDate: date('log_date').notNull().unique(),
   summary: text('summary'),
   marketNote: text('market_note'),
+  stageChanges: jsonb('stage_changes').default([]),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });

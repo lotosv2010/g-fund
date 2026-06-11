@@ -1,5 +1,7 @@
-import { IsOptional, IsString } from 'class-validator';
+import { IsOptional, IsString, IsArray, ValidateNested } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
+import { StageChangeDto } from './create-daily-log.dto';
 
 export class UpdateDailyLogDto {
   @ApiPropertyOptional({ example: '今日加仓消费基金 1000 元' })
@@ -11,4 +13,11 @@ export class UpdateDailyLogDto {
   @IsOptional()
   @IsString()
   marketNote?: string;
+
+  @ApiPropertyOptional({ type: [StageChangeDto] })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => StageChangeDto)
+  stageChanges?: StageChangeDto[];
 }

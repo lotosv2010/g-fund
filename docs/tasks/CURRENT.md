@@ -46,7 +46,7 @@
 |----|------|------|------|
 | T10.1.1 | funds.phase 语义拆分：拆为 valuation_level（low/normal/high）+ lifecycle_stage（dca/holding），迁移现有数据 | [x] | 0.5d |
 | T10.1.2 | 阶段判断服务：持仓金额 / 目标金额 ≥ 80% → holding，否则 dca；提供 GET /funds/:code/stage 接口 | [x] | 0.5d |
-| T10.1.3 | 阶段切换记录：funds 表新增 stage_changed_at；交易后自动重算并写 daily_logs | [ ] | 0.5d |
+| T10.1.3 | 阶段切换记录：funds 表新增 stage_changed_at；交易后自动重算并写 daily_logs | [x] | 0.5d |
 | T10.1.4 | 接入天天基金盘中估值 API（estimate_nav / daily_return），新增 RealtimeQuoteService | [ ] | 1d |
 | T10.1.5 | fund_nav_history 增加 daily_return 字段；同步任务回填历史数据 | [ ] | 0.5d |
 | T10.1.6 | 基金资产类型字段扩展（asset_type：equity/bond/gold/qdii/index），用于例外规则匹配 | [x] | 0.25d |
@@ -116,19 +116,8 @@
 | T14.1.8 | prompt.ts 改造：移除硬编码规则文本，改为引导调用 getRules；强化 A/B/C 输出约束 | [ ] | 0.5d |
 | T14.1.9 | LangSmith trace metadata：节点级 fundCode / phase / signal 上报 | [ ] | 0.25d |
 
-## Milestone 15：调度与推送（P2）
 
-> 目标：把规则跑起来，自动产生预警与定投计划。
-
-| ID | 任务 | 状态 | 估时 |
-|----|------|------|------|
-| T15.1.1 | 调度框架引入（@nestjs/schedule 或 BullMQ） | [ ] | 0.5d |
-| T15.1.2 | 双周四 14:30 自动生成 dca_snapshots + 写 daily_logs 草稿 | [ ] | 0.5d |
-| T15.1.3 | 每日交易日盘中（如 14:00）刷新实时估值 + 触发止盈止损扫描 | [ ] | 0.5d |
-| T15.1.4 | 季度再平衡定时任务（3/6/9/12 月第一个定投日） | [ ] | 0.25d |
-| T15.1.5 | 每日 daily_snapshots 自动归档（含阶段 / 预警等级字段） | [ ] | 0.5d |
-
-## Milestone 16：UI 完善与可视化（P2）
+## Milestone 15：UI 完善与可视化（P2）
 
 | ID | 任务 | 状态 | 估时 |
 |----|------|------|------|
@@ -140,7 +129,7 @@
 | T16.1.6 | AlertTimeline 切换数据源到 slp_signals_log（历史信号） | [ ] | 0.5d |
 | T16.1.7 | 定投执行状态：本期 dca_snapshots 标记"已执行 / 待执行"+ 一键标记按钮 | [ ] | 0.5d |
 
-## Milestone 18：大盘指数实时看板（P1）
+## Milestone 17：大盘指数实时看板（P1）
 
 > 目标：Dashboard 顶部新增大盘看板，覆盖上证 / 深证 / 沪深300 / 创业板 / 科创50 / 北证50 等核心指数，提供实时点位、涨跌幅、成交额；同时为 P1 当日大盘 / P2 近 1 周趋势 / 子弹仓触发提供数据源。
 
@@ -157,7 +146,7 @@
 | T18.1.9 | 用户自定义关注指数：app_settings 存 watchlist_indices，UI 加配置入口（增删指数代码） | [ ] | 0.5d |
 | T18.1.10 | 非交易时段降级：周末 / 节假日 / 收盘后展示昨收数据并标注"已收盘"，避免无效轮询 | [ ] | 0.25d |
 
-## Milestone 17：清理与测试（P3）
+## Milestone 18：清理与测试（P3）
 
 | ID | 任务 | 状态 | 估时 |
 |----|------|------|------|

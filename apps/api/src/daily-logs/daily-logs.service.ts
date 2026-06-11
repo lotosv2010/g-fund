@@ -5,7 +5,7 @@ import * as schema from '@g-fund/db';
 import { DB } from '../db/db.module';
 import { CreateDailyLogDto } from './dto/create-daily-log.dto';
 import { UpdateDailyLogDto } from './dto/update-daily-log.dto';
-import type { DailyLog } from '@g-fund/types';
+import type { DailyLog, StageChange } from '@g-fund/types';
 
 type DbType = NodePgDatabase<typeof schema>;
 type DailyLogRow = typeof schema.dailyLogs.$inferSelect;
@@ -16,6 +16,7 @@ function toDailyLog(r: DailyLogRow): DailyLog {
     logDate: r.logDate,
     summary: r.summary ?? null,
     marketNote: r.marketNote ?? null,
+    stageChanges: (r.stageChanges as StageChange[]) || [],
     createdAt: r.createdAt.toISOString(),
     updatedAt: r.updatedAt.toISOString(),
   };
@@ -54,12 +55,14 @@ export class DailyLogsService {
         logDate: dto.logDate,
         summary: dto.summary ?? null,
         marketNote: dto.marketNote ?? null,
+        stageChanges: dto.stageChanges ?? [],
       })
       .onConflictDoUpdate({
         target: schema.dailyLogs.logDate,
         set: {
           summary: dto.summary ?? null,
           marketNote: dto.marketNote ?? null,
+          stageChanges: dto.stageChanges ?? [],
           updatedAt: new Date(),
         },
       })

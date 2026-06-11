@@ -79,9 +79,10 @@ export class TransactionsService {
       await this.db.transaction(async (dbTx) => {
         await this.confirmTransaction(dbTx, tx, nav, navDate);
       });
-    }
 
-    await this.fundsService.computeLifecycleStage(fundCode).catch(() => {});
+      // 交易确认后记录阶段变化
+      await this.recordStageChangeIfNeeded(fundCode, tx.type as 'buy' | 'sell');
+    }
 
     return pendingTxs.length;
   }
@@ -237,7 +238,36 @@ export class TransactionsService {
       await tx.delete(schema.transactions).where(eq(schema.transactions.id, id));
     });
 
-    await this.fundsService.computeLifecycleStage(txRow.fundCode).catch(() => {});
+    // 回滚后记录阶段变化
+    const trigger = txRow.type === 'buy' ? 'rollback_buy' : 'rollback_sell';
+    await this.recordStageChangeIfNeeded(txRow.fundCode, trigger);
+  }
+
+  private async recordStageChangeIfNeeded(
+    fundCode: string,
+    trigger: 'buy' | 'sell' | 'rollback_buy' | 'rollback_sell',
+  ): Promise<void> {
+    try {
+      const stageInfo = await this.fundsService.computeLifecycleStage(fundCode);
+      if (stageInfo.stageChanged && stageInfo.previousStage) {
+        const [fund] = await this.db
+          .select()
+          .from(schema.funds)
+          .where(eq(schema.funds.code, fundCode));
+        if (fund) {
+          await this.fundsService.recordStageChange(
+            fundCode,
+            fund.name,
+            stageInfo.previousStage,
+            stageInfo.lifecycleStage,
+            stageInfo.progress,
+            trigger,
+          );
+        }
+      }
+    } catch {
+      // 阶段记录失败不影响主流程
+    }
   }
 
   private async rollbackBuy(
