@@ -1,36 +1,5 @@
 # 当前任务（CURRENT）
 
-## Milestone 12：DCA 规则引擎补全（P1）
-
-> 目标：补齐 P0/P1/P2/T 系数与季度再平衡，让定投计算与文档一致。
-
-| ID | 任务 | 状态 | 估时 |
-|----|------|------|------|
-| T12.1.1 | 双周四判断：is_biweekly_thursday(锚点 2026-05-28)，前后端共用同一 API（GET /dca/next-date） | [ ] | 0.25d |
-| T12.1.2 | P0 QDII 申购检查：调用 BatchGetFundTradeLimit，canAllot=false 强制归零 | [ ] | 0.5d |
-| T12.1.3 | P1 当日大盘检查：>+2% 暂缓 / <-2% 加仓 / 连续 3 日推迟后强制执行 | [ ] | 0.5d |
-| T12.1.4 | P2 近 1 周大盘趋势：累计涨>5% × 0.5 / 跌>5% × 1.3 | [ ] | 0.5d |
-| T12.1.5 | P3 单基金近 1 月：>20%×0 / >10%×0.5 / <-10%×1.5 / <-5%×1.3 | [ ] | 0.5d |
-| T12.1.6 | T1~T4 优先级系数：低估+大缺口×1.2 / 接近止盈×0.5 / 超配×0 | [ ] | 0.5d |
-| T12.1.7 | 子弹仓机制：沪深300 单周跌>-8% 触发一次性加投，下月补充 | [ ] | 0.5d |
-| T12.1.8 | 季度再平衡：3/6/9/12 月第一个定投日，偏差>5% 调整 priority | [ ] | 0.75d |
-| T12.1.9 | 例外规则：纯债不调速 / 黄金止损放宽 -15% / 低估指数基金不止损 | [ ] | 0.5d |
-| T12.1.10 | dca_snapshots 写入：每次计算后留痕，含各系数明细与最终金额 | [ ] | 0.25d |
-
-## Milestone 13：止盈止损规则引擎补全（P1）
-
-> 目标：实现深度套牢 A/B/C 决策、四态预警、实时数据驱动。
-
-| ID | 任务 | 状态 | 估时 |
-|----|------|------|------|
-| T13.1.1 | 阶段感知：仅 holding 阶段触发止盈止损；dca 阶段只输出预警不输出操作 | [x] | 0.25d |
-| T13.1.2 | 预警线四态：🔴接近止盈(>20%) / 🟡接近止损(>-8%) / 🔵低估(<30%) / 🟢正常 | [x] | 0.5d |
-| T13.1.3 | 反弹判定改用实时数据：连续 3 个交易日 daily_return>1% OR 周累计>3% | [x] | 0.5d |
-| T13.1.4 | 深度套牢决策（亏损>20%）：A 补仓 / B 观望 / C 止损 三选一硬性输出 | [x] | 1d |
-| T13.1.5 | 观望升级规则：连续 5 个交易日观望且继续下跌 → 升级止损或维持并给止损触发价 | [x] | 0.5d |
-| T13.1.6 | 信号去重与历史：写入 slp_signals_log | [x] | 0.5d |
-| T13.1.7 | 估值分位条件分流：亏损≥20% + 估值>30% → 赎回50%；估值<30% → 加仓 | [x] | 0.25d |
-| T13.1.8 | 接近档位提示：距离下一档差距百分比，前端展示 | [x] | 0.25d |
 
 ## Milestone 14：AI Agent 工具集扩充（P2）
 
@@ -38,15 +7,15 @@
 
 | ID | 任务 | 状态 | 估时 |
 |----|------|------|------|
-| T14.1.1 | Tool: getDcaPlan（返回本期定投计划，含 P0~P4 / T 系数明细） | [ ] | 0.5d |
-| T14.1.2 | Tool: getStopLossSignals（当前所有触发 / 接近触发的信号） | [ ] | 0.25d |
-| T14.1.3 | Tool: getRebalanceSuggestion（实际占比 vs target_ratio 偏差报告） | [ ] | 0.5d |
-| T14.1.4 | Tool: getDeepLossDiagnosis（亏损>20% 基金的 A/B/C 决策上下文） | [ ] | 0.5d |
-| T14.1.5 | Tool: getRealtimeQuote（天天基金盘中估值 + daily_return） | [ ] | 0.25d |
-| T14.1.6 | Tool: getRules（返回 dca_rules / slp_rules 当前生效配置） | [ ] | 0.25d |
-| T14.1.7 | Tool: getFundStage（单基金阶段：dca / holding + 进度） | [ ] | 0.25d |
-| T14.1.8 | prompt.ts 改造：移除硬编码规则文本，改为引导调用 getRules；强化 A/B/C 输出约束 | [ ] | 0.5d |
-| T14.1.9 | LangSmith trace metadata：节点级 fundCode / phase / signal 上报 | [ ] | 0.25d |
+| T14.1.1 | Tool: getDcaPlan（返回本期定投计划，含 P0~P4 / T 系数明细） | [x] | 0.5d |
+| T14.1.2 | Tool: getStopLossSignals（当前所有触发 / 接近触发的信号） | [x] | 0.25d |
+| T14.1.3 | Tool: getRebalanceSuggestion（实际占比 vs target_ratio 偏差报告） | [x] | 0.5d |
+| T14.1.4 | Tool: getDeepLossDiagnosis（亏损>20% 基金的 A/B/C 决策上下文） | [x] | 0.5d |
+| T14.1.5 | Tool: getRealtimeQuote（天天基金盘中估值 + daily_return） | [x] | 0.25d |
+| T14.1.6 | Tool: getRules（返回 dca_rules / slp_rules 当前生效配置） | [x] | 0.25d |
+| T14.1.7 | Tool: getFundStage（单基金阶段：dca / holding + 进度） | [x] | 0.25d |
+| T14.1.8 | prompt.ts 改造：移除硬编码规则文本，改为引导调用 getRules；强化 A/B/C 输出约束 | [x] | 0.5d |
+| T14.1.9 | LangSmith trace metadata：节点级 fundCode / phase / signal 上报 | [x] | 0.25d |
 
 
 ## Milestone 15：UI 完善与可视化（P2）

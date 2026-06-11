@@ -15,10 +15,17 @@ const MAX_HISTORY_TURNS = 20;
 
 export type StreamEventKind = 'thinking' | 'tool_call' | 'tool_result';
 
+export interface StreamEventMetadata {
+  readonly fundCode?: string;
+  readonly phase?: string;
+  readonly signal?: string;
+}
+
 export interface StreamEvent {
   readonly kind: StreamEventKind;
   readonly tool?: string;
   readonly content: string;
+  readonly metadata?: StreamEventMetadata;
 }
 
 export type OnStreamFn = (event: StreamEvent) => Promise<void> | void;
@@ -132,22 +139,74 @@ async function dispatchEvent(msg: BaseMessage, onStream: OnStreamFn): Promise<vo
     }
     const toolCalls = msg.tool_calls ?? [];
     for (const call of toolCalls) {
+      const metadata = extractMetadataFromArgs(call.name, call.args);
       await onStream({
         kind: 'tool_call',
         tool: call.name,
         content: safeStringify(call.args).slice(0, 800),
+        metadata,
       });
     }
     return;
   }
 
   if (ToolMessage.isInstance(msg)) {
+    const content = extractText(msg.content);
+    const metadata = extractMetadataFromResult(msg.name, content);
     await onStream({
       kind: 'tool_result',
       tool: msg.name ?? 'tool',
-      content: extractText(msg.content).slice(0, 2000),
+      content: content.slice(0, 2000),
+      metadata,
     });
   }
+}
+
+function extractMetadataFromArgs(toolName: string, args: Record<string, unknown> | undefined): StreamEventMetadata | undefined {
+  if (!args) return undefined;
+  const fundCode = extractFundCodeFromArgs(args);
+  if (!fundCode) return undefined;
+
+  const phase = inferPhaseFromTool(toolName);
+  return { fundCode, phase };
+}
+
+function extractFundCodeFromArgs(args: Record<string, unknown>): string | undefined {
+  if (typeof args.fundCode === 'string') return args.fundCode;
+  if (typeof args.fundCodes === 'string') return args.fundCodes;
+  if (Array.isArray(args.fundCodes) && args.fundCodes.length > 0) return String(args.fundCodes[0]);
+  return undefined;
+}
+
+function inferPhaseFromTool(toolName: string): string | undefined {
+  if (toolName === 'getDcaPlan') return 'dca';
+  if (toolName === 'getStopLossSignals' || toolName === 'getDeepLossDiagnosis') return 'holding';
+  if (toolName === 'getFundStage') return undefined;
+  return undefined;
+}
+
+function extractMetadataFromResult(toolName: string | undefined, content: string): StreamEventMetadata | undefined {
+  if (!toolName) return undefined;
+
+  try {
+    const parsed = JSON.parse(content);
+
+    if (toolName === 'getDcaPlan' && Array.isArray(parsed) && parsed.length > 0) {
+      return { fundCode: parsed[0].fundCode, phase: 'dca' };
+    }
+
+    if ((toolName === 'getStopLossSignals' || toolName === 'getDeepLossDiagnosis') && Array.isArray(parsed) && parsed.length > 0) {
+      return { fundCode: parsed[0].fundCode, signal: parsed[0].signalType };
+    }
+
+    if (toolName === 'getFundStage' && parsed.lifecycleStage) {
+      return { phase: parsed.lifecycleStage };
+    }
+  } catch {
+    // non-JSON result, skip metadata extraction
+  }
+
+  return undefined;
 }
 
 function messageKey(msg: BaseMessage): string {
