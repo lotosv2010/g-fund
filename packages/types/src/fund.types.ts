@@ -16,6 +16,37 @@ export const FUND_PHASE_LABELS: Record<FundPhase, string> = {
   high: '高估',
 };
 
+// 估值水平（替代旧 phase 的估值含义）
+export const VALUATION_LEVELS = ['low', 'normal', 'high'] as const;
+export type ValuationLevel = (typeof VALUATION_LEVELS)[number];
+
+export const VALUATION_LEVEL_LABELS: Record<ValuationLevel, string> = {
+  low: '低估',
+  normal: '正常',
+  high: '高估',
+};
+
+// 生命周期阶段：持仓金额 / 目标金额 ≥ 80% → holding
+export const LIFECYCLE_STAGES = ['dca', 'holding'] as const;
+export type LifecycleStage = (typeof LIFECYCLE_STAGES)[number];
+
+export const LIFECYCLE_STAGE_LABELS: Record<LifecycleStage, string> = {
+  dca: '定投期',
+  holding: '持有期',
+};
+
+// 资产类型：用于例外规则匹配（纯债不调速 / 黄金止损放宽 / 低估指数不止损）
+export const ASSET_TYPES = ['equity', 'bond', 'gold', 'qdii', 'index'] as const;
+export type AssetType = (typeof ASSET_TYPES)[number];
+
+export const ASSET_TYPE_LABELS: Record<AssetType, string> = {
+  equity: '权益',
+  bond: '债券',
+  gold: '黄金',
+  qdii: 'QDII',
+  index: '指数',
+};
+
 // 止盈止损信号
 export const SIGNAL_LEVELS = ['green', 'yellow', 'red'] as const;
 export type SignalLevel = (typeof SIGNAL_LEVELS)[number];
@@ -67,6 +98,10 @@ export interface Fund {
   targetRatio: string;
   valuationPercentile: string | null;
   phase: FundPhase | null;
+  valuationLevel: ValuationLevel | null;
+  lifecycleStage: LifecycleStage;
+  assetType: AssetType;
+  stageChangedAt: string | null;
   priority: number;
   baseAmount: string;
   weeklyReturn: string | null;
@@ -94,6 +129,9 @@ export interface CreateFundDto {
   targetRatio?: string;
   valuationPercentile?: string;
   phase?: FundPhase;
+  valuationLevel?: ValuationLevel;
+  lifecycleStage?: LifecycleStage;
+  assetType?: AssetType;
   priority?: number;
   baseAmount?: string;
   note?: string;
@@ -109,6 +147,9 @@ export interface UpdateFundDto {
   targetRatio?: string;
   valuationPercentile?: string | null;
   phase?: FundPhase | null;
+  valuationLevel?: ValuationLevel | null;
+  lifecycleStage?: LifecycleStage;
+  assetType?: AssetType;
   priority?: number;
   baseAmount?: string;
   weeklyReturn?: string | null;

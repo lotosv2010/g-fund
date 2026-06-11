@@ -13,7 +13,7 @@ import {
 import type {
   FundListItem, StopLossTakeProfitSignal, DcaCalculation,
 } from "@g-fund/types";
-import { FUND_PHASE_LABELS } from "@g-fund/types";
+import { FUND_PHASE_LABELS, VALUATION_LEVEL_LABELS, LIFECYCLE_STAGE_LABELS, ASSET_TYPE_LABELS } from "@g-fund/types";
 import { fundsApi, stopLossTakeProfitApi, dcaApi } from "@/lib/api-client";
 
 const { Title, Text } = Typography;
@@ -104,11 +104,18 @@ export default function FundDiagnosisPage() {
                     风险 {fund.riskLevel}
                   </Tag>
                 )}
-                {fund.phase && (
-                  <Tag color={fund.phase === "low" ? "green" : fund.phase === "high" ? "red" : "blue"}>
-                    {FUND_PHASE_LABELS[fund.phase]}
-                  </Tag>
-                )}
+                {(() => {
+                  const level = fund.valuationLevel ?? fund.phase;
+                  return level ? (
+                    <Tag color={level === "low" ? "green" : level === "high" ? "red" : "blue"}>
+                      {VALUATION_LEVEL_LABELS[level]}
+                    </Tag>
+                  ) : null;
+                })()}
+                <Tag color={fund.lifecycleStage === "holding" ? "purple" : "cyan"}>
+                  {LIFECYCLE_STAGE_LABELS[fund.lifecycleStage]}
+                </Tag>
+                <Tag>{ASSET_TYPE_LABELS[fund.assetType]}</Tag>
               </Space>
             </Col>
             <Col xs={24} md={6} style={{ textAlign: "right" }}>
@@ -242,12 +249,15 @@ export default function FundDiagnosisPage() {
                 </Space>
               ) : "—"}
             </Descriptions.Item>
-            <Descriptions.Item label="估值阶段">
-              {fund.phase ? (
-                <Tag color={fund.phase === "low" ? "green" : fund.phase === "high" ? "red" : "blue"}>
-                  {FUND_PHASE_LABELS[fund.phase]}
-                </Tag>
-              ) : "—"}
+            <Descriptions.Item label="估值水平">
+              {(() => {
+                const level = fund.valuationLevel ?? fund.phase;
+                return level ? (
+                  <Tag color={level === "low" ? "green" : level === "high" ? "red" : "blue"}>
+                    {VALUATION_LEVEL_LABELS[level]}
+                  </Tag>
+                ) : "—";
+              })()}
             </Descriptions.Item>
             <Descriptions.Item label="优先级">
               <Tag>{fund.priority}</Tag>

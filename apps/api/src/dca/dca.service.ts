@@ -2,7 +2,7 @@ import { Injectable, Inject } from '@nestjs/common';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '@g-fund/db';
 import { DB } from '../db/db.module';
-import { DcaCalculation, FundPhase } from '@g-fund/types';
+import { DcaCalculation, FundPhase, ValuationLevel } from '@g-fund/types';
 
 type DbType = NodePgDatabase<typeof schema>;
 
@@ -17,9 +17,9 @@ const DCA_MULTIPLIERS = {
     return 0.2;                         // 极度高估
   },
 
-  // P3: 阶段系数
-  phase: (phase: FundPhase | null): number => {
-    switch (phase) {
+  // P3: 估值水平系数
+  valuationLevel: (level: ValuationLevel | null): number => {
+    switch (level) {
       case 'low': return 1.5;
       case 'normal': return 1.0;
       case 'high': return 0.5;
@@ -66,9 +66,9 @@ export class DcaService {
         ? DCA_MULTIPLIERS.valuation(valuationPercentile)
         : 1.0;
 
-      // 计算 P3（阶段系数）
-      const phase = fund.phase as FundPhase | null;
-      const p3 = DCA_MULTIPLIERS.phase(phase);
+      // 计算 P3（估值水平系数）：优先读 valuation_level，回退到旧 phase
+      const valuationLevel = (fund.valuationLevel ?? fund.phase) as ValuationLevel | null;
+      const p3 = DCA_MULTIPLIERS.valuationLevel(valuationLevel);
 
       // 计算 P4（优先级系数）
       const p4 = DCA_MULTIPLIERS.priority(fund.priority ?? 0);
@@ -91,7 +91,7 @@ export class DcaService {
         fundName: fund.name,
         baseAmount: baseAmount.toFixed(2),
         valuationPercentile: fund.valuationPercentile ?? null,
-        phase,
+        phase: valuationLevel as FundPhase | null,
         priority: fund.priority ?? 0,
         p2,
         p3,

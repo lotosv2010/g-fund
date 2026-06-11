@@ -3,7 +3,14 @@
 import { useEffect } from "react";
 import { Modal, Form, Input, InputNumber, Select } from "antd";
 import type { FundListItem, CreateFundDto, FundCategory } from "@g-fund/types";
-import { FUND_CATEGORIES, FUND_CATEGORY_LABELS } from "@g-fund/types";
+import {
+  FUND_CATEGORIES,
+  FUND_CATEGORY_LABELS,
+  VALUATION_LEVELS,
+  VALUATION_LEVEL_LABELS,
+  ASSET_TYPES,
+  ASSET_TYPE_LABELS,
+} from "@g-fund/types";
 import { RISK_LABELS, FUND_TYPE_OPTIONS } from "../constants";
 
 interface FundFormModalProps {
@@ -36,6 +43,8 @@ export function FundFormModal({
         targetRatio: editingFund.targetRatio ?? undefined,
         baseAmount: editingFund.baseAmount ?? undefined,
         priority: editingFund.priority ?? undefined,
+        valuationLevel: editingFund.valuationLevel ?? editingFund.phase ?? undefined,
+        assetType: editingFund.assetType ?? undefined,
         note: editingFund.note ?? undefined,
       });
     } else if (open) {
@@ -105,6 +114,24 @@ export function FundFormModal({
             <Select.Option value={1}>1 - 普通</Select.Option>
             <Select.Option value={2}>2 - 较高</Select.Option>
             <Select.Option value={3}>3 - 高</Select.Option>
+          </Select>
+        </Form.Item>
+        <Form.Item name="valuationLevel" label="估值水平" tooltip="人工判定，影响定投 P3 系数">
+          <Select placeholder="请选择" allowClear>
+            {VALUATION_LEVELS.map((lv) => (
+              <Select.Option key={lv} value={lv}>
+                {VALUATION_LEVEL_LABELS[lv]}
+              </Select.Option>
+            ))}
+          </Select>
+        </Form.Item>
+        <Form.Item name="assetType" label="资产类型" tooltip="用于例外规则匹配（纯债不调速 / 黄金止损放宽 / 低估指数不止损）">
+          <Select placeholder="请选择">
+            {ASSET_TYPES.map((t) => (
+              <Select.Option key={t} value={t}>
+                {ASSET_TYPE_LABELS[t]}
+              </Select.Option>
+            ))}
           </Select>
         </Form.Item>
         <Form.Item name="note" label="备注">

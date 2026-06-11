@@ -30,6 +30,10 @@ function toListItem(r: FundRow, position?: PositionRow): FundListItem {
     targetRatio: r.targetRatio ?? '0',
     valuationPercentile: r.valuationPercentile ?? null,
     phase: (r.phase as FundListItem['phase']) ?? null,
+    valuationLevel: (r.valuationLevel as FundListItem['valuationLevel']) ?? null,
+    lifecycleStage: (r.lifecycleStage as FundListItem['lifecycleStage']) ?? 'dca',
+    assetType: (r.assetType as FundListItem['assetType']) ?? 'equity',
+    stageChangedAt: r.stageChangedAt ? r.stageChangedAt.toISOString() : null,
     priority: Number(r.priority ?? 0),
     baseAmount: r.baseAmount ?? '0',
     weeklyReturn: r.weeklyReturn ?? null,
@@ -96,6 +100,7 @@ export class FundsService {
       targetAmount = (total * parseFloat(dto.targetRatio) / 100).toFixed(2);
     }
 
+    const valuationLevel = dto.valuationLevel ?? dto.phase ?? 'normal';
     const [row] = await this.db
       .insert(schema.funds)
       .values({
@@ -107,7 +112,10 @@ export class FundsService {
         targetAmount,
         targetRatio: dto.targetRatio ?? '0',
         valuationPercentile: dto.valuationPercentile ?? null,
-        phase: dto.phase ?? 'normal',
+        phase: valuationLevel,
+        valuationLevel,
+        lifecycleStage: dto.lifecycleStage ?? 'dca',
+        assetType: dto.assetType ?? 'equity',
         priority: dto.priority ?? 0,
         baseAmount: dto.baseAmount ?? '0',
         note: dto.note ?? null,
@@ -130,6 +138,13 @@ export class FundsService {
       ...(targetAmount !== undefined ? { targetAmount } : {}),
       updatedAt: new Date(),
     };
+
+    // 双写 phase ↔ valuationLevel：任一字段被改时同步另一边（M11 后移除）
+    if (dto.valuationLevel !== undefined && dto.phase === undefined) {
+      updateData.phase = dto.valuationLevel;
+    } else if (dto.phase !== undefined && dto.valuationLevel === undefined) {
+      updateData.valuationLevel = dto.phase;
+    }
 
     // Convert sortOrder from number to string for Drizzle
     if (dto.sortOrder !== undefined) {

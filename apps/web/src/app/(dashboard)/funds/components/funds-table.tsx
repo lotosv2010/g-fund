@@ -2,7 +2,14 @@
 
 import { Table, Button, Space, Popconfirm, Tag, Progress } from "antd";
 import { EditOutlined, FundOutlined } from "@ant-design/icons";
-import { FUND_PHASE_LABELS, type FundPhase } from "@g-fund/types";
+import {
+  VALUATION_LEVEL_LABELS,
+  LIFECYCLE_STAGE_LABELS,
+  ASSET_TYPE_LABELS,
+  type ValuationLevel,
+  type LifecycleStage,
+  type AssetType,
+} from "@g-fund/types";
 import { useRouter } from "next/navigation";
 import type { ColumnsType, SorterResult } from "antd/es/table/interface";
 import type { FundListItem } from "@g-fund/types";
@@ -102,17 +109,48 @@ export function FundsTable({
       },
     },
     {
-      title: "估值阶段",
-      dataIndex: "phase",
+      title: "估值水平",
+      dataIndex: "valuationLevel",
+      width: 90,
+      align: "center",
+      render: (v, record) => {
+        const level = (v ?? record.phase) as ValuationLevel | null;
+        return level ? (
+          <Tag color={level === "low" ? "green" : level === "high" ? "red" : "blue"}>
+            {VALUATION_LEVEL_LABELS[level]}
+          </Tag>
+        ) : "—";
+      },
+    },
+    {
+      title: "生命周期",
+      dataIndex: "lifecycleStage",
       width: 90,
       align: "center",
       render: (v) => {
-        const phase = v as FundPhase | null;
-        return phase ? (
-          <Tag color={phase === "low" ? "green" : phase === "high" ? "red" : "blue"}>
-            {FUND_PHASE_LABELS[phase]}
+        const stage = (v ?? "dca") as LifecycleStage;
+        return (
+          <Tag color={stage === "holding" ? "purple" : "cyan"}>
+            {LIFECYCLE_STAGE_LABELS[stage]}
           </Tag>
-        ) : "—";
+        );
+      },
+    },
+    {
+      title: "资产类型",
+      dataIndex: "assetType",
+      width: 90,
+      align: "center",
+      render: (v) => {
+        const type = (v ?? "equity") as AssetType;
+        const colors: Record<AssetType, string> = {
+          equity: "blue",
+          bond: "geekblue",
+          gold: "gold",
+          qdii: "magenta",
+          index: "cyan",
+        };
+        return <Tag color={colors[type]}>{ASSET_TYPE_LABELS[type]}</Tag>;
       },
     },
     {
