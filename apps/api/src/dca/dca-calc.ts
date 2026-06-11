@@ -51,15 +51,14 @@ function toLocalDateStr(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
-// --- 双周四判断 ---
+// --- 双周定投日判断 ---
 
 export function checkBiweeklyThursday(anchorDate: string, today?: Date): boolean {
   const now = today ?? new Date();
   const anchor = toLocalMidnight(anchorDate);
   const nowMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const diffDays = Math.round((nowMidnight.getTime() - anchor.getTime()) / 86_400_000);
-  const dayOfWeek = nowMidnight.getDay();
-  return dayOfWeek === 4 && diffDays % 14 === 0 && diffDays >= 0;
+  return nowMidnight.getDay() === anchor.getDay() && diffDays % 14 === 0 && diffDays >= 0;
 }
 
 // --- 下一个定投日 ---
@@ -76,7 +75,7 @@ export function computeNextDcaDate(anchorDate: string, today?: Date): string {
   const next = new Date(anchor);
   next.setDate(next.getDate() + (cyclesElapsed + 1) * 14);
 
-  if (nowMidnight.getDay() === 4 && diffDays % 14 === 0) {
+  if (nowMidnight.getDay() === anchor.getDay() && diffDays % 14 === 0) {
     return toLocalDateStr(nowMidnight);
   }
 

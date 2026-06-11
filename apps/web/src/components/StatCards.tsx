@@ -11,18 +11,21 @@ interface StatCardsProps {
   data: PositionListItem[];
   loading: boolean;
   todaySnapshot?: DailySnapshot | null;
+  yesterdaySnapshot?: DailySnapshot | null;
   onTotalAssetsClick?: () => void;
   onTotalPnlClick?: () => void;
 }
 
-export default function StatCards({ data, loading, todaySnapshot, onTotalAssetsClick, onTotalPnlClick }: StatCardsProps) {
+export default function StatCards({ data, loading, todaySnapshot, yesterdaySnapshot, onTotalAssetsClick, onTotalPnlClick }: StatCardsProps) {
   const totalAssets = data.reduce((s, r) => s + parseFloat(r.currentValue), 0);
   const totalCost = data.reduce((s, r) => s + parseFloat(r.costAmount), 0);
   const totalPnl = totalAssets - totalCost;
   const totalPnlRate = totalCost > 0 ? totalPnl / totalCost : 0;
   const isProfit = totalPnl >= 0;
 
-  const todayPnl = todaySnapshot ? parseFloat(todaySnapshot.totalPnl) : null;
+  const todayPnl = todaySnapshot
+    ? parseFloat(todaySnapshot.totalPnl) - (yesterdaySnapshot ? parseFloat(yesterdaySnapshot.totalPnl) : 0)
+    : null;
   const todayProfit = todayPnl !== null ? todayPnl >= 0 : null;
 
   const cards = [

@@ -12,13 +12,17 @@ interface PnLChartProps {
 export default function PnLChart({ data, loading }: PnLChartProps) {
   const chartData = useMemo(() => {
     if (!data || data.length === 0) return [];
-    return [...data]
-      .sort((a, b) => a.snapshotDate.localeCompare(b.snapshotDate))
-      .map((s) => ({
+    const sorted = [...data].sort((a, b) => a.snapshotDate.localeCompare(b.snapshotDate));
+    return sorted.map((s, i) => {
+      const pnl = parseFloat(s.totalPnl);
+      const prevPnl = i > 0 ? parseFloat(sorted[i - 1].totalPnl) : 0;
+      return {
         date: s.snapshotDate.slice(5),
-        pnl: parseFloat(s.totalPnl),
+        dailyPnl: i > 0 ? pnl - prevPnl : pnl,
+        cumPnl: pnl,
         value: parseFloat(s.totalValue),
-      }));
+      };
+    });
   }, [data]);
 
   if (loading) {
@@ -45,12 +49,15 @@ export default function PnLChart({ data, loading }: PnLChartProps) {
           <XAxis dataKey="date" tick={{ fontSize: 12 }} />
           <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
           <Tooltip
-            formatter={(val) => [`¥${Number(val).toLocaleString(undefined, { minimumFractionDigits: 2 })}`, "盈亏"]}
+            formatter={(val, name) => [
+              `¥${Number(val).toLocaleString(undefined, { minimumFractionDigits: 2 })}`,
+              name === "dailyPnl" ? "当日盈亏" : "累计盈亏",
+            ]}
             labelFormatter={(label) => `日期: ${label}`}
           />
           <Area
             type="monotone"
-            dataKey="pnl"
+            dataKey="dailyPnl"
             stroke="#2563eb"
             fill="#2563eb"
             fillOpacity={0.15}

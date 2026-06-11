@@ -156,7 +156,9 @@ export default function DashboardPage() {
   }, [loadPositions, loadTransactions, loadSnapshots, loadSignals, loadDca, loadAssetAllocation, loadFunds]);
 
   const todayStr = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; })();
+  const yesterdayStr = (() => { const d = new Date(); d.setDate(d.getDate() - 1); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; })();
   const todaySnapshot = snapshots.find((s) => s.snapshotDate === todayStr) ?? null;
+  const yesterdaySnapshot = snapshots.find((s) => s.snapshotDate === yesterdayStr) ?? null;
 
   function handleTotalAssetsClick() {
     router.push("/positions");
@@ -183,6 +185,7 @@ export default function DashboardPage() {
         data={positions}
         loading={posLoading}
         todaySnapshot={todaySnapshot}
+        yesterdaySnapshot={yesterdaySnapshot}
         onTotalAssetsClick={handleTotalAssetsClick}
         onTotalPnlClick={() => setTotalProfitOpen(true)}
       />
