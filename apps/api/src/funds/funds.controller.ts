@@ -17,6 +17,12 @@ export class FundsController {
     return this.fundsService.findAll(category);
   }
 
+  @Get(':code/stage')
+  @ApiOperation({ summary: '获取基金阶段判断' })
+  getStage(@Param('code') code: string) {
+    return this.fundsService.computeLifecycleStage(code);
+  }
+
   @Get(':code')
   @ApiOperation({ summary: '获取单支基金' })
   findOne(@Param('code') code: string) {

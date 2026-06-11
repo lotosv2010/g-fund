@@ -45,7 +45,7 @@
 | ID | 任务 | 状态 | 估时 |
 |----|------|------|------|
 | T10.1.1 | funds.phase 语义拆分：拆为 valuation_level（low/normal/high）+ lifecycle_stage（dca/holding），迁移现有数据 | [x] | 0.5d |
-| T10.1.2 | 阶段判断服务：持仓金额 / 目标金额 ≥ 80% → holding，否则 dca；提供 GET /funds/:code/stage 接口 | [ ] | 0.5d |
+| T10.1.2 | 阶段判断服务：持仓金额 / 目标金额 ≥ 80% → holding，否则 dca；提供 GET /funds/:code/stage 接口 | [x] | 0.5d |
 | T10.1.3 | 阶段切换记录：funds 表新增 stage_changed_at；交易后自动重算并写 daily_logs | [ ] | 0.5d |
 | T10.1.4 | 接入天天基金盘中估值 API（estimate_nav / daily_return），新增 RealtimeQuoteService | [ ] | 1d |
 | T10.1.5 | fund_nav_history 增加 daily_return 字段；同步任务回填历史数据 | [ ] | 0.5d |

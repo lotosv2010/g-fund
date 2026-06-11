@@ -5,7 +5,15 @@ import * as schema from '@g-fund/db';
 import { DB } from '../db/db.module';
 import { CreateFundDto } from './dto/create-fund.dto';
 import { UpdateFundDto } from './dto/update-fund.dto';
-import { FundListItem } from '@g-fund/types';
+import { FundListItem, LifecycleStage } from '@g-fund/types';
+
+const STAGE_THRESHOLD = 0.8;
+
+export interface StageInfo {
+  lifecycleStage: LifecycleStage;
+  stageChangedAt: string | null;
+  progress: number;
+}
 
 type DbType = NodePgDatabase<typeof schema>;
 type FundRow = typeof schema.funds.$inferSelect;
@@ -195,6 +203,49 @@ export class FundsService {
         .update(schema.funds)
         .set({ targetAmount, updatedAt: new Date() })
         .where(eq(schema.funds.code, fund.code));
+    }
+    await this.recomputeAllStages();
+  }
+
+  async computeLifecycleStage(fundCode: string): Promise<StageInfo> {
+    const [fund] = await this.db
+      .select()
+      .from(schema.funds)
+      .where(eq(schema.funds.code, fundCode));
+    if (!fund) throw new NotFoundException(`基金 ${fundCode} 不存在`);
+
+    const [position] = await this.db
+      .select()
+      .from(schema.positions)
+      .where(eq(schema.positions.fundCode, fundCode));
+
+    const costAmount = position ? parseFloat(position.costAmount ?? '0') : 0;
+    const targetAmount = parseFloat(fund.targetAmount ?? '0');
+    const progress = targetAmount > 0 ? costAmount / targetAmount : 0;
+    const computedStage: LifecycleStage = progress >= STAGE_THRESHOLD ? 'holding' : 'dca';
+
+    if (fund.lifecycleStage !== computedStage) {
+      await this.db
+        .update(schema.funds)
+        .set({
+          lifecycleStage: computedStage,
+          stageChangedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(schema.funds.code, fundCode));
+    }
+
+    return {
+      lifecycleStage: computedStage,
+      stageChangedAt: fund.stageChangedAt ? fund.stageChangedAt.toISOString() : null,
+      progress: Math.round(progress * 10000) / 100,
+    };
+  }
+
+  async recomputeAllStages(): Promise<void> {
+    const funds = await this.db.select().from(schema.funds);
+    for (const fund of funds) {
+      await this.computeLifecycleStage(fund.code);
     }
   }
 

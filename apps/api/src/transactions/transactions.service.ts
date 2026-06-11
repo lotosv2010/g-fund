@@ -4,6 +4,7 @@ import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '@g-fund/db';
 import { DB } from '../db/db.module';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
+import { FundsService } from '../funds/funds.service';
 
 type DbType = NodePgDatabase<typeof schema>;
 type TransactionRow = typeof schema.transactions.$inferSelect;
@@ -11,7 +12,10 @@ type PositionRow = typeof schema.positions.$inferSelect;
 
 @Injectable()
 export class TransactionsService {
-  constructor(@Inject(DB) private readonly db: DbType) {}
+  constructor(
+    @Inject(DB) private readonly db: DbType,
+    private readonly fundsService: FundsService,
+  ) {}
 
   async findAll(fundCode?: string, type?: string, startDate?: string, endDate?: string): Promise<TransactionRow[]> {
     const conditions: SQL[] = [];
@@ -76,6 +80,8 @@ export class TransactionsService {
         await this.confirmTransaction(dbTx, tx, nav, navDate);
       });
     }
+
+    await this.fundsService.computeLifecycleStage(fundCode).catch(() => {});
 
     return pendingTxs.length;
   }
@@ -230,6 +236,8 @@ export class TransactionsService {
       }
       await tx.delete(schema.transactions).where(eq(schema.transactions.id, id));
     });
+
+    await this.fundsService.computeLifecycleStage(txRow.fundCode).catch(() => {});
   }
 
   private async rollbackBuy(
