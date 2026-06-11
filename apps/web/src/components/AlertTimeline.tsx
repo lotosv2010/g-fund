@@ -4,14 +4,18 @@ import {
   ClockCircleOutlined,
   CheckCircleOutlined,
   CloseCircleOutlined,
+  WarningOutlined,
+  InfoCircleOutlined,
 } from "@ant-design/icons";
 import type { StopLossTakeProfitSignal } from "@g-fund/types";
 
 const { Text } = Typography;
 
-const SIGNAL_CONFIG = {
+const SIGNAL_CONFIG: Record<StopLossTakeProfitSignal['signalType'], { color: string; icon: React.ReactNode; label: string }> = {
   take_profit: { color: "#52c41a", icon: <CheckCircleOutlined />, label: "止盈" },
   stop_loss: { color: "#ff4d4f", icon: <CloseCircleOutlined />, label: "止损" },
+  warning: { color: "#faad14", icon: <WarningOutlined />, label: "预警" },
+  deep_loss: { color: "#ff4d4f", icon: <CloseCircleOutlined />, label: "深度套牢" },
 };
 
 interface AlertTimelineProps {

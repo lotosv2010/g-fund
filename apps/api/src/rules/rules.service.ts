@@ -107,6 +107,8 @@ export class RulesService {
       warningThreshold: Number(map.get('warning.threshold') ?? DEFAULT_SLP_RULES.warningThreshold),
       reboundDaily: (map.get('rebound.daily') as SlpRules['reboundDaily']) ?? DEFAULT_SLP_RULES.reboundDaily,
       reboundWeekly: (map.get('rebound.weekly') as SlpRules['reboundWeekly']) ?? DEFAULT_SLP_RULES.reboundWeekly,
+      alertThresholds: (map.get('alert.thresholds') as SlpRules['alertThresholds']) ?? DEFAULT_SLP_RULES.alertThresholds,
+      deepLossDecision: (map.get('deep_loss.decision') as SlpRules['deepLossDecision']) ?? DEFAULT_SLP_RULES.deepLossDecision,
     };
 
     return this.slpCache;
@@ -120,6 +122,8 @@ export class RulesService {
       { ruleGroup: 'warning', ruleKey: 'threshold', value: rules.warningThreshold, defaultValue: DEFAULT_SLP_RULES.warningThreshold },
       { ruleGroup: 'rebound', ruleKey: 'daily', value: rules.reboundDaily, defaultValue: DEFAULT_SLP_RULES.reboundDaily },
       { ruleGroup: 'rebound', ruleKey: 'weekly', value: rules.reboundWeekly, defaultValue: DEFAULT_SLP_RULES.reboundWeekly },
+      { ruleGroup: 'alert', ruleKey: 'thresholds', value: rules.alertThresholds, defaultValue: DEFAULT_SLP_RULES.alertThresholds },
+      { ruleGroup: 'deep_loss', ruleKey: 'decision', value: rules.deepLossDecision, defaultValue: DEFAULT_SLP_RULES.deepLossDecision },
     ];
 
     for (const entry of entries) {

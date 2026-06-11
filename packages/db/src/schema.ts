@@ -163,6 +163,9 @@ export const slpSignalsLog = pgTable('slp_signals_log', {
   pnlRate: numeric('pnl_rate', { precision: 8, scale: 4 }),
   message: text('message'),
   resolved: boolean('resolved').notNull().default(false),
+  deepLossDecision: varchar('deep_loss_decision', { length: 1 }), // A/B/C
+  watchDays: integer('watch_days'), // 观望天数
+  stopLossTriggerPrice: numeric('stop_loss_trigger_price', { precision: 18, scale: 4 }), // 止损触发价
 });
 
 export const dcaSnapshots = pgTable('dca_snapshots', {

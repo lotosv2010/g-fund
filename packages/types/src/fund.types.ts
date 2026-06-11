@@ -47,14 +47,25 @@ export const ASSET_TYPE_LABELS: Record<AssetType, string> = {
   index: '指数',
 };
 
-// 止盈止损信号
-export const SIGNAL_LEVELS = ['green', 'yellow', 'red'] as const;
+// 止盈止损信号（四态）
+export const SIGNAL_LEVELS = ['green', 'blue', 'yellow', 'red'] as const;
 export type SignalLevel = (typeof SIGNAL_LEVELS)[number];
 
 export const SIGNAL_LEVEL_LABELS: Record<SignalLevel, string> = {
-  green: '安全',
-  yellow: '警告',
-  red: '危险',
+  green: '正常',
+  blue: '低估',
+  yellow: '接近止损',
+  red: '接近止盈',
+};
+
+// 深度套牢决策
+export const DEEP_LOSS_DECISIONS = ['A', 'B', 'C'] as const;
+export type DeepLossDecision = (typeof DEEP_LOSS_DECISIONS)[number];
+
+export const DEEP_LOSS_DECISION_LABELS: Record<DeepLossDecision, string> = {
+  A: '补仓',
+  B: '观望',
+  C: '止损',
 };
 
 export interface StopLossTakeProfitSignal {
@@ -63,11 +74,16 @@ export interface StopLossTakeProfitSignal {
   costPrice: string;
   currentPrice: string;
   pnlRate: string;
-  signalType: 'take_profit' | 'stop_loss';
+  signalType: 'take_profit' | 'stop_loss' | 'warning' | 'deep_loss';
   level: SignalLevel;
   triggered: boolean;
   threshold: string;
   message: string;
+  lifecycleStage: LifecycleStage;
+  showAction: boolean; // holding 阶段才显示操作按钮
+  deepLossDecision?: DeepLossDecision;
+  nextTierGap?: number; // 距离下一档差距百分比
+  valuationPercentile?: number | null;
 }
 
 // 定投计算结果
@@ -227,6 +243,17 @@ export interface SlpRules {
   warningThreshold: number;
   reboundDaily: ReboundRule;
   reboundWeekly: ReboundRule;
+  // 四态预警阈值
+  alertThresholds: {
+    takeProfit: number; // 接近止盈阈值 (默认 0.20)
+    stopLoss: number; // 接近止损阈值 (默认 -0.08)
+    undervalue: number; // 低估阈值 (默认 0.30)
+  };
+  // 深度套牢决策阈值
+  deepLossDecision: {
+    watchDays: number; // 观望天数阈值 (默认 5)
+    stopLossUpgrade: number; // 观望升级止损阈值 (默认 -0.05)
+  };
 }
 
 export const FUND_RULE_OVERRIDE_TYPES = [
@@ -261,6 +288,9 @@ export interface SlpSignalLog {
   pnlRate: string | null;
   message: string | null;
   resolved: boolean;
+  deepLossDecision?: DeepLossDecision;
+  watchDays?: number; // 观望天数
+  stopLossTriggerPrice?: string; // 止损触发价
 }
 
 export interface DcaSnapshot {
@@ -320,4 +350,13 @@ export const DEFAULT_SLP_RULES: SlpRules = {
   warningThreshold: -0.08,
   reboundDaily: { days: 3, threshold: 0.01 },
   reboundWeekly: { days: 7, threshold: 0.03 },
+  alertThresholds: {
+    takeProfit: 0.20, // 接近止盈阈值 20%
+    stopLoss: -0.08, // 接近止损阈值 -8%
+    undervalue: 0.30, // 低估阈值 30%
+  },
+  deepLossDecision: {
+    watchDays: 5, // 连续观望天数阈值
+    stopLossUpgrade: -0.05, // 观望升级止损阈值
+  },
 };

@@ -14,14 +14,16 @@ const { Text } = Typography;
 
 const SIGNAL_LEVEL_COLORS: Record<SignalLevel, string> = {
   green: "green",
+  blue: "blue",
   yellow: "gold",
   red: "red",
 };
 
 const SIGNAL_LEVEL_NAMES: Record<SignalLevel, string> = {
-  green: "安全",
-  yellow: "警告",
-  red: "危险",
+  green: "正常",
+  blue: "低估",
+  yellow: "接近止损",
+  red: "接近止盈",
 };
 
 export default function RulesSettingsPage() {
