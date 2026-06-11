@@ -162,6 +162,18 @@ export interface ReorderFundDto {
   sortOrder: number;
 }
 
+// 盘中实时估值（天天基金 API）
+export interface RealtimeQuote {
+  fundCode: string;
+  name: string;
+  estimateNav: string;    // 盘中估算净值
+  dailyReturn: string;    // 估算涨跌幅 %
+  lastNav: string;        // 上一交易日净值
+  lastNavDate: string;    // 净值日期
+  estimateTime: string;   // 估值时间
+  isEstimate: boolean;    // 盘中=true, 收盘后=false
+}
+
 export interface AppSetting {
   key: string;
   value: string;

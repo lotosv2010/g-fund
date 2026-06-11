@@ -15,6 +15,7 @@ import { ChatModule } from './chat/chat.module';
 import { StopLossTakeProfitModule } from './stop-loss-take-profit/stop-loss-take-profit.module';
 import { DcaModule } from './dca/dca.module';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { RealtimeQuoteModule } from './realtime-quote/realtime-quote.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
     StopLossTakeProfitModule,
     DcaModule,
     DashboardModule,
+    RealtimeQuoteModule,
   ],
 })
 export class AppModule {}
