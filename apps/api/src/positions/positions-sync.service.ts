@@ -8,6 +8,7 @@ import type { SyncPositionItemResult, SyncPositionsResult, SyncStreamEvent } fro
 import { DB } from '../db/db.module';
 import { McpService } from '../mcp/mcp.service';
 import { SettingsService } from '../settings/settings.service';
+import { RealtimeQuoteService } from '../realtime-quote/realtime-quote.service';
 
 type DbType = NodePgDatabase<typeof schema>;
 type PositionRow = typeof schema.positions.$inferSelect;
@@ -153,6 +154,7 @@ export class PositionsSyncService {
     @Inject(DB) private readonly db: DbType,
     private readonly mcp: McpService,
     private readonly settings: SettingsService,
+    private readonly realtimeQuote: RealtimeQuoteService,
   ) {}
 
   async fetchNav(fundCode: string): Promise<NavInfo> {
@@ -262,13 +264,38 @@ export class PositionsSyncService {
     });
 
     const items: SyncPositionItemResult[] = [];
+    const today = new Date().toISOString().slice(0, 10);
     for (let i = 0; i < positions.length; i++) {
       if (isCancelled()) return;
       const pos = positions[i];
+
+      // 持仓去重：今日已同步的基金跳过
+      if (pos.navDate === today && pos.navUnit) {
+        const skipped: SyncPositionItemResult = {
+          fundCode: pos.fundCode,
+          fundName: pos.fundName,
+          oldValue: pos.currentValue ?? '0',
+          status: 'skipped',
+          reason: '今日已同步',
+        };
+        items.push(skipped);
+        subscriber.next({ type: 'item', index: i, total: positions.length, result: skipped });
+        continue;
+      }
+
       const argValue = codeArgIsArray ? [pos.fundCode] : pos.fundCode;
-      const callResult = await this.mcp
+      let callResult = await this.mcp
         .callTool(navTool.name, { [codeArgName]: argValue })
         .catch((err: unknown) => (err instanceof Error ? err : new Error(String(err))));
+
+      // 天天基金 fallback：MCP 失败时降级
+      if (callResult instanceof Error || (callResult as CallToolResult).isError) {
+        const fallback = await this.fetchNavFromTiantian(pos.fundCode).catch(() => null);
+        if (fallback) {
+          this.logger.warn(`[${pos.fundCode}] MCP failed, using tiantian fallback`);
+          callResult = fallback;
+        }
+      }
 
       const item = this.buildItem(pos, callResult);
       items.push(item);
@@ -522,6 +549,20 @@ export class PositionsSyncService {
     });
     subscriber.next({ type: 'done', result });
     subscriber.complete();
+  }
+
+  private async fetchNavFromTiantian(fundCode: string): Promise<CallToolResult | null> {
+    const quote = await this.realtimeQuote.fetchQuote(fundCode);
+    if (!quote.lastNav || parseFloat(quote.lastNav) <= 0) return null;
+    return {
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          navUnit: quote.lastNav,
+          navDate: quote.lastNavDate,
+        }),
+      }],
+    } as CallToolResult;
   }
 
   private failAll(positions: PositionRow[], reason: string, syncedAt: string): SyncPositionsResult {

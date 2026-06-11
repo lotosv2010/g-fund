@@ -10,12 +10,35 @@ import type { McpServer, McpConfig } from '@g-fund/types';
 
 type DbType = NodePgDatabase<typeof schema>;
 
+interface CacheEntry {
+  result: CallToolResult;
+  fetchedAt: number;
+}
+
+// TTL 策略：按工具类型设置不同缓存时长
+const CACHE_TTL_ASSET_CLASS = 60 * 60 * 1000; // 资产分类：1 小时
+const CACHE_TTL_TRADING = 30_000; // 交易时段净值：30s
+const CACHE_TTL_IDLE = 5 * 60 * 1000; // 非交易时段净值：5min
+const CACHE_TTL_DEFAULT = 5 * 60 * 1000; // 其他工具：5min
+
+const NAV_TOOL_PATTERN = /[_-]?(nav|净值|history)/i;
+const ASSET_CLASS_TOOL_PATTERN = /asset[_-]?class/i;
+
+function isTradingHours(): boolean {
+  const now = new Date();
+  const day = now.getDay();
+  if (day === 0 || day === 6) return false;
+  const hhmm = now.getHours() * 100 + now.getMinutes();
+  return hhmm >= 930 && hhmm <= 1500;
+}
+
 @Injectable()
 export class McpService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(McpService.name);
   private clients = new Map<string, Client>();
   private toolsByServer = new Map<string, Tool[]>();
   private toolClientMap = new Map<string, string>(); // tool name -> server id
+  private readonly callCache = new Map<string, CacheEntry>();
 
   constructor(@Inject(DB) private readonly db: DbType) {}
 
@@ -63,12 +86,25 @@ export class McpService implements OnModuleInit, OnModuleDestroy {
   }
 
   async callTool(name: string, args?: Record<string, unknown>): Promise<CallToolResult> {
+    const cacheKey = `${name}:${JSON.stringify(args ?? {})}`;
+    const cached = this.callCache.get(cacheKey);
+    if (cached) {
+      const ttl = this.getCacheTtl(name);
+      if (Date.now() - cached.fetchedAt < ttl) {
+        this.logger.debug(`MCP cache hit: ${name}`);
+        return cached.result;
+      }
+      this.callCache.delete(cacheKey);
+    }
+
     const serverId = this.toolClientMap.get(name);
     const client = serverId
       ? this.clients.get(serverId)
       : this.clients.values().next().value;
     if (!client) throw new Error('MCP not connected');
-    return client.callTool({ name, arguments: args }) as Promise<CallToolResult>;
+    const result = (await client.callTool({ name, arguments: args })) as CallToolResult;
+    this.callCache.set(cacheKey, { result, fetchedAt: Date.now() });
+    return result;
   }
 
   async callTools(
@@ -80,6 +116,16 @@ export class McpService implements OnModuleInit, OnModuleDestroy {
     return results.map((r) =>
       r.status === 'fulfilled' ? r.value : r.reason instanceof Error ? r.reason : new Error(String(r.reason)),
     );
+  }
+
+  private getCacheTtl(toolName: string): number {
+    if (ASSET_CLASS_TOOL_PATTERN.test(toolName)) return CACHE_TTL_ASSET_CLASS;
+    if (NAV_TOOL_PATTERN.test(toolName)) return isTradingHours() ? CACHE_TTL_TRADING : CACHE_TTL_IDLE;
+    return CACHE_TTL_DEFAULT;
+  }
+
+  clearCache(): void {
+    this.callCache.clear();
   }
 
   private async connectServer(server: McpServer): Promise<void> {
