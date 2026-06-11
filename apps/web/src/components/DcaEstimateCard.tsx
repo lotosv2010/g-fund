@@ -1,18 +1,9 @@
 "use client";
-import { Card, Typography, Skeleton, Empty, Progress } from "antd";
-import { ScheduleOutlined, DollarOutlined } from "@ant-design/icons";
+import { Card, Typography, Skeleton, Empty, Progress, Tag, Space } from "antd";
+import { ScheduleOutlined, DollarOutlined, ThunderboltOutlined } from "@ant-design/icons";
 import type { DcaCalculation } from "@g-fund/types";
 
 const { Text, Title } = Typography;
-
-function getNextDcaDate(): string {
-  const now = new Date();
-  const day = now.getDay();
-  const diff = day <= 4 ? 4 - day : 11 - day;
-  const next = new Date(now);
-  next.setDate(now.getDate() + diff);
-  return `${next.getMonth() + 1}月${next.getDate()}日`;
-}
 
 interface DcaEstimateCardProps {
   data: DcaCalculation[];
@@ -22,6 +13,23 @@ interface DcaEstimateCardProps {
 export default function DcaEstimateCard({ data, loading }: DcaEstimateCardProps) {
   const activeItems = data.filter((d) => !d.skipped);
   const totalAmount = activeItems.reduce((sum, d) => sum + parseFloat(d.finalAmount), 0);
+  const bulletItems = activeItems.filter((d) => (d.bulletReserveAmount ?? 0) > 0);
+  const hasBullet = bulletItems.length > 0;
+
+  const nextDcaDate = data.length > 0 ? data[0].nextDcaDate : null;
+  const isBiweeklyThursday = data.length > 0 ? data[0].isBiweeklyThursday : false;
+
+  function formatNextDate(dateStr: string | null): string {
+    if (!dateStr) return "—";
+    const d = new Date(dateStr);
+    return `${d.getMonth() + 1}月${d.getDate()}日`;
+  }
+
+  function getWeekday(dateStr: string | null): string {
+    if (!dateStr) return "";
+    const days = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
+    return days[new Date(dateStr).getDay()];
+  }
 
   if (loading) {
     return (
@@ -36,7 +44,7 @@ export default function DcaEstimateCard({ data, loading }: DcaEstimateCardProps)
       <Card title={<><ScheduleOutlined /> 定投预估</>} style={{ height: "100%" }}>
         <Empty
           image={Empty.PRESENTED_IMAGE_SIMPLE}
-          description="暂无定投配置"
+          description="暂无定投配置或非定投日"
           style={{ margin: "24px 0" }}
         />
       </Card>
@@ -51,9 +59,11 @@ export default function DcaEstimateCard({ data, loading }: DcaEstimateCardProps)
     >
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <div style={{ textAlign: "center", padding: "8px 0" }}>
-          <Text type="secondary" style={{ fontSize: 13 }}>下次定投</Text>
+          <Text type="secondary" style={{ fontSize: 13 }}>
+            {isBiweeklyThursday ? "今日定投" : "下次定投"}
+          </Text>
           <Title level={4} style={{ margin: "4px 0 0", color: "#1677ff" }}>
-            {getNextDcaDate()}（周四）
+            {formatNextDate(nextDcaDate)}（{getWeekday(nextDcaDate)}）
           </Title>
         </div>
 
@@ -77,6 +87,28 @@ export default function DcaEstimateCard({ data, loading }: DcaEstimateCardProps)
           </Text>
         </div>
 
+        {hasBullet && (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              padding: "8px 12px",
+              borderRadius: 6,
+              background: "#fff7e6",
+              border: "1px solid #ffd591",
+            }}
+          >
+            <ThunderboltOutlined style={{ color: "#fa8c16" }} />
+            <Text style={{ fontSize: 12 }}>
+              子弹仓触发：沪深300单周跌幅超8%，额外加投
+              <Tag color="orange" style={{ marginLeft: 4 }}>
+                ¥{bulletItems.reduce((s, d) => s + (d.bulletReserveAmount ?? 0), 0).toFixed(0)}
+              </Tag>
+            </Text>
+          </div>
+        )}
+
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {activeItems.slice(0, 4).map((item) => {
             const ratio = totalAmount > 0 ? (parseFloat(item.finalAmount) / totalAmount) * 100 : 0;
@@ -84,7 +116,14 @@ export default function DcaEstimateCard({ data, loading }: DcaEstimateCardProps)
               <div key={item.fundCode}>
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
                   <Text style={{ fontSize: 13 }}>{item.fundName}</Text>
-                  <Text style={{ fontSize: 13 }}>¥{parseFloat(item.finalAmount).toFixed(0)}</Text>
+                  <Space size={4}>
+                    {item.rebalanceAdjustment && (
+                      <Tag color="blue" style={{ fontSize: 11, lineHeight: "18px", padding: "0 4px" }}>
+                        再平衡
+                      </Tag>
+                    )}
+                    <Text style={{ fontSize: 13 }}>¥{parseFloat(item.finalAmount).toFixed(0)}</Text>
+                  </Space>
                 </div>
                 <Progress
                   percent={ratio}

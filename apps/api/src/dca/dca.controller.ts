@@ -14,6 +14,12 @@ export class DcaController {
     return this.service.calculate();
   }
 
+  @Get('next-date')
+  @ApiOperation({ summary: '获取下次定投日期' })
+  async getNextDate(): Promise<{ nextDate: string; isToday: boolean }> {
+    return this.service.getNextDcaDate();
+  }
+
   @Get(':fundCode')
   @ApiOperation({ summary: '计算指定基金的定投金额' })
   async calculateByFund(@Param('fundCode') fundCode: string): Promise<DcaCalculation | null> {

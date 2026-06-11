@@ -44,6 +44,9 @@ export class RulesService {
       priorityMultipliers: (map.get('p4.priority') as DcaRules['priorityMultipliers']) ?? DEFAULT_DCA_RULES.priorityMultipliers,
       maxMultiplier: Number(map.get('limits.max_multiplier') ?? DEFAULT_DCA_RULES.maxMultiplier),
       minThreshold: Number(map.get('limits.min_threshold') ?? DEFAULT_DCA_RULES.minThreshold),
+      p1Thresholds: (map.get('p1.thresholds') as DcaRules['p1Thresholds']) ?? DEFAULT_DCA_RULES.p1Thresholds,
+      tFactorThresholds: (map.get('t_factor.thresholds') as DcaRules['tFactorThresholds']) ?? DEFAULT_DCA_RULES.tFactorThresholds,
+      biweeklyAnchorDate: String(map.get('dca.biweekly_anchor') ?? DEFAULT_DCA_RULES.biweeklyAnchorDate),
     };
 
     return this.dcaCache;
@@ -56,6 +59,9 @@ export class RulesService {
       { ruleGroup: 'p4', ruleKey: 'priority', value: rules.priorityMultipliers, defaultValue: DEFAULT_DCA_RULES.priorityMultipliers },
       { ruleGroup: 'limits', ruleKey: 'max_multiplier', value: rules.maxMultiplier, defaultValue: DEFAULT_DCA_RULES.maxMultiplier },
       { ruleGroup: 'limits', ruleKey: 'min_threshold', value: rules.minThreshold, defaultValue: DEFAULT_DCA_RULES.minThreshold },
+      { ruleGroup: 'p1', ruleKey: 'thresholds', value: rules.p1Thresholds, defaultValue: DEFAULT_DCA_RULES.p1Thresholds },
+      { ruleGroup: 't_factor', ruleKey: 'thresholds', value: rules.tFactorThresholds, defaultValue: DEFAULT_DCA_RULES.tFactorThresholds },
+      { ruleGroup: 'dca', ruleKey: 'biweekly_anchor', value: rules.biweeklyAnchorDate, defaultValue: DEFAULT_DCA_RULES.biweeklyAnchorDate },
     ];
 
     for (const entry of entries) {

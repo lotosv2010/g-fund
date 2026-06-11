@@ -229,10 +229,13 @@ export default function FundDiagnosisPage() {
 
                   <div>
                     <Text strong>系数计算：</Text>
-                    <Space style={{ marginTop: 8 }}>
+                    <Space style={{ marginTop: 8 }} wrap>
+                      <Tag color={dca.p0 === 0 ? "red" : undefined}>P0={dca.p0}x</Tag>
+                      <Tag color={dca.p1 === 0 ? "orange" : dca.p1 > 1 ? "green" : undefined}>P1={dca.p1}x</Tag>
                       <Tag>P2={dca.p2}x</Tag>
                       <Tag>P3={dca.p3}x</Tag>
                       <Tag>P4={dca.p4}x</Tag>
+                      <Tag color={dca.tFactor > 1 ? "green" : dca.tFactor < 1 ? "orange" : undefined}>T={dca.tFactor}x</Tag>
                     </Space>
                   </div>
 
@@ -251,6 +254,21 @@ export default function FundDiagnosisPage() {
                       />
                     )}
                   </div>
+
+                  {dca.bulletReserveAmount && dca.bulletReserveAmount > 0 && (
+                    <Alert
+                      type="warning"
+                      message={`子弹仓触发：额外加投 ¥${dca.bulletReserveAmount.toFixed(2)}`}
+                      showIcon
+                      style={{ marginTop: 8 }}
+                    />
+                  )}
+
+                  {dca.rebalanceAdjustment && (
+                    <Tag color="blue" style={{ marginTop: 8 }}>
+                      季度再平衡调整：优先级 {dca.rebalanceAdjustment > 0 ? "+" : ""}{dca.rebalanceAdjustment}
+                    </Tag>
+                  )}
                 </Space>
               )}
             </Card>

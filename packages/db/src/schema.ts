@@ -179,4 +179,6 @@ export const dcaSnapshots = pgTable('dca_snapshots', {
   finalAmount: numeric('final_amount', { precision: 18, scale: 2 }),
   executed: boolean('executed').notNull().default(false),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => [
+  unique('idx_dca_snapshots_date_fund').on(t.planDate, t.fundCode),
+]);

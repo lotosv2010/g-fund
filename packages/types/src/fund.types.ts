@@ -78,12 +78,19 @@ export interface DcaCalculation {
   valuationPercentile: string | null;
   phase: FundPhase | null;
   priority: number;
+  p0: number;
+  p1: number;
   p2: number;
   p3: number;
   p4: number;
+  tFactor: number;
   finalAmount: string;
   skipped: boolean;
   skipReason?: string;
+  isBiweeklyThursday: boolean;
+  nextDcaDate: string;
+  rebalanceAdjustment?: number;
+  bulletReserveAmount?: number;
 }
 
 export interface Fund {
@@ -198,6 +205,9 @@ export interface DcaRules {
   priorityMultipliers: PriorityMultiplierRule[];
   maxMultiplier: number;
   minThreshold: number;
+  p1Thresholds: { up: number; down: number };
+  tFactorThresholds: { bullMarket: number; bearMarket: number };
+  biweeklyAnchorDate: string;
 }
 
 export interface SlpTierRule {
@@ -291,6 +301,9 @@ export const DEFAULT_DCA_RULES: DcaRules = {
   ],
   maxMultiplier: 3.0,
   minThreshold: 0.10,
+  p1Thresholds: { up: 2, down: -2 },
+  tFactorThresholds: { bullMarket: 5, bearMarket: 5 },
+  biweeklyAnchorDate: '2026-05-28',
 };
 
 export const DEFAULT_SLP_RULES: SlpRules = {

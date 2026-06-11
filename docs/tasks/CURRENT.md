@@ -1,73 +1,5 @@
 # 当前任务（CURRENT）
 
-## Milestone 6：同步与历史会话
-
-| ID | 任务 | 状态 | 估时 |
-|----|------|------|------|
-| T6.1.1 | 一键同步仓位（依据现有持仓 + 上一交易日数据更新净值/收益/持仓金额） | [x] | 1d |
-| T6.1.2 | AI 回答 Markdown 美化（react-markdown + remark-gfm + rehype-highlight + 表格/代码主题） | [x] | 0.5d |
-| T6.1.3 | AI 抽屉预设问题美化（卡片样式 + 图标 + 分组） | [x] | 0.25d |
-| T6.1.4 | 历史会话 + 新建会话（chat_sessions / chat_messages 表 + 侧栏会话列表 + 切换/删除） | [x] | 1.5d |
-
-## Milestone 7：止盈止损与定投
-
-| ID | 任务 | 状态 | 估时 |
-|----|------|------|------|
-| T7.1.1 | funds 表字段扩展（valuation_percentile / phase / priority / target_amount / base_amount / weekly_return / monthly_return） | [x] | 0.5d |
-| T7.1.2 | 止盈三档（25/40/60%）+ 止损两档（10/20%）规则引擎 | [x] | 1d |
-| T7.1.3 | 深度套牢反弹信号检查（连续 3 日 >1% 或周累计 >3%） | [x] | 0.5d |
-| T7.1.4 | 定投金额叠加算法（T × P2 × P3 × P4，上限 3 倍 / 下限 10% 归零） | [x] | 1d |
-
-## Milestone 8：AI 体验增强
-
-| ID | 任务 | 状态 | 估时 |
-|----|------|------|------|
-| T8.1.1 | 多轮上下文（后端 runAgent 接收 history 参数） | [x] | 0.5d |
-| T8.1.2 | SSE 重连 / 错误恢复（指数退避 + 断点续传） | [x] | 0.5d |
-| T8.1.3 | 分析结果持久化到 analysis_records + 历史查看入口 | [x] | 0.5d |
-| T8.1.4 | AI 抽屉快捷指令（今日监控 / 定投计算 / 止盈止损 / 板块分析 / 基金诊断） | [x] | 0.5d |
-| T8.1.5 | Cmd+K 全局唤起 AI 抽屉 | [x] | 0.25d |
-| T8.1.6 | AI 会话 loading 动画（请求中 / 流式输出中无视觉反馈，需补充加载状态） | [x] | 0.25d |
-
-## Milestone 9：Dashboard 增强
-
-| ID | 任务 | 状态 | 估时 |
-|----|------|------|------|
-| T9.1.1 | 止盈止损速览卡片（🔴/🟡/🟢 信号 + 操作建议） | [x] | 0.5d |
-| T9.1.2 | 下次定投预估卡片（双周四日期 + 预估金额） | [x] | 0.25d |
-| T9.1.3 | 最近预警时间线（来源：stop_loss_records） | [x] | 0.5d |
-| T9.1.4 | 基金诊断 / 单基金深度分析页 | [x] | 1d |
-
-## Milestone 10：阶段判断与数据基础（P0）
-
-> 目标：让"DCA 阶段 / 持有阶段"切换真正生效；接入实时盘中数据；为后续规则提供准确口径。
-
-| ID | 任务 | 状态 | 估时 |
-|----|------|------|------|
-| T10.1.1 | funds.phase 语义拆分：拆为 valuation_level（low/normal/high）+ lifecycle_stage（dca/holding），迁移现有数据 | [x] | 0.5d |
-| T10.1.2 | 阶段判断服务：持仓金额 / 目标金额 ≥ 80% → holding，否则 dca；提供 GET /funds/:code/stage 接口 | [x] | 0.5d |
-| T10.1.3 | 阶段切换记录：funds 表新增 stage_changed_at；交易后自动重算并写 daily_logs | [x] | 0.5d |
-| T10.1.4 | 接入天天基金盘中估值 API（estimate_nav / daily_return），新增 RealtimeQuoteService | [x] | 1d |
-| T10.1.5 | fund_nav_history 增加 daily_return 字段；同步任务回填历史数据 | [x] | 0.5d |
-| T10.1.6 | 基金资产类型字段扩展（asset_type：equity/bond/gold/qdii/index），用于例外规则匹配 | [x] | 0.25d |
-| T10.1.7 | 市场指数表 market_index_history（沪深300/中证500 等），定时拉取 | [x] | 0.5d |
-
-## Milestone 11：规则配置入库与界面（P1）
-
-> 目标：阈值/系数从硬编码迁移到 DB；提供 UI 调整；支持单基金例外。
-
-| ID | 任务 | 状态 | 估时 |
-|----|------|------|------|
-| T11.1.1 | DB：dca_rules 表（P0~P4 阈值与系数 + T1~T4 系数 + 上下限） | [x] | 0.25d |
-| T11.1.2 | DB：slp_rules 表（止盈三档 / 止损两档 / 深度套牢线 / 预警线） | [x] | 0.25d |
-| T11.1.3 | DB：fund_rule_overrides 表（fund_code、不止损、止损放宽、暂停调速、固定金额） | [x] | 0.25d |
-| T11.1.4 | DB：slp_signals_log 表（fund_code、type、level、triggered_at、pnl_rate、message、resolved） | [x] | 0.25d |
-| T11.1.5 | DB：dca_snapshots 表（plan_date、各基金 base/p0/p1/p2/p3/p4/T/final 明细、是否执行） | [x] | 0.25d |
-| T11.1.6 | DcaService / StopLossTakeProfitService 改为从 DB 读取规则，移除硬编码常量 | [x] | 1d |
-| T11.1.7 | 规则配置 UI：/settings/rules 页（DCA 系数表 + 止盈止损档位表，行内编辑） | [x] | 1d |
-| T11.1.8 | 单基金例外 UI：/funds/[code] 页加 "不止损 / 止损放宽 / 暂停调速 / 固定金额" 开关 | [x] | 0.5d |
-| T11.1.9 | app_settings 扩展 key=bullet_reserve（金额 + 上次触发日期） | [x] | 0.25d |
-
 ## Milestone 12：DCA 规则引擎补全（P1）
 
 > 目标：补齐 P0/P1/P2/T 系数与季度再平衡，让定投计算与文档一致。
@@ -96,7 +28,7 @@
 | T13.1.3 | 反弹判定改用实时数据：连续 3 个交易日 daily_return>1% OR 周累计>3% | [ ] | 0.5d |
 | T13.1.4 | 深度套牢决策（亏损>20%）：A 补仓 / B 观望 / C 止损 三选一硬性输出 | [ ] | 1d |
 | T13.1.5 | 观望升级规则：连续 5 个交易日观望且继续下跌 → 升级止损或维持并给止损触发价 | [ ] | 0.5d |
-| T13.1.6 | 信号去重与历史：写入 slp_signals_log，相同档位 24h 内不重复推送 | [ ] | 0.5d |
+| T13.1.6 | 信号去重与历史：写入 slp_signals_log | [ ] | 0.5d |
 | T13.1.7 | 估值分位条件分流：亏损≥20% + 估值>30% → 赎回50%；估值<30% → 加仓 | [ ] | 0.25d |
 | T13.1.8 | 接近档位提示：距离下一档差距百分比，前端展示 | [ ] | 0.25d |
 
@@ -158,4 +90,3 @@
 | T17.1.6 | 单测：阶段判断（边界 79.9% / 80% / 80.1%） | [ ] | 0.25d |
 | T17.1.7 | 集成测试：定投全流程（真实 PostgreSQL，禁止 mock） | [ ] | 1d |
 | T17.1.8 | 集成测试：止盈止损全流程 + 信号去重 | [ ] | 0.5d |
-| T17.1.9 | 文档合并：止盈止损规则.md + DCA策略指南.md 操作清单合并为统一推送动作表 | [ ] | 0.25d |

@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import {
-  Card, Button, App, InputNumber, Table, Space, Typography, Divider, Tag,
+  Card, Button, App, InputNumber, Table, Space, Typography, Divider, Tag, DatePicker,
 } from "antd";
+import dayjs from "dayjs";
 import { SaveOutlined, UndoOutlined } from "@ant-design/icons";
 import type { DcaRules, SlpRules, ValuationLevel, SignalLevel } from "@g-fund/types";
 import { DEFAULT_DCA_RULES, DEFAULT_SLP_RULES, VALUATION_LEVEL_LABELS } from "@g-fund/types";
@@ -223,6 +224,93 @@ export default function RulesSettingsPage() {
               ),
             },
           ]}
+        />
+
+        <Divider style={{ margin: "16px 0 12px" }} />
+        <Text strong style={{ fontSize: 13 }}>P1 当日大盘检查</Text>
+        <Text type="secondary" style={{ fontSize: 12, display: "block", marginBottom: 8 }}>
+          沪深300涨跌幅超过阈值时暂缓或加仓
+        </Text>
+        <div style={{ display: "flex", gap: 16, marginTop: 8, marginBottom: 16 }}>
+          <Space direction="vertical" size={2} style={{ flex: 1 }}>
+            <Text type="secondary" style={{ fontSize: 12 }}>暂缓阈值（涨 &gt;）</Text>
+            <InputNumber
+              min={0} max={10} step={0.5}
+              value={dcaRules.p1Thresholds.up}
+              onChange={(v) => v !== null && setDcaRules((prev) => ({
+                ...prev,
+                p1Thresholds: { ...prev.p1Thresholds, up: v },
+              }))}
+              addonAfter="%"
+              style={{ width: "100%" }}
+            />
+          </Space>
+          <Space direction="vertical" size={2} style={{ flex: 1 }}>
+            <Text type="secondary" style={{ fontSize: 12 }}>加仓阈值（跌 &lt;）</Text>
+            <InputNumber
+              min={-10} max={0} step={0.5}
+              value={dcaRules.p1Thresholds.down}
+              onChange={(v) => v !== null && setDcaRules((prev) => ({
+                ...prev,
+                p1Thresholds: { ...prev.p1Thresholds, down: v },
+              }))}
+              addonAfter="%"
+              style={{ width: "100%" }}
+            />
+          </Space>
+        </div>
+
+        <Divider style={{ margin: "16px 0 12px" }} />
+        <Text strong style={{ fontSize: 13 }}>T 因子大盘趋势</Text>
+        <Text type="secondary" style={{ fontSize: 12, display: "block", marginBottom: 8 }}>
+          沪深300近1周累计涨跌幅超过阈值时调整定投倍数
+        </Text>
+        <div style={{ display: "flex", gap: 16, marginTop: 8, marginBottom: 16 }}>
+          <Space direction="vertical" size={2} style={{ flex: 1 }}>
+            <Text type="secondary" style={{ fontSize: 12 }}>牛市阈值（累计涨 &gt;）</Text>
+            <InputNumber
+              min={0} max={30} step={1}
+              value={dcaRules.tFactorThresholds.bullMarket}
+              onChange={(v) => v !== null && setDcaRules((prev) => ({
+                ...prev,
+                tFactorThresholds: { ...prev.tFactorThresholds, bullMarket: v },
+              }))}
+              addonAfter="%"
+              style={{ width: "100%" }}
+            />
+          </Space>
+          <Space direction="vertical" size={2} style={{ flex: 1 }}>
+            <Text type="secondary" style={{ fontSize: 12 }}>熊市阈值（累计跌 &gt;）</Text>
+            <InputNumber
+              min={0} max={30} step={1}
+              value={dcaRules.tFactorThresholds.bearMarket}
+              onChange={(v) => v !== null && setDcaRules((prev) => ({
+                ...prev,
+                tFactorThresholds: { ...prev.tFactorThresholds, bearMarket: v },
+              }))}
+              addonAfter="%"
+              style={{ width: "100%" }}
+            />
+          </Space>
+        </div>
+
+        <Divider style={{ margin: "16px 0 12px" }} />
+        <Text strong style={{ fontSize: 13 }}>双周四锚点</Text>
+        <Text type="secondary" style={{ fontSize: 12, display: "block", marginBottom: 8 }}>
+          定投周期的起始日期，每14天一轮（必须为周四）
+        </Text>
+        <DatePicker
+          style={{ width: "100%", marginTop: 8, marginBottom: 16 }}
+          value={dayjs(dcaRules.biweeklyAnchorDate)}
+          onChange={(d) => {
+            if (d) {
+              setDcaRules((prev) => ({
+                ...prev,
+                biweeklyAnchorDate: d.format("YYYY-MM-DD"),
+              }));
+            }
+          }}
+          allowClear={false}
         />
 
         <Divider style={{ margin: "16px 0 12px" }} />

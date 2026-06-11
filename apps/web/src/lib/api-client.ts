@@ -105,6 +105,8 @@ export const dcaApi = {
     http.get<import("@g-fund/types").DcaCalculation[]>("/dca").then((r) => r.data),
   calculateByFund: (fundCode: string) =>
     http.get<import("@g-fund/types").DcaCalculation | null>(`/dca/${fundCode}`).then((r) => r.data),
+  getNextDate: () =>
+    http.get<{ nextDate: string; isToday: boolean }>("/dca/next-date").then((r) => r.data),
 };
 
 export const rulesApi = {
