@@ -1,4 +1,4 @@
-import { Injectable, Inject, NotFoundException } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '@g-fund/db';
@@ -30,7 +30,7 @@ export class SettingsService {
       .select()
       .from(schema.appSettings)
       .where(eq(schema.appSettings.key, key));
-    if (!row) throw new NotFoundException(`配置 ${key} 不存在`);
+    if (!row) return { key, value: '', updatedAt: '' };
     return toAppSetting(row);
   }
 

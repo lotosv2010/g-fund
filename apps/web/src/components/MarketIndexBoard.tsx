@@ -1,9 +1,9 @@
 "use client";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Card, Row, Col, Skeleton, Typography, Tag, Space, Button, Drawer, Empty, Segmented, Modal, Checkbox, message } from "antd";
-import { SettingOutlined } from "@ant-design/icons";
+import { SettingOutlined, ReloadOutlined } from "@ant-design/icons";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
-import type { MarketIndexQuote, MarketIndexHistory, IndexConfig } from "@g-fund/types";
+import type { MarketIndexQuote, MarketIndexHistory } from "@g-fund/types";
 import { DEFAULT_INDICES } from "@g-fund/types";
 import { marketIndexApi } from "@/lib/api-client";
 
@@ -11,6 +11,7 @@ const { Text } = Typography;
 
 const PROFIT_COLOR = "#ef4444";
 const LOSS_COLOR = "#22c55e";
+const POLL_INTERVAL_TRADING = 15_000;
 
 interface MarketIndexBoardProps {
   loading?: boolean;
@@ -24,13 +25,11 @@ function isMarketOpen(): boolean {
   return (time >= 930 && time <= 1130) || (time >= 1300 && time <= 1500);
 }
 
-function IndexCard({
-  quote,
-  onClick,
-}: {
-  quote: MarketIndexQuote;
-  onClick: () => void;
-}) {
+function formatTime(d: Date): string {
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}:${String(d.getSeconds()).padStart(2, "0")}`;
+}
+
+function IndexCard({ quote, onClick }: { quote: MarketIndexQuote; onClick: () => void }) {
   const isUp = quote.changePct >= 0;
   const color = isUp ? PROFIT_COLOR : LOSS_COLOR;
   const changeAmount = quote.close * (quote.changePct / 100);
@@ -39,19 +38,19 @@ function IndexCard({
     <Card
       hoverable
       onClick={onClick}
-      style={{ minWidth: 180, cursor: "pointer" }}
-      styles={{ body: { padding: "12px 16px" } }}
+      style={{ minWidth: 160, cursor: "pointer", flex: "1 1 160px", maxWidth: 220 }}
+      styles={{ body: { padding: "10px 14px" } }}
     >
-      <Space orientation="vertical" size={2} style={{ width: "100%" }}>
-        <Text strong style={{ fontSize: 14 }}>{quote.name}</Text>
-        <Text strong style={{ fontSize: 22, color, lineHeight: 1.2 }}>
+      <Space direction="vertical" size={2} style={{ width: "100%" }}>
+        <Text strong style={{ fontSize: 13 }}>{quote.name}</Text>
+        <Text strong style={{ fontSize: 20, color, lineHeight: 1.2 }}>
           {quote.close.toFixed(2)}
         </Text>
-        <Space size={8}>
-          <Text style={{ fontSize: 13, color }}>
+        <Space size={6}>
+          <Text style={{ fontSize: 12, color }}>
             {isUp ? "+" : ""}{quote.changePct.toFixed(2)}%
           </Text>
-          <Text style={{ fontSize: 12, color }}>
+          <Text style={{ fontSize: 11, color }}>
             {isUp ? "+" : ""}{changeAmount.toFixed(2)}
           </Text>
         </Space>
@@ -98,7 +97,7 @@ function IndexDetailDrawer({
       destroyOnHidden
     >
       {quote && (
-        <Space orientation="vertical" size={16} style={{ width: "100%" }}>
+        <Space direction="vertical" size={16} style={{ width: "100%" }}>
           <div>
             <Text strong style={{ fontSize: 28, color: quote.changePct >= 0 ? PROFIT_COLOR : LOSS_COLOR }}>
               {quote.close.toFixed(2)}
@@ -200,7 +199,7 @@ function WatchlistSettings({
       confirmLoading={saving}
       destroyOnHidden
     >
-      <Space orientation="vertical" style={{ width: "100%" }}>
+      <Space direction="vertical" style={{ width: "100%" }}>
         <Text type="secondary">选择要在大盘行情中展示的指数：</Text>
         <Checkbox.Group
           value={selected}
@@ -225,13 +224,17 @@ export default function MarketIndexBoard({ loading: externalLoading }: MarketInd
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [marketOpen, setMarketOpen] = useState(isMarketOpen());
+  const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval>>(undefined);
   const [messageApi, contextHolder] = message.useMessage();
 
   const loadQuotes = useCallback(async () => {
     try {
       const data = await marketIndexApi.realtime();
-      setQuotes(data);
+      if (data.length > 0) {
+        setQuotes(data);
+        setUpdatedAt(new Date());
+      }
     } catch {
       // silent
     } finally {
@@ -243,19 +246,16 @@ export default function MarketIndexBoard({ loading: externalLoading }: MarketInd
     loadQuotes();
   }, [loadQuotes]);
 
-  // 交易时段每 30s 轮询，非交易时段停止
   useEffect(() => {
     const check = () => setMarketOpen(isMarketOpen());
-    const interval = setInterval(check, 60_000);
-
+    const interval = setInterval(check, 30_000);
     return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
+    clearInterval(timerRef.current);
     if (marketOpen) {
-      timerRef.current = setInterval(loadQuotes, 30_000);
-    } else {
-      clearInterval(timerRef.current);
+      timerRef.current = setInterval(loadQuotes, POLL_INTERVAL_TRADING);
     }
     return () => clearInterval(timerRef.current);
   }, [marketOpen, loadQuotes]);
@@ -264,52 +264,72 @@ export default function MarketIndexBoard({ loading: externalLoading }: MarketInd
 
   if (isLoading) {
     return (
-      <Row gutter={[12, 12]}>
-        {Array.from({ length: 6 }).map((_, i) => (
-          <Col key={i} flex="180px">
-            <Card style={{ minWidth: 180 }}>
-              <Skeleton active paragraph={false} />
-            </Card>
-          </Col>
-        ))}
-      </Row>
+      <Card styles={{ body: { padding: "12px 16px" } }}>
+        <Row gutter={[12, 12]}>
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Col key={i} flex="1 1 160px">
+              <Card style={{ minWidth: 160 }}>
+                <Skeleton active paragraph={false} />
+              </Card>
+            </Col>
+          ))}
+        </Row>
+      </Card>
     );
   }
 
   return (
-    <>
+    <Card styles={{ body: { padding: "12px 16px" } }}>
       {contextHolder}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
         <Space size={8}>
           <Text strong style={{ fontSize: 15 }}>大盘行情</Text>
-          {!marketOpen && <Tag color="default">已收盘</Tag>}
           {marketOpen && <Tag color="green">交易中</Tag>}
+          {!marketOpen && <Tag color="default">已收盘</Tag>}
+          {updatedAt && (
+            <Text type="secondary" style={{ fontSize: 11 }}>
+              {formatTime(updatedAt)} 更新
+            </Text>
+          )}
         </Space>
-        <Button
-          type="text"
-          size="small"
-          icon={<SettingOutlined />}
-          onClick={() => setSettingsOpen(true)}
-        />
+        <Space size={4}>
+          <Button
+            type="text"
+            size="small"
+            icon={<ReloadOutlined spin={loading} />}
+            onClick={loadQuotes}
+          />
+          <Button
+            type="text"
+            size="small"
+            icon={<SettingOutlined />}
+            onClick={() => setSettingsOpen(true)}
+          />
+        </Space>
       </div>
       <div
         style={{
           display: "flex",
           gap: 12,
-          overflowX: "auto",
-          paddingBottom: 4,
+          flexWrap: "wrap",
         }}
       >
-        {quotes.map((q) => (
-          <IndexCard
-            key={q.indexCode}
-            quote={q}
-            onClick={() => {
-              setSelectedQuote(q);
-              setDrawerOpen(true);
-            }}
-          />
-        ))}
+        {quotes.length > 0 ? (
+          quotes.map((q) => (
+            <IndexCard
+              key={q.indexCode}
+              quote={q}
+              onClick={() => {
+                setSelectedQuote(q);
+                setDrawerOpen(true);
+              }}
+            />
+          ))
+        ) : (
+          <Card style={{ flex: 1 }}>
+            <Text type="secondary">暂无行情数据，请稍后再试</Text>
+          </Card>
+        )}
       </div>
 
       <IndexDetailDrawer
@@ -323,6 +343,6 @@ export default function MarketIndexBoard({ loading: externalLoading }: MarketInd
         onClose={() => setSettingsOpen(false)}
         onSaved={loadQuotes}
       />
-    </>
+    </Card>
   );
 }

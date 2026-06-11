@@ -180,15 +180,21 @@ export default function DashboardPage() {
           <SyncPositionsButton onDone={() => loadPositions()} />
         </Space>
       </Row>
-      <MarketIndexBoard />
-      <StatCards
-        data={positions}
-        loading={posLoading}
-        todaySnapshot={todaySnapshot}
-        yesterdaySnapshot={yesterdaySnapshot}
-        onTotalAssetsClick={handleTotalAssetsClick}
-        onTotalPnlClick={() => setTotalProfitOpen(true)}
-      />
+      <Row gutter={[16, 16]} style={{ marginTop: 16 }} align="stretch">
+        <Col xs={24}>
+          <MarketIndexBoard />
+        </Col>
+      </Row>
+      <div style={{ marginTop: 16 }}>
+        <StatCards
+          data={positions}
+          loading={posLoading}
+          todaySnapshot={todaySnapshot}
+          yesterdaySnapshot={yesterdaySnapshot}
+          onTotalAssetsClick={handleTotalAssetsClick}
+          onTotalPnlClick={() => setTotalProfitOpen(true)}
+        />
+      </div>
       <Row gutter={[16, 16]} style={{ marginTop: 16 }} align="stretch">
         <Col xs={24} lg={8}>
           <StageProgressCard data={funds} loading={fundsLoading} />

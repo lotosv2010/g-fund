@@ -2,20 +2,22 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { eq, and, gte, desc } from 'drizzle-orm';
 import * as schema from '@g-fund/db';
+import { stocks } from 'stock-api';
 import { DB } from '../db/db.module';
 import type { MarketIndexQuote, IndexConfig } from './market-index.types';
 import { DEFAULT_INDICES } from './market-index.types';
 
 type DbType = NodePgDatabase<typeof schema>;
 
-const SINA_API_BASE = 'https://hq.sinajs.cn/list=';
-const REQUEST_TIMEOUT = 5_000;
+function toStockCode(code: string): string {
+  return code.replace(/^sh/i, 'SH').replace(/^sz/i, 'SZ').replace(/^bj/i, 'SZ');
+}
 
 @Injectable()
 export class MarketIndexService {
   private readonly logger = new Logger(MarketIndexService.name);
   private readonly cache = new Map<string, { quote: MarketIndexQuote; fetchedAt: number }>();
-  private readonly CACHE_TTL = 30_000; // 30s
+  private readonly CACHE_TTL = 30_000;
 
   constructor(@Inject(DB) private readonly db: DbType) {}
 
@@ -24,7 +26,7 @@ export class MarketIndexService {
     const cached = this.getFromCache(codes);
     if (cached.length === codes.length) return cached;
 
-    const quotes = await this.fetchFromSina(indices);
+    const quotes = await this.fetchFromStockApi(indices);
     for (const quote of quotes) {
       this.cache.set(quote.indexCode, { quote, fetchedAt: Date.now() });
     }
@@ -91,66 +93,33 @@ export class MarketIndexService {
     return quotes;
   }
 
-  private async fetchFromSina(indices: IndexConfig[]): Promise<MarketIndexQuote[]> {
-    const codes = indices.map((i) => i.code).join(',');
-    const url = `${SINA_API_BASE}${codes}`;
-
-    let text: string;
+  private async fetchFromStockApi(indices: IndexConfig[]): Promise<MarketIndexQuote[]> {
     try {
-      const res = await fetch(url, {
-        signal: AbortSignal.timeout(REQUEST_TIMEOUT),
-        headers: {
-          Referer: 'https://finance.sina.com.cn/',
-          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-        },
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      text = await res.text();
-    } catch (err) {
-      this.logger.warn(`Sina API request failed: ${(err as Error).message}`);
-      return this.getFallbackFromDb(indices);
-    }
-
-    return this.parseSinaResponse(text, indices);
-  }
-
-  private parseSinaResponse(text: string, indices: IndexConfig[]): MarketIndexQuote[] {
-    const quotes: MarketIndexQuote[] = [];
-    const lines = text.split('\n').filter((l) => l.trim());
-
-    for (const line of lines) {
-      const match = line.match(/^hq_str_(\w+)="(.+)"$/);
-      if (!match) continue;
-
-      const code = match[1];
-      const config = indices.find((i) => i.code === code);
-      if (!config) continue;
-
-      const fields = match[2].split(',');
-      if (fields.length < 32) continue;
-
-      // 新浪指数格式：name(0), open(1), preClose(2), high(3), low(4), close(5), ...
-      const name = fields[0] || config.name;
-      const close = parseFloat(fields[5]);
-      const preClose = parseFloat(fields[2]);
-      const turnover = parseFloat(fields[31]) || 0;
-
-      if (!Number.isFinite(close) || !Number.isFinite(preClose) || preClose === 0) continue;
-
-      const changePct = ((close - preClose) / preClose) * 100;
+      const stockCodes = indices.map((i) => toStockCode(i.code));
+      const stockList = await stocks.auto.getStocks(stockCodes);
       const today = new Date().toISOString().split('T')[0];
 
-      quotes.push({
-        indexCode: code,
-        name,
-        close,
-        changePct,
-        turnover,
-        tradeDate: today,
-      });
+      const quotes: MarketIndexQuote[] = [];
+      for (const stock of stockList) {
+        const matched = indices.find((i) => toStockCode(i.code) === stock.code);
+        if (!matched) continue;
+
+        quotes.push({
+          indexCode: matched.code,
+          name: stock.name || matched.name,
+          close: stock.now,
+          changePct: stock.percent * 100,
+          turnover: 0,
+          tradeDate: today,
+        });
+      }
+
+      if (quotes.length > 0) return quotes;
+    } catch (err) {
+      this.logger.warn(`stock-api request failed: ${(err as Error).message}`);
     }
 
-    return quotes;
+    return this.getFallbackFromDb(indices);
   }
 
   private async getFallbackFromDb(indices: IndexConfig[]): Promise<MarketIndexQuote[]> {
