@@ -28,6 +28,7 @@ export default function DashboardPage() {
   const [signalHistory, setSignalHistory] = useState<SlpSignalLog[]>([]);
   const [dcaData, setDcaData] = useState<DcaCalculation[]>([]);
   const [dcaSnapshots, setDcaSnapshots] = useState<DcaSnapshot[]>([]);
+  const [nextDcaDate, setNextDcaDate] = useState<string | null>(null);
   const [assetAllocation, setAssetAllocation] = useState<AssetAllocationResponse | null>(null);
   const [funds, setFunds] = useState<FundListItem[]>([]);
   const [posLoading, setPosLoading] = useState(false);
@@ -100,12 +101,14 @@ export default function DashboardPage() {
     setDcaLoading(true);
     try {
       const today = new Date().toISOString().slice(0, 10);
-      const [dcaData, snapshotsData] = await Promise.all([
+      const [dcaData, snapshotsData, nextDateData] = await Promise.all([
         dcaApi.calculate(),
         dcaApi.getSnapshots(today).catch(() => []),
+        dcaApi.getNextDate().catch(() => null),
       ]);
       setDcaData(dcaData);
       setDcaSnapshots(snapshotsData);
+      setNextDcaDate(nextDateData?.nextDate ?? null);
     } catch {
       // may not have data yet
     } finally {
@@ -201,6 +204,7 @@ export default function DashboardPage() {
             loading={dcaLoading}
             snapshots={dcaSnapshots}
             onSnapshotUpdate={loadDca}
+            nextDcaDate={nextDcaDate}
           />
         </Col>
         <Col xs={24} lg={8}>

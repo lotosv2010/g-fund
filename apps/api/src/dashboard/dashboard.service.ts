@@ -37,6 +37,13 @@ export class DashboardService {
       return { categoryTree: [], fundDetails: [] };
     }
 
+    const fundCodes = positions.map((p) => p.fundCode);
+    const funds = await this.db
+      .select()
+      .from(schema.funds)
+      .where(inArray(schema.funds.code, fundCodes));
+    const fundMap = new Map(funds.map((f) => [f.code, f]));
+
     const holdingList = positions.map((p) => ({
       fundCode: p.fundCode,
       amount: parseFloat(p.currentValue ?? '0'),
@@ -63,11 +70,13 @@ export class DashboardService {
     for (let i = 0; i < positions.length; i++) {
       const pos = positions[i];
       const result = fundResults[i];
+      const fund = fundMap.get(pos.fundCode);
       const detail = this.parseFundDetail(
         pos.fundCode,
         pos.fundName,
         pos.currentValue ?? '0',
         result.status === 'fulfilled' ? result.value : null,
+        fund?.assetType ?? null,
       );
       fundDetails.push(detail);
     }
@@ -110,6 +119,7 @@ export class DashboardService {
     fundName: string,
     currentValue: string,
     result: unknown,
+    assetType: string | null,
   ): FundAssetDetail {
     const text =
       (result as { content?: { type: string; text?: string }[] })?.content?.find(
@@ -135,8 +145,18 @@ export class DashboardService {
           categoryCode = level2.categoryCode;
         }
       } catch {
-        this.logger.warn(`Failed to parse asset class for ${fundCode}`);
+        this.logger.warn(
+          `Failed to parse asset class for ${fundCode}, raw text: ${text.slice(0, 200)}`,
+        );
       }
+    }
+
+    // MCP 未返回有效分类时，用 assetType 降级
+    if (topCategory === '未分类' && assetType) {
+      const fallback = this.fallbackFromAssetType(assetType, fundName);
+      topCategory = fallback.top;
+      level1Category = fallback.level1;
+      level2Category = fallback.level2;
     }
 
     return {
@@ -148,5 +168,47 @@ export class DashboardService {
       level2Category,
       categoryCode,
     };
+  }
+
+  private fallbackFromAssetType(assetType: string, fundName: string): { top: string; level1: string; level2: string } {
+    switch (assetType) {
+      case 'bond':
+        return { top: '债券固收', level1: '债券', level2: '纯债' };
+      case 'money':
+        return { top: '货币现金', level1: '货币', level2: '货币现金' };
+      case 'qdii':
+        return { top: '股票权益', level1: '海外', level2: '海外股票' };
+      case 'gold':
+        return { top: '另类及其他', level1: '商品', level2: '黄金白银' };
+      case 'equity':
+      default: {
+        // 尝试从基金名称推断 level2
+        const nameLevel2 = this.guessLevel2FromName(fundName);
+        return { top: '股票权益', level1: 'A股', level2: nameLevel2 };
+      }
+    }
+  }
+
+  private guessLevel2FromName(fundName: string): string {
+    const keywords: [string, string][] = [
+      ['消费', '消费'],
+      ['医药', '医药'],
+      ['科技', '科技'],
+      ['制造', '制造'],
+      ['金融', '金融'],
+      ['资源', '资源'],
+      ['能源', '能源'],
+      ['地产', '地产'],
+      ['军工', '军工'],
+      ['新能源', '新能源'],
+      ['海外', '海外股票'],
+      ['黄金', '黄金白银'],
+      ['白银', '黄金白银'],
+      ['均衡', '大盘均衡'],
+    ];
+    for (const [kw, cat] of keywords) {
+      if (fundName.includes(kw)) return cat;
+    }
+    return '大盘均衡';
   }
 }

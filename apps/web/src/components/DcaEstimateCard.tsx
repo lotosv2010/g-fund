@@ -12,6 +12,7 @@ interface DcaEstimateCardProps {
   loading: boolean;
   snapshots?: DcaSnapshot[];
   onSnapshotUpdate?: () => void;
+  nextDcaDate?: string | null;
 }
 
 const COEFFICIENT_LABELS: Record<string, string> = {
@@ -60,7 +61,7 @@ function CoefficientTooltip({ item }: { item: DcaCalculation }) {
   );
 }
 
-export default function DcaEstimateCard({ data, loading, snapshots = [], onSnapshotUpdate }: DcaEstimateCardProps) {
+export default function DcaEstimateCard({ data, loading, snapshots = [], onSnapshotUpdate, nextDcaDate: nextDcaDateProp }: DcaEstimateCardProps) {
   const [messageApi, contextHolder] = message.useMessage();
   const [executing, setExecuting] = useState<number | null>(null);
   const activeItems = data.filter((d) => !d.skipped);
@@ -83,7 +84,7 @@ export default function DcaEstimateCard({ data, loading, snapshots = [], onSnaps
     }
   }, [messageApi, onSnapshotUpdate]);
 
-  const nextDcaDate = data.length > 0 ? data[0].nextDcaDate : null;
+  const nextDcaDate = data.length > 0 ? data[0].nextDcaDate : (nextDcaDateProp ?? null);
   const isBiweeklyThursday = data.length > 0 ? data[0].isBiweeklyThursday : false;
 
   function formatNextDate(dateStr: string | null): string {
@@ -109,11 +110,17 @@ export default function DcaEstimateCard({ data, loading, snapshots = [], onSnaps
   if (data.length === 0) {
     return (
       <Card title={<><ScheduleOutlined /> 定投预估</>} style={{ height: "100%" }}>
-        <Empty
-          image={Empty.PRESENTED_IMAGE_SIMPLE}
-          description="暂无定投配置或非定投日"
-          style={{ margin: "24px 0" }}
-        />
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12, padding: "24px 0" }}>
+          <Text type="secondary">今日非定投日</Text>
+          {nextDcaDate && (
+            <div style={{ textAlign: "center" }}>
+              <Text type="secondary" style={{ fontSize: 13 }}>下次定投</Text>
+              <Title level={4} style={{ margin: "4px 0 0", color: "#1677ff" }}>
+                {formatNextDate(nextDcaDate)}（{getWeekday(nextDcaDate)}）
+              </Title>
+            </div>
+          )}
+        </div>
       </Card>
     );
   }
@@ -176,9 +183,9 @@ export default function DcaEstimateCard({ data, loading, snapshots = [], onSnaps
           </div>
         )}
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 360, overflowY: "auto", paddingRight: 4 }}>
           {contextHolder}
-          {activeItems.slice(0, 4).map((item) => {
+          {activeItems.map((item) => {
             const ratio = totalAmount > 0 ? (parseFloat(item.finalAmount) / totalAmount) * 100 : 0;
             const snapshot = snapshotMap.get(item.fundCode);
             const isExecuted = snapshot?.executed ?? false;

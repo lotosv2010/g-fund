@@ -1,4 +1,5 @@
-import { Injectable, Inject, NotFoundException } from '@nestjs/common';
+import { Injectable, Inject, NotFoundException, Logger } from '@nestjs/common';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { eq, and, gte, lte, desc, inArray, SQL } from 'drizzle-orm';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '@g-fund/db';
@@ -24,7 +25,20 @@ function toSnapshot(r: SnapshotRow): DailySnapshot {
 
 @Injectable()
 export class DailySnapshotsService {
+  private readonly logger = new Logger(DailySnapshotsService.name);
+
   constructor(@Inject(DB) private readonly db: DbType) {}
+
+  @Cron(CronExpression.EVERY_DAY_AT_6PM)
+  async handleDailySnapshot() {
+    this.logger.log('Auto-generating daily snapshot...');
+    try {
+      const snapshot = await this.generate();
+      this.logger.log(`Daily snapshot generated: ${snapshot.snapshotDate}, positions: ${snapshot.positionCount}`);
+    } catch (err) {
+      this.logger.error(`Failed to auto-generate daily snapshot: ${(err as Error).message}`);
+    }
+  }
 
   async findAll(from?: string, to?: string): Promise<DailySnapshot[]> {
     const conditions: SQL[] = [];

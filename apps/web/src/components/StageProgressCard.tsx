@@ -72,8 +72,8 @@ export default function StageProgressCard({ data, loading }: StageProgressCardPr
           <Tag icon={<PauseCircleOutlined />} color="green">持有期 {holdingCount}</Tag>
         </div>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {fundsWithTarget.slice(0, 4).map((fund) => {
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 360, overflowY: "auto", paddingRight: 4 }}>
+          {fundsWithTarget.map((fund) => {
             const percent = parseFloat(fund.targetAmount) > 0
               ? (parseFloat(fund.currentValue) / parseFloat(fund.targetAmount)) * 100
               : 0;
@@ -104,9 +104,9 @@ export default function StageProgressCard({ data, loading }: StageProgressCardPr
               </Tooltip>
             );
           })}
-          {fundsWithTarget.length > 4 && (
+          {fundsWithTarget.length > 6 && (
             <Text type="secondary" style={{ textAlign: "center", fontSize: 12 }}>
-              共 {fundsWithTarget.length} 只基金
+              共 {fundsWithTarget.length} 只基金，滚动查看更多
             </Text>
           )}
         </div>

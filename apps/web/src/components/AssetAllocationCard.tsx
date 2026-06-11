@@ -44,6 +44,8 @@ function CategoryChart({
     return m;
   }, [sorted]);
 
+  const colorArray = useMemo(() => sorted.map((i) => i.color), [sorted]);
+
   const fundMap = useMemo(() => {
     const m: Record<string, ChartItem> = {};
     for (const i of sorted) m[i.category] = i;
@@ -55,51 +57,53 @@ function CategoryChart({
   }
 
   return (
-    <div>
+    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
       <div style={{ fontSize: 11, color: "#999", paddingLeft: 4, marginBottom: 2 }}>¥ (万元)</div>
-      <Column
-        data={chartData}
-        xField="category"
-        yField="amount"
-        colorField="category"
-        color={(cat: string) => colorMap[cat] ?? "#6b7280"}
-        legend={false}
-        axis={{
-          x: { labelAutoRotate: false, style: { labelFontSize: 11 } },
-          y: {
+      <div style={{ flex: 1, minHeight: 0 }}>
+        <Column
+          data={chartData}
+          xField="category"
+          yField="amount"
+          colorField="category"
+          color={colorArray}
+          legend={false}
+          autoFit
+          axis={{
+            x: { labelAutoRotate: false, style: { labelFontSize: 11 } },
+            y: {
+              title: false,
+              line: true,
+              lineStroke: "#d9d9d9",
+              lineLineWidth: 1,
+              tick: true,
+              tickStroke: "#d9d9d9",
+              labelFormatter: (v: number) => `${(v / 10000).toFixed(1)}`,
+            },
+          }}
+          style={{ radiusTopLeft: 4, radiusTopRight: 4 }}
+          tooltip={{
             title: false,
-            line: true,
-            lineStroke: "#d9d9d9",
-            lineLineWidth: 1,
-            tick: true,
-            tickStroke: "#d9d9d9",
-            labelFormatter: (v: number) => `${(v / 10000).toFixed(1)}`,
-          },
-        }}
-        style={{ radiusTopLeft: 4, radiusTopRight: 4 }}
-        tooltip={{
-          title: false,
-          render: (
-            _event: unknown,
-            { title, items: tipItems }: { title?: string; items: { name?: string; value?: string | number }[] },
-          ) => {
-            const cat = String(title ?? tipItems?.[0]?.name ?? "");
-            const item = fundMap[cat];
-            const wrapper = document.createElement("div");
-            if (!item) return wrapper;
-            const rows = item.funds
-              .map(
-                (f) =>
-                  `<div style="display:flex;justify-content:space-between;font-size:12px;line-height:22px;gap:12px"><span>${f.fundName}</span><span style="color:#999;white-space:nowrap">¥${Math.round(parseFloat(f.currentValue)).toLocaleString()}</span></div>`,
-              )
-              .join("");
-            wrapper.innerHTML = `<div style="padding:4px 0;min-width:220px"><div style="font-weight:600;font-size:13px;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid #f0f0f0">${item.category}：¥${Math.round(item.amount).toLocaleString()}</div>${rows}</div>`;
-            return wrapper;
-          },
-        }}
-        maxColumnWidth={48}
-        height={200}
-      />
+            render: (
+              _event: unknown,
+              { title, items: tipItems }: { title?: string; items: { name?: string; value?: string | number }[] },
+            ) => {
+              const cat = String(title ?? tipItems?.[0]?.name ?? "");
+              const item = fundMap[cat];
+              const wrapper = document.createElement("div");
+              if (!item) return wrapper;
+              const rows = item.funds
+                .map(
+                  (f) =>
+                    `<div style="display:flex;justify-content:space-between;font-size:12px;line-height:22px;gap:12px"><span>${f.fundName}</span><span style="color:#999;white-space:nowrap">¥${Math.round(parseFloat(f.currentValue)).toLocaleString()}</span></div>`,
+                )
+                .join("");
+              wrapper.innerHTML = `<div style="padding:4px 0;min-width:220px"><div style="font-weight:600;font-size:13px;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid #f0f0f0">${item.category}：¥${Math.round(item.amount).toLocaleString()}</div>${rows}</div>`;
+              return wrapper;
+            },
+          }}
+          maxColumnWidth={48}
+        />
+      </div>
       <div style={{ textAlign: "right", marginTop: 4 }}>
         <Text type="secondary" style={{ fontSize: 12 }}>
           合计：¥{total.toLocaleString()}
@@ -216,6 +220,7 @@ export default function AssetAllocationCard({ data, loading }: AssetAllocationCa
       children: (
         <Tabs
           size="small"
+          className="allocation-inner-tabs"
           items={[
             {
               key: "core",
@@ -251,9 +256,27 @@ export default function AssetAllocationCard({ data, loading }: AssetAllocationCa
     <Card
       title={<><PieChartOutlined /> 持仓分布</>}
       style={{ height: "100%" }}
-      styles={{ body: { padding: "12px 16px", maxHeight: 400, overflow: "auto" } }}
+      styles={{ body: { padding: "12px 16px", display: "flex", flexDirection: "column", height: "100%" } }}
     >
-      <Tabs items={tabItems} />
+      <style jsx global>{`
+        .allocation-tabs .ant-tabs,
+        .allocation-tabs .ant-tabs-content-holder,
+        .allocation-tabs .ant-tabs-content,
+        .allocation-tabs .ant-tabs-tabpane-active,
+        .allocation-inner-tabs,
+        .allocation-inner-tabs .ant-tabs-content-holder,
+        .allocation-inner-tabs .ant-tabs-content,
+        .allocation-inner-tabs .ant-tabs-tabpane-active {
+          height: 100%;
+        }
+        .allocation-tabs .ant-tabs-nav,
+        .allocation-inner-tabs .ant-tabs-nav {
+          margin-bottom: 8px;
+        }
+      `}</style>
+      <div className="allocation-tabs" style={{ flex: 1, minHeight: 0 }}>
+        <Tabs items={tabItems} />
+      </div>
     </Card>
   );
 }

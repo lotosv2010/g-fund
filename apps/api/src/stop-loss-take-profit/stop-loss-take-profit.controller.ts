@@ -14,12 +14,6 @@ export class StopLossTakeProfitController {
     return this.service.getSignals();
   }
 
-  @Get(':fundCode')
-  @ApiOperation({ summary: '获取指定基金的止盈止损信号' })
-  async getSignalsByFund(@Param('fundCode') fundCode: string): Promise<StopLossTakeProfitSignal[]> {
-    return this.service.getSignalsByFund(fundCode);
-  }
-
   @Get('history')
   @ApiOperation({ summary: '获取信号历史记录' })
   @ApiQuery({ name: 'fundCode', required: false })
@@ -29,6 +23,12 @@ export class StopLossTakeProfitController {
     @Query('days') days?: number,
   ) {
     return this.service.getSignalHistory(fundCode, days ? Number(days) : undefined);
+  }
+
+  @Get(':fundCode')
+  @ApiOperation({ summary: '获取指定基金的止盈止损信号' })
+  async getSignalsByFund(@Param('fundCode') fundCode: string): Promise<StopLossTakeProfitSignal[]> {
+    return this.service.getSignalsByFund(fundCode);
   }
 
   @Patch('history/:id/resolve')

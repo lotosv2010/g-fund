@@ -131,7 +131,7 @@ export class MarketIndexService {
 
       // 新浪指数格式：name(0), open(1), preClose(2), high(3), low(4), close(5), ...
       const name = fields[0] || config.name;
-      const close = parseFloat(fields[3]);
+      const close = parseFloat(fields[5]);
       const preClose = parseFloat(fields[2]);
       const turnover = parseFloat(fields[31]) || 0;
 
