@@ -1,6 +1,7 @@
 import { join } from 'path';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
 import { DbModule } from './db/db.module';
 import { McpModule } from './mcp/mcp.module';
 import { AgentModule } from './agent/agent.module';
@@ -25,6 +26,7 @@ import { RulesModule } from './rules/rules.module';
       isGlobal: true,
       envFilePath: [join(__dirname, '../../../.env'), '.env'],
     }),
+    ScheduleModule.forRoot(),
     DbModule,
     McpModule,
     AgentModule,

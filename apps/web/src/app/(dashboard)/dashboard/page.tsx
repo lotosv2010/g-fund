@@ -15,6 +15,7 @@ import AlertTimeline from "@/components/AlertTimeline";
 import StageProgressCard from "@/components/StageProgressCard";
 import TotalProfitDrawer from "@/components/TotalProfitDrawer";
 import FundProfitDrawer from "@/components/FundProfitDrawer";
+import MarketIndexBoard from "@/components/MarketIndexBoard";
 
 const { Title } = Typography;
 
@@ -169,6 +170,7 @@ export default function DashboardPage() {
           <SyncPositionsButton onDone={() => loadPositions()} />
         </Space>
       </Row>
+      <MarketIndexBoard />
       <StatCards
         data={positions}
         loading={posLoading}

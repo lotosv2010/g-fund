@@ -6,3 +6,4 @@ export * from "./fund.types";
 export * from "./chat.types";
 export * from "./ai-settings.types";
 export * from "./dashboard.types";
+export * from "./market-index.types";

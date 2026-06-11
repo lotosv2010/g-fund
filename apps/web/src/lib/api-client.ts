@@ -8,6 +8,7 @@ import type {
   ChatSessionSummary, ChatSessionDetail, PersistChatMessageDto, ChatMessage,
   AssetAllocationResponse,
   DcaRules, SlpRules, FundRuleOverride, FundRuleOverrideType, BulletReserve,
+  MarketIndexQuote, MarketIndexHistory,
 } from "@g-fund/types";
 
 const http = axios.create({
@@ -144,4 +145,15 @@ export const chatApi = {
 export const dashboardApi = {
   assetAllocation: () =>
     http.get<AssetAllocationResponse>("/dashboard/asset-allocation", { timeout: 30000 }).then((r) => r.data),
+};
+
+export const marketIndexApi = {
+  realtime: () =>
+    http.get<MarketIndexQuote[]>("/market-index/realtime").then((r) => r.data),
+  history: (code: string, days?: number) =>
+    http.get<MarketIndexHistory[]>(`/market-index/${code}/history`, { params: days ? { days } : undefined }).then((r) => r.data),
+  getWatchlist: () =>
+    http.get<AppSetting>("/settings/watchlist_indices").then((r) => r.data).catch(() => null),
+  setWatchlist: (indices: string[]) =>
+    http.put<AppSetting>("/settings/watchlist_indices", { value: JSON.stringify(indices) }).then((r) => r.data),
 };
