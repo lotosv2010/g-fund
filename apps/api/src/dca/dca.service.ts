@@ -25,6 +25,7 @@ import {
   calcTFactorPriority,
   isFirstDcaOfMonth,
   isOverrideEnabled,
+  toLocalMidnight,
 } from './dca-calc';
 
 type DbType = NodePgDatabase<typeof schema>;
@@ -44,7 +45,8 @@ export class DcaService {
 
   async calculate(): Promise<DcaCalculation[]> {
     const rules = await this.rulesService.getDcaRules();
-    const today = new Date().toISOString().split('T')[0];
+    const d = new Date();
+    const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     const isBiweeklyThursday = checkBiweeklyThursday(rules.biweeklyAnchorDate);
     const nextDcaDate = computeNextDcaDate(rules.biweeklyAnchorDate);
 
@@ -210,7 +212,8 @@ export class DcaService {
   async getNextDcaDate(): Promise<{ nextDate: string; isToday: boolean }> {
     const rules = await this.rulesService.getDcaRules();
     const nextDate = computeNextDcaDate(rules.biweeklyAnchorDate);
-    const today = new Date().toISOString().split('T')[0];
+    const d = new Date();
+    const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     return { nextDate, isToday: nextDate === today };
   }
 
@@ -338,7 +341,7 @@ export class DcaService {
     position: typeof schema.positions.$inferSelect | undefined,
     today: string,
   ): number {
-    const month = new Date(today).getMonth() + 1;
+    const month = toLocalMidnight(today).getMonth() + 1;
     const firstDca = isFirstDcaOfMonth(today);
     if (![3, 6, 9, 12].includes(month) || !firstDca) return 0;
 

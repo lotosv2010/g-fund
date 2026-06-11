@@ -89,14 +89,15 @@ export default function DcaEstimateCard({ data, loading, snapshots = [], onSnaps
 
   function formatNextDate(dateStr: string | null): string {
     if (!dateStr) return "—";
-    const d = new Date(dateStr);
-    return `${d.getMonth() + 1}月${d.getDate()}日`;
+    const [y, m, d] = dateStr.split('-').map(Number);
+    return `${m}月${d}日`;
   }
 
   function getWeekday(dateStr: string | null): string {
     if (!dateStr) return "";
+    const [y, m, d] = dateStr.split('-').map(Number);
     const days = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
-    return days[new Date(dateStr).getDay()];
+    return days[new Date(y, m - 1, d).getDay()];
   }
 
   if (loading) {

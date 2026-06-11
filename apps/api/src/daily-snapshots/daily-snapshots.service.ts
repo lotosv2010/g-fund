@@ -63,7 +63,8 @@ export class DailySnapshotsService {
   }
 
   async generate(): Promise<DailySnapshot> {
-    const today = new Date().toISOString().slice(0, 10);
+    const d = new Date();
+    const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
     const posRows = await this.db.select().from(schema.positions);
     const items: PositionSnapshotItem[] = [];

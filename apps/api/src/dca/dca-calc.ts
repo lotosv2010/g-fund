@@ -40,13 +40,25 @@ export function calcP4(
   return rules[rules.length - 1]?.multiplier ?? 1.0;
 }
 
+// --- 日期工具：统一使用本地日期 ---
+
+export function toLocalMidnight(dateStr: string): Date {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
+function toLocalDateStr(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
 // --- 双周四判断 ---
 
 export function checkBiweeklyThursday(anchorDate: string, today?: Date): boolean {
   const now = today ?? new Date();
-  const anchor = new Date(anchorDate);
-  const diffDays = Math.floor((now.getTime() - anchor.getTime()) / 86_400_000);
-  const dayOfWeek = now.getDay();
+  const anchor = toLocalMidnight(anchorDate);
+  const nowMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const diffDays = Math.round((nowMidnight.getTime() - anchor.getTime()) / 86_400_000);
+  const dayOfWeek = nowMidnight.getDay();
   return dayOfWeek === 4 && diffDays % 14 === 0 && diffDays >= 0;
 }
 
@@ -54,8 +66,9 @@ export function checkBiweeklyThursday(anchorDate: string, today?: Date): boolean
 
 export function computeNextDcaDate(anchorDate: string, today?: Date): string {
   const now = today ?? new Date();
-  const anchor = new Date(anchorDate);
-  const diffDays = Math.floor((now.getTime() - anchor.getTime()) / 86_400_000);
+  const anchor = toLocalMidnight(anchorDate);
+  const nowMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const diffDays = Math.round((nowMidnight.getTime() - anchor.getTime()) / 86_400_000);
 
   if (diffDays < 0) return anchorDate;
 
@@ -63,11 +76,11 @@ export function computeNextDcaDate(anchorDate: string, today?: Date): string {
   const next = new Date(anchor);
   next.setDate(next.getDate() + (cyclesElapsed + 1) * 14);
 
-  if (now.getDay() === 4 && diffDays % 14 === 0) {
-    return now.toISOString().split('T')[0];
+  if (nowMidnight.getDay() === 4 && diffDays % 14 === 0) {
+    return toLocalDateStr(nowMidnight);
   }
 
-  return next.toISOString().split('T')[0];
+  return toLocalDateStr(next);
 }
 
 // --- T 因子优先级调整 ---
@@ -92,7 +105,7 @@ export function calcTFactorPriority(
 // --- 月初判断 ---
 
 export function isFirstDcaOfMonth(dateStr: string): boolean {
-  const date = new Date(dateStr);
+  const date = toLocalMidnight(dateStr);
   return date.getDate() <= 7;
 }
 

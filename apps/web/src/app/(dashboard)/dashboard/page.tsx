@@ -72,7 +72,11 @@ export default function DashboardPage() {
   const loadSnapshots = useCallback(async () => {
     setSnapLoading(true);
     try {
-      const data = await dailySnapshotsApi.list();
+      let data = await dailySnapshotsApi.list();
+      if (data.length === 0) {
+        await dailySnapshotsApi.generate().catch(() => {});
+        data = await dailySnapshotsApi.list();
+      }
       setSnapshots(data);
     } catch {
       // snapshots may not exist yet, silent
@@ -100,7 +104,8 @@ export default function DashboardPage() {
   const loadDca = useCallback(async () => {
     setDcaLoading(true);
     try {
-      const today = new Date().toISOString().slice(0, 10);
+      const d = new Date();
+      const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
       const [dcaData, snapshotsData, nextDateData] = await Promise.all([
         dcaApi.calculate(),
         dcaApi.getSnapshots(today).catch(() => []),
@@ -150,7 +155,7 @@ export default function DashboardPage() {
     loadFunds();
   }, [loadPositions, loadTransactions, loadSnapshots, loadSignals, loadDca, loadAssetAllocation, loadFunds]);
 
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayStr = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; })();
   const todaySnapshot = snapshots.find((s) => s.snapshotDate === todayStr) ?? null;
 
   function handleTotalAssetsClick() {

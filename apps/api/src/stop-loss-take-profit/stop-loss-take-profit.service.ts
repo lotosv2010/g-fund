@@ -92,13 +92,18 @@ export class StopLossTakeProfitService {
       };
       signals.push(alertSignal);
 
+      // 非绿色预警写入信号日志
+      if (alert.level !== 'green') {
+        await this.writeSignalLog(alertSignal, rules);
+      }
+
       // 2. 止盈信号（仅 holding 阶段触发操作）
       if (showAction) {
         for (let i = rules.takeProfitTiers.length - 1; i >= 0; i--) {
           const tier = rules.takeProfitTiers[i];
           if (pnlRate >= tier.threshold) {
             const nextTierGap = computeNextTierGap(pnlRate, rules.takeProfitTiers, i, 'take_profit');
-            signals.push({
+            const tpSignal: StopLossTakeProfitSignal = {
               fundCode: position.fundCode,
               fundName: position.fundName,
               costPrice: position.costPrice,
@@ -113,7 +118,9 @@ export class StopLossTakeProfitService {
               showAction: true,
               nextTierGap,
               valuationPercentile,
-            });
+            };
+            signals.push(tpSignal);
+            await this.writeSignalLog(tpSignal, rules);
             break;
           }
         }
@@ -134,7 +141,7 @@ export class StopLossTakeProfitService {
 
           if (pnlRate <= threshold) {
             const nextTierGap = computeNextTierGap(pnlRate, rules.stopLossTiers, i, 'stop_loss');
-            signals.push({
+            const slSignal: StopLossTakeProfitSignal = {
               fundCode: position.fundCode,
               fundName: position.fundName,
               costPrice: position.costPrice,
@@ -149,7 +156,9 @@ export class StopLossTakeProfitService {
               showAction: true,
               nextTierGap,
               valuationPercentile,
-            });
+            };
+            signals.push(slSignal);
+            await this.writeSignalLog(slSignal, rules);
             break;
           }
         }
@@ -470,7 +479,7 @@ export class StopLossTakeProfitService {
     }
 
     const query = conditions.length > 0
-      ? this.db.select().from(schema.slpSignalsLog).where(conditions[0])
+      ? this.db.select().from(schema.slpSignalsLog).where(and(...conditions))
       : this.db.select().from(schema.slpSignalsLog);
 
     return query.orderBy(desc(schema.slpSignalsLog.triggeredAt));
