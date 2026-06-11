@@ -39,3 +39,6 @@ Thumbs.db
 
 #next
 .next/
+
+# SQL
+scripts/restore-seed-sql-data.sql

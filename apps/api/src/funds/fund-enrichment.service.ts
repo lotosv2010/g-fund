@@ -134,6 +134,7 @@ export class FundEnrichmentService {
       clearTimeout(timeout);
 
       if (!response.ok) {
+        this.logger.warn(`Valuation API returned ${response.status} for ${fundCode}`);
         return null;
       }
 
@@ -145,6 +146,7 @@ export class FundEnrichmentService {
 
       const percentile = data?.data?.pe_percentile;
       if (typeof percentile !== 'number' || percentile < 0 || percentile > 100) {
+        this.logger.debug(`Valuation data missing or invalid for ${fundCode}: ${JSON.stringify(data?.data)}`);
         return null;
       }
 
