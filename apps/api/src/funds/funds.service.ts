@@ -1,5 +1,5 @@
 import { Injectable, Inject, NotFoundException, ConflictException, Logger } from '@nestjs/common';
-import { eq, asc, inArray, SQL } from 'drizzle-orm';
+import { eq, asc, inArray, SQL, sql } from 'drizzle-orm';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '@g-fund/db';
 import { DB } from '../db/db.module';
@@ -199,25 +199,34 @@ export class FundsService {
   }
 
   async reorder(items: { code: string; sortOrder: number }[]): Promise<void> {
-    for (const item of items) {
-      await this.db
-        .update(schema.funds)
-        .set({ sortOrder: String(item.sortOrder), updatedAt: new Date() })
-        .where(eq(schema.funds.code, item.code));
-    }
+    if (items.length === 0) return;
+
+    await this.db.transaction(async (tx) => {
+      for (const item of items) {
+        await tx
+          .update(schema.funds)
+          .set({ sortOrder: String(item.sortOrder), updatedAt: new Date() })
+          .where(eq(schema.funds.code, item.code));
+      }
+    });
   }
 
   async recalcTargetAmounts(totalPosition: string): Promise<void> {
     const total = parseFloat(totalPosition);
     const allFunds = await this.db.select().from(schema.funds);
-    for (const fund of allFunds) {
-      const ratio = parseFloat(fund.targetRatio ?? '0');
-      const targetAmount = (total * ratio / 100).toFixed(2);
-      await this.db
-        .update(schema.funds)
-        .set({ targetAmount, updatedAt: new Date() })
-        .where(eq(schema.funds.code, fund.code));
-    }
+    if (allFunds.length === 0) return;
+
+    await this.db.transaction(async (tx) => {
+      for (const fund of allFunds) {
+        const ratio = parseFloat(fund.targetRatio ?? '0');
+        const targetAmount = (total * ratio / 100).toFixed(2);
+        await tx
+          .update(schema.funds)
+          .set({ targetAmount, updatedAt: new Date() })
+          .where(eq(schema.funds.code, fund.code));
+      }
+    });
+
     await this.recomputeAllStages();
   }
 
@@ -262,9 +271,31 @@ export class FundsService {
 
   async recomputeAllStages(): Promise<void> {
     const funds = await this.db.select().from(schema.funds);
-    for (const fund of funds) {
-      await this.computeLifecycleStage(fund.code);
-    }
+    if (funds.length === 0) return;
+
+    const positions = await this.db.select().from(schema.positions);
+    const positionMap = new Map(positions.map((p) => [p.fundCode, p]));
+
+    await this.db.transaction(async (tx) => {
+      for (const fund of funds) {
+        const position = positionMap.get(fund.code);
+        const costAmount = position ? parseFloat(position.costAmount ?? '0') : 0;
+        const targetAmount = parseFloat(fund.targetAmount ?? '0');
+        const progress = targetAmount > 0 ? costAmount / targetAmount : 0;
+        const computedStage: LifecycleStage = progress >= STAGE_THRESHOLD ? 'holding' : 'dca';
+
+        if (fund.lifecycleStage !== computedStage) {
+          await tx
+            .update(schema.funds)
+            .set({
+              lifecycleStage: computedStage,
+              stageChangedAt: new Date(),
+              updatedAt: new Date(),
+            })
+            .where(eq(schema.funds.code, fund.code));
+        }
+      }
+    });
   }
 
   async recordStageChange(

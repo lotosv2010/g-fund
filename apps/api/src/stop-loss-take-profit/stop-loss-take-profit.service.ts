@@ -48,6 +48,9 @@ export class StopLossTakeProfitService {
     const funds = await this.db.select().from(schema.funds);
     const fundMap = new Map(funds.map((f) => [f.code, f]));
 
+    const fundCodes = positions.map((p) => p.fundCode);
+    const allOverrides = await this.rulesService.getAllFundOverrides(fundCodes);
+
     const signals: StopLossTakeProfitSignal[] = [];
 
     for (const position of positions) {
@@ -66,8 +69,8 @@ export class StopLossTakeProfitService {
       const pnlRate = (currentPrice - costPrice) / costPrice;
       const assetType = fund.assetType ?? 'equity';
 
-      // 获取基金覆盖规则
-      const overrides = await this.rulesService.getFundOverrides(position.fundCode);
+      // 获取基金覆盖规则（批量加载）
+      const overrides = allOverrides.get(position.fundCode) ?? [];
       const overrideMap = new Map(overrides.map((o) => [o.overrideType, o]));
 
       // 阶段感知：dca 阶段只输出预警不输出操作

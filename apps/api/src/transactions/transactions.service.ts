@@ -5,6 +5,7 @@ import * as schema from '@g-fund/db';
 import { DB } from '../db/db.module';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { FundsService } from '../funds/funds.service';
+import { TransactionConfirmationService } from './transaction-confirmation.service';
 
 type DbType = NodePgDatabase<typeof schema>;
 type TransactionRow = typeof schema.transactions.$inferSelect;
@@ -15,6 +16,7 @@ export class TransactionsService {
   constructor(
     @Inject(DB) private readonly db: DbType,
     private readonly fundsService: FundsService,
+    private readonly confirmationService: TransactionConfirmationService,
   ) {}
 
   async findAll(fundCode?: string, type?: string, startDate?: string, endDate?: string): Promise<TransactionRow[]> {
@@ -56,165 +58,12 @@ export class TransactionsService {
     return txRow;
   }
 
-  async confirmPending(fundCode: string, navUnit: string, navDate?: string): Promise<number> {
-    const today = new Date().toISOString().slice(0, 10);
-    const pendingTxs = await this.db
-      .select()
-      .from(schema.transactions)
-      .where(
-        and(
-          eq(schema.transactions.fundCode, fundCode),
-          eq(schema.transactions.status, 'pending'),
-          lt(schema.transactions.tradeDate, today),
-        ),
-      )
-      .orderBy(asc(schema.transactions.tradeDate));
-
-    if (pendingTxs.length === 0) return 0;
-
-    const nav = parseFloat(navUnit);
-    if (!Number.isFinite(nav) || nav <= 0) return 0;
-
-    for (const tx of pendingTxs) {
-      await this.db.transaction(async (dbTx) => {
-        await this.confirmTransaction(dbTx, tx, nav, navDate);
-      });
-
-      // 交易确认后记录阶段变化
-      await this.recordStageChangeIfNeeded(fundCode, tx.type as 'buy' | 'sell');
+  async confirmPending(fundCode: string, navUnit: string): Promise<number> {
+    const count = await this.confirmationService.confirmPending(fundCode, navUnit);
+    if (count > 0) {
+      await this.recordStageChangeIfNeeded(fundCode, 'buy');
     }
-
-    return pendingTxs.length;
-  }
-
-  private async confirmTransaction(
-    tx: Parameters<Parameters<DbType['transaction']>[0]>[0],
-    txRow: TransactionRow,
-    navUnit: number,
-    navDate?: string,
-  ): Promise<void> {
-    if (txRow.type === 'buy') {
-      await this.confirmBuy(tx, txRow, navUnit);
-    } else {
-      await this.confirmSell(tx, txRow, navUnit);
-    }
-
-    await tx
-      .update(schema.transactions)
-      .set({
-        status: 'confirmed',
-        price: navUnit.toFixed(4),
-        confirmedAt: new Date(),
-      })
-      .where(eq(schema.transactions.id, txRow.id));
-  }
-
-  private async confirmBuy(
-    tx: Parameters<Parameters<DbType['transaction']>[0]>[0],
-    txRow: TransactionRow,
-    navUnit: number,
-  ): Promise<void> {
-    const buyAmount = parseFloat(txRow.amount);
-    const buyShares = buyAmount / navUnit;
-
-    const [existing] = await tx
-      .select()
-      .from(schema.positions)
-      .where(eq(schema.positions.fundCode, txRow.fundCode));
-
-    if (existing) {
-      const oldShares = parseFloat(existing.shares ?? '0');
-      const newShares = oldShares + buyShares;
-      const newCostAmount = parseFloat(existing.costAmount) + buyAmount;
-      const newCostPrice = newShares > 0 ? newCostAmount / newShares : 0;
-      const newCurrentValue = parseFloat(existing.currentValue ?? '0') + buyShares * navUnit;
-
-      await tx
-        .update(schema.positions)
-        .set({
-          shares: newShares.toFixed(4),
-          costPrice: newCostPrice.toFixed(4),
-          costAmount: newCostAmount.toFixed(2),
-          currentValue: newCurrentValue.toFixed(2),
-          navUnit: navUnit.toFixed(4),
-          updatedAt: new Date(),
-        })
-        .where(eq(schema.positions.fundCode, txRow.fundCode));
-    } else {
-      const costPrice = navUnit;
-      await tx.insert(schema.positions).values({
-        fundCode: txRow.fundCode,
-        fundName: txRow.fundName,
-        shares: buyShares.toFixed(4),
-        costPrice: costPrice.toFixed(4),
-        costAmount: buyAmount.toFixed(2),
-        currentValue: (buyShares * navUnit).toFixed(2),
-        navUnit: navUnit.toFixed(4),
-      });
-    }
-
-    await tx
-      .update(schema.transactions)
-      .set({ shares: buyShares.toFixed(4) })
-      .where(eq(schema.transactions.id, txRow.id));
-  }
-
-  private async confirmSell(
-    tx: Parameters<Parameters<DbType['transaction']>[0]>[0],
-    txRow: TransactionRow,
-    navUnit: number,
-  ): Promise<void> {
-    const [existing] = await tx
-      .select()
-      .from(schema.positions)
-      .where(eq(schema.positions.fundCode, txRow.fundCode));
-
-    if (!existing) {
-      await tx
-        .update(schema.transactions)
-        .set({ status: 'cancelled', confirmedAt: new Date() })
-        .where(eq(schema.transactions.id, txRow.id));
-      return;
-    }
-
-    const sellAmount = parseFloat(txRow.amount);
-    const sellShares = sellAmount / navUnit;
-    const oldShares = parseFloat(existing.shares ?? '0');
-
-    if (sellShares > oldShares) {
-      await tx
-        .update(schema.transactions)
-        .set({ status: 'cancelled', confirmedAt: new Date() })
-        .where(eq(schema.transactions.id, txRow.id));
-      return;
-    }
-
-    const oldCostPrice = parseFloat(existing.costPrice);
-    const newShares = oldShares - sellShares;
-    const newCostAmount = newShares * oldCostPrice;
-    const newCurrentValue = Math.max(0, parseFloat(existing.currentValue ?? '0') - sellShares * navUnit);
-
-    if (newShares <= 0) {
-      await tx
-        .delete(schema.positions)
-        .where(eq(schema.positions.fundCode, txRow.fundCode));
-    } else {
-      await tx
-        .update(schema.positions)
-        .set({
-          shares: newShares.toFixed(4),
-          costAmount: newCostAmount.toFixed(2),
-          currentValue: newCurrentValue.toFixed(2),
-          navUnit: navUnit.toFixed(4),
-          updatedAt: new Date(),
-        })
-        .where(eq(schema.positions.fundCode, txRow.fundCode));
-    }
-
-    await tx
-      .update(schema.transactions)
-      .set({ shares: sellShares.toFixed(4), price: navUnit.toFixed(4) })
-      .where(eq(schema.transactions.id, txRow.id));
+    return count;
   }
 
   async remove(id: number): Promise<void> {

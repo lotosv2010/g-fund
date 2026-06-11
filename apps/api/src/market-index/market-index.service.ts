@@ -1,6 +1,6 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { eq, and, gte, desc } from 'drizzle-orm';
+import { eq, and, gte, desc, sql } from 'drizzle-orm';
 import * as schema from '@g-fund/db';
 import { stocks } from 'stock-api';
 import { DB } from '../db/db.module';
@@ -51,33 +51,32 @@ export class MarketIndexService {
 
   async archiveToday(): Promise<number> {
     const quotes = await this.fetchRealtime();
-    let archived = 0;
+    if (quotes.length === 0) return 0;
 
-    for (const quote of quotes) {
-      await this.db
-        .insert(schema.marketIndexHistory)
-        .values({
-          indexCode: quote.indexCode,
-          name: quote.name,
-          close: quote.close.toFixed(4),
-          changePct: quote.changePct.toFixed(4),
-          turnover: quote.turnover.toFixed(2),
-          tradeDate: quote.tradeDate,
-        })
-        .onConflictDoUpdate({
-          target: [schema.marketIndexHistory.indexCode, schema.marketIndexHistory.tradeDate],
-          set: {
-            close: quote.close.toFixed(4),
-            changePct: quote.changePct.toFixed(4),
-            turnover: quote.turnover.toFixed(2),
-            updatedAt: new Date(),
-          },
-        });
-      archived++;
-    }
+    const values = quotes.map((q) => ({
+      indexCode: q.indexCode,
+      name: q.name,
+      close: q.close.toFixed(4),
+      changePct: q.changePct.toFixed(4),
+      turnover: q.turnover.toFixed(2),
+      tradeDate: q.tradeDate,
+    }));
 
-    this.logger.log(`Archived ${archived} index records for today`);
-    return archived;
+    await this.db
+      .insert(schema.marketIndexHistory)
+      .values(values)
+      .onConflictDoUpdate({
+        target: [schema.marketIndexHistory.indexCode, schema.marketIndexHistory.tradeDate],
+        set: {
+          close: sql`excluded.close`,
+          changePct: sql`excluded.change_pct`,
+          turnover: sql`excluded.turnover`,
+          updatedAt: new Date(),
+        },
+      });
+
+    this.logger.log(`Archived ${quotes.length} index records for today`);
+    return quotes.length;
   }
 
   private getFromCache(codes: string[]): MarketIndexQuote[] {

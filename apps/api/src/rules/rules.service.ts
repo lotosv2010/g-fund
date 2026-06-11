@@ -1,5 +1,5 @@
 import { Injectable, Inject } from '@nestjs/common';
-import { eq } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '@g-fund/db';
 import { DB } from '../db/db.module';
@@ -158,6 +158,30 @@ export class RulesService {
       value: r.value !== null ? Number(r.value) : null,
       updatedAt: r.updatedAt.toISOString(),
     }));
+  }
+
+  async getAllFundOverrides(fundCodes: string[]): Promise<Map<string, FundRuleOverride[]>> {
+    const map = new Map<string, FundRuleOverride[]>();
+    if (fundCodes.length === 0) return map;
+
+    const rows = await this.db
+      .select()
+      .from(schema.fundRuleOverrides)
+      .where(inArray(schema.fundRuleOverrides.fundCode, fundCodes));
+
+    for (const r of rows) {
+      const existing = map.get(r.fundCode) ?? [];
+      existing.push({
+        fundCode: r.fundCode,
+        overrideType: r.overrideType as FundRuleOverrideType,
+        enabled: r.enabled,
+        value: r.value !== null ? Number(r.value) : null,
+        updatedAt: r.updatedAt.toISOString(),
+      });
+      map.set(r.fundCode, existing);
+    }
+
+    return map;
   }
 
   async setFundOverride(

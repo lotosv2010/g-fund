@@ -7,6 +7,7 @@ import { DB } from '../db/db.module';
 import { Client } from '@modelcontextprotocol/sdk/client';
 import type { Tool, CallToolResult } from '@modelcontextprotocol/sdk/types';
 import type { McpServer, McpConfig } from '@g-fund/types';
+import { isTradingHours } from '../common/trading-hours';
 
 type DbType = NodePgDatabase<typeof schema>;
 
@@ -23,14 +24,6 @@ const CACHE_TTL_DEFAULT = 5 * 60 * 1000; // 其他工具：5min
 
 const NAV_TOOL_PATTERN = /[_-]?(nav|净值|history)/i;
 const ASSET_CLASS_TOOL_PATTERN = /asset[_-]?class/i;
-
-function isTradingHours(): boolean {
-  const now = new Date();
-  const day = now.getDay();
-  if (day === 0 || day === 6) return false;
-  const hhmm = now.getHours() * 100 + now.getMinutes();
-  return hhmm >= 930 && hhmm <= 1500;
-}
 
 @Injectable()
 export class McpService implements OnModuleInit, OnModuleDestroy {

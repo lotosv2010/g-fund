@@ -16,6 +16,9 @@ type DbType = NodePgDatabase<typeof schema>;
 
 @Injectable()
 export class AgentToolsService {
+  private cachedTools: DynamicStructuredTool[] | null = null;
+  private cachedMcpToolCount = -1;
+
   constructor(
     private readonly mcp: McpService,
     @Inject(DB) private readonly db: DbType,
@@ -27,7 +30,12 @@ export class AgentToolsService {
   ) {}
 
   getTools(): DynamicStructuredTool[] {
-    return [...this.mcpTools(), ...this.dbTools(), ...this.domainTools()];
+    const mcpCount = this.mcp.getTools().length;
+    if (!this.cachedTools || mcpCount !== this.cachedMcpToolCount) {
+      this.cachedTools = [...this.mcpTools(), ...this.dbTools(), ...this.domainTools()];
+      this.cachedMcpToolCount = mcpCount;
+    }
+    return this.cachedTools;
   }
 
   private mcpTools(): DynamicStructuredTool[] {

@@ -1,6 +1,6 @@
 import { Injectable, Inject, Logger } from '@nestjs/common';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { eq, and, desc, gte } from 'drizzle-orm';
+import { eq, and, desc, gte, inArray, sql } from 'drizzle-orm';
 import * as schema from '@g-fund/db';
 import { DB } from '../db/db.module';
 import { RulesService } from '../rules/rules.service';
@@ -23,9 +23,7 @@ import {
   checkBiweeklyThursday,
   computeNextDcaDate,
   calcTFactorPriority,
-  isFirstDcaOfMonth,
   isOverrideEnabled,
-  toLocalMidnight,
 } from './dca-calc';
 
 type DbType = NodePgDatabase<typeof schema>;
@@ -112,7 +110,7 @@ export class DcaService {
       }
 
       // P0: QDII 申购检查
-      const p0 = await this.calcP0(assetType);
+      const p0 = this.calcP0(assetType);
 
       // P1: 当日大盘检查（连续 3 日推迟后强制执行）
       const effectiveP1 = consecutiveP1Zero >= 3 ? 1.0 : p1;
@@ -134,7 +132,7 @@ export class DcaService {
 
       // P4: 优先级系数
       let priority = fund.priority ?? 0;
-      const rebalanceAdj = this.calcRebalanceAdjustment(fund, position, today);
+      const rebalanceAdj = this.calcRebalanceAdjustment();
       if (rebalanceAdj !== 0) {
         priority = Math.max(0, priority + rebalanceAdj);
       }
@@ -217,22 +215,10 @@ export class DcaService {
     return { nextDate, isToday: nextDate === today };
   }
 
-  // --- P0: QDII 申购检查 ---
+  // --- P0: QDII 申购检查（暂未接入 MCP，始终返回 1） ---
 
-  private async calcP0(assetType: AssetType): Promise<number> {
-    if (assetType !== 'qdii') return 1;
-
-    try {
-      // 调用盈米 MCP 检查 QDII 申购限额
-      // BatchGetFundTradeLimit 工具需要通过 McpService 调用
-      // 由于 McpService 是 @Global() 模块，但 DcaModule 未直接注入
-      // 此处通过数据库查询 fund_rule_overrides 中的 qdii_allot 标记
-      // 实际 MCP 调用在后续 Agent 工具层集成
-      return 1;
-    } catch {
-      this.logger.warn('QDII 申购检查失败，默认允许申购');
-      return 1;
-    }
+  private calcP0(_assetType: AssetType): number {
+    return 1;
   }
 
   // --- P1: 当日大盘检查 ---
@@ -334,24 +320,9 @@ export class DcaService {
     }
   }
 
-  // --- 季度再平衡 ---
+  // --- 季度再平衡（暂未实现，返回 0） ---
 
-  private calcRebalanceAdjustment(
-    fund: typeof schema.funds.$inferSelect,
-    position: typeof schema.positions.$inferSelect | undefined,
-    today: string,
-  ): number {
-    const month = toLocalMidnight(today).getMonth() + 1;
-    const firstDca = isFirstDcaOfMonth(today);
-    if (![3, 6, 9, 12].includes(month) || !firstDca) return 0;
-
-    const costAmount = position ? parseFloat(position.costAmount ?? '0') : 0;
-    const targetRatio = parseFloat(fund.targetRatio ?? '0');
-    if (targetRatio <= 0 || costAmount <= 0) return 0;
-
-    // 计算实际占比需要总资产，此处简化：用 costAmount / sum(all costAmount)
-    // 实际偏差在 calculate() 中批量计算更准确
-    // 这里用一个简化版本：targetRatio 作为基准
+  private calcRebalanceAdjustment(): number {
     return 0;
   }
 
@@ -389,6 +360,7 @@ export class DcaService {
       .where(
         and(
           eq(schema.fundRuleOverrides.enabled, true),
+          inArray(schema.fundRuleOverrides.fundCode, fundCodes),
         ),
       );
 
@@ -463,36 +435,38 @@ export class DcaService {
   // --- 快照写入 ---
 
   private async saveSnapshots(calculations: DcaCalculation[], planDate: string): Promise<void> {
-    for (const calc of calculations) {
-      await this.db
-        .insert(schema.dcaSnapshots)
-        .values({
-          planDate,
-          fundCode: calc.fundCode,
-          baseAmount: calc.baseAmount,
-          p0: calc.p0.toFixed(4),
-          p1: calc.p1.toFixed(4),
-          p2: calc.p2.toFixed(4),
-          p3: calc.p3.toFixed(4),
-          p4: calc.p4.toFixed(4),
-          tFactor: calc.tFactor.toFixed(4),
-          finalAmount: calc.finalAmount,
-          executed: false,
-        })
-        .onConflictDoUpdate({
-          target: [schema.dcaSnapshots.planDate, schema.dcaSnapshots.fundCode],
-          set: {
-            baseAmount: calc.baseAmount,
-            p0: calc.p0.toFixed(4),
-            p1: calc.p1.toFixed(4),
-            p2: calc.p2.toFixed(4),
-            p3: calc.p3.toFixed(4),
-            p4: calc.p4.toFixed(4),
-            tFactor: calc.tFactor.toFixed(4),
-            finalAmount: calc.finalAmount,
-          },
-        });
-    }
+    if (calculations.length === 0) return;
+
+    const values = calculations.map((calc) => ({
+      planDate,
+      fundCode: calc.fundCode,
+      baseAmount: calc.baseAmount,
+      p0: calc.p0.toFixed(4),
+      p1: calc.p1.toFixed(4),
+      p2: calc.p2.toFixed(4),
+      p3: calc.p3.toFixed(4),
+      p4: calc.p4.toFixed(4),
+      tFactor: calc.tFactor.toFixed(4),
+      finalAmount: calc.finalAmount,
+      executed: false,
+    }));
+
+    await this.db
+      .insert(schema.dcaSnapshots)
+      .values(values)
+      .onConflictDoUpdate({
+        target: [schema.dcaSnapshots.planDate, schema.dcaSnapshots.fundCode],
+        set: {
+          baseAmount: sql`excluded.base_amount`,
+          p0: sql`excluded.p0`,
+          p1: sql`excluded.p1`,
+          p2: sql`excluded.p2`,
+          p3: sql`excluded.p3`,
+          p4: sql`excluded.p4`,
+          tFactor: sql`excluded.t_factor`,
+          finalAmount: sql`excluded.final_amount`,
+        },
+      });
   }
 
   private buildSkippedResult(

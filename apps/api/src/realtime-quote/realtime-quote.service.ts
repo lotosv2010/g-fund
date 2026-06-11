@@ -1,6 +1,7 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import type { RealtimeQuote } from '@g-fund/types';
 import type { QuoteCacheEntry, TiantianFundResponse } from './realtime-quote.types';
+import { isTradingHours } from '../common/trading-hours';
 
 const API_BASE = 'https://fundgz.1234567.com.cn/js';
 const TRADING_CACHE_TTL = 30_000;    // 交易时段 30s
@@ -120,13 +121,4 @@ export class RealtimeQuoteService {
     // 15:00 = 900 分钟，视为收盘
     return totalMin < 900;
   }
-}
-
-function isTradingHours(): boolean {
-  const now = new Date();
-  const day = now.getDay();
-  if (day === 0 || day === 6) return false;
-
-  const hhmm = now.getHours() * 100 + now.getMinutes();
-  return hhmm >= 930 && hhmm <= 1500;
 }
