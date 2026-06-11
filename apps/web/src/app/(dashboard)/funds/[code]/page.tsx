@@ -110,7 +110,7 @@ export default function FundDiagnosisPage() {
   return (
     <>
       {contextHolder}
-      <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+      <Space orientation="vertical" size="middle" style={{ width: "100%" }}>
         <Card styles={{ body: { padding: "12px 24px" } }}>
           <Row gutter={[16, 12]} align="middle">
             <Col flex="none">
@@ -154,7 +154,7 @@ export default function FundDiagnosisPage() {
                 value={pnlRatePercent}
                 precision={2}
                 suffix="%"
-                valueStyle={{ color: isProfit ? "#dc2626" : "#16a34a", fontSize: 20 }}
+                styles={{ content: { color: isProfit ? "#dc2626" : "#16a34a", fontSize: 20 } }}
               />
             </Col>
           </Row>
@@ -167,7 +167,7 @@ export default function FundDiagnosisPage() {
               {signal.length === 0 ? (
                 <Text type="secondary">暂无信号，持仓收益在安全区间</Text>
               ) : (
-                <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+                <Space orientation="vertical" size="middle" style={{ width: "100%" }}>
                   <Descriptions column={2} size="small">
                     <Descriptions.Item label="成本价">¥{signal[0].costPrice}</Descriptions.Item>
                     <Descriptions.Item label="当前价">¥{signal[0].currentPrice}</Descriptions.Item>
@@ -212,7 +212,7 @@ export default function FundDiagnosisPage() {
                           </Space>
                         }
                         description={
-                          <Space direction="vertical" size={4}>
+                          <Space orientation="vertical" size={4}>
                             <Text type="secondary">阈值：{s.threshold}</Text>
                             {s.nextTierGap !== undefined && (
                               <Text type="secondary">
@@ -241,7 +241,7 @@ export default function FundDiagnosisPage() {
               {!dca ? (
                 <Text type="secondary">未配置定投基础金额，请在基金编辑中设置</Text>
               ) : (
-                <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+                <Space orientation="vertical" size="middle" style={{ width: "100%" }}>
                   <Descriptions column={2} size="small">
                     <Descriptions.Item label="基础金额">
                       ¥{dca.baseAmount}
@@ -282,7 +282,7 @@ export default function FundDiagnosisPage() {
                         value={parseFloat(dca.finalAmount)}
                         prefix="¥"
                         precision={2}
-                        valueStyle={{ fontSize: 20 }}
+                        styles={{ content: { fontSize: 20 } }}
                       />
                     )}
                   </div>
@@ -378,7 +378,7 @@ export default function FundDiagnosisPage() {
           <Text type="secondary" style={{ fontSize: 12, display: "block", marginBottom: 16 }}>
             为该基金设置特殊规则，覆盖全局配置
           </Text>
-          <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+          <Space orientation="vertical" size="middle" style={{ width: "100%" }}>
             {FUND_RULE_OVERRIDE_TYPES.map((type) => {
               const override = getOverride(type);
               const enabled = override?.enabled ?? false;

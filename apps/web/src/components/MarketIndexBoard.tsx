@@ -42,7 +42,7 @@ function IndexCard({
       style={{ minWidth: 180, cursor: "pointer" }}
       styles={{ body: { padding: "12px 16px" } }}
     >
-      <Space direction="vertical" size={2} style={{ width: "100%" }}>
+      <Space orientation="vertical" size={2} style={{ width: "100%" }}>
         <Text strong style={{ fontSize: 14 }}>{quote.name}</Text>
         <Text strong style={{ fontSize: 22, color, lineHeight: 1.2 }}>
           {quote.close.toFixed(2)}
@@ -95,11 +95,10 @@ function IndexDetailDrawer({
       title={quote?.name ?? "指数详情"}
       open={open}
       onClose={onClose}
-      width={480}
-      destroyOnClose
+      destroyOnHidden
     >
       {quote && (
-        <Space direction="vertical" size={16} style={{ width: "100%" }}>
+        <Space orientation="vertical" size={16} style={{ width: "100%" }}>
           <div>
             <Text strong style={{ fontSize: 28, color: quote.changePct >= 0 ? PROFIT_COLOR : LOSS_COLOR }}>
               {quote.close.toFixed(2)}
@@ -199,9 +198,9 @@ function WatchlistSettings({
       onCancel={onClose}
       onOk={handleSave}
       confirmLoading={saving}
-      destroyOnClose
+      destroyOnHidden
     >
-      <Space direction="vertical" style={{ width: "100%" }}>
+      <Space orientation="vertical" style={{ width: "100%" }}>
         <Text type="secondary">选择要在大盘行情中展示的指数：</Text>
         <Checkbox.Group
           value={selected}

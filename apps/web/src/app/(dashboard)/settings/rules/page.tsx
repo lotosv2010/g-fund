@@ -175,7 +175,7 @@ export default function RulesSettingsPage() {
         <Text strong style={{ fontSize: 13 }}>P3 估值水平系数</Text>
         <div style={{ display: "flex", gap: 16, marginTop: 8, marginBottom: 16 }}>
           {(["low", "normal", "high"] as ValuationLevel[]).map((level) => (
-            <Space key={level} direction="vertical" size={2} style={{ flex: 1 }}>
+            <Space key={level} orientation="vertical" size={2} style={{ flex: 1 }}>
               <Text type="secondary" style={{ fontSize: 12 }}>{VALUATION_LEVEL_LABELS[level]}</Text>
               <InputNumber
                 size="small"
@@ -234,7 +234,7 @@ export default function RulesSettingsPage() {
           沪深300涨跌幅超过阈值时暂缓或加仓
         </Text>
         <div style={{ display: "flex", gap: 16, marginTop: 8, marginBottom: 16 }}>
-          <Space direction="vertical" size={2} style={{ flex: 1 }}>
+          <Space orientation="vertical" size={2} style={{ flex: 1 }}>
             <Text type="secondary" style={{ fontSize: 12 }}>暂缓阈值（涨 &gt;）</Text>
             <InputNumber
               min={0} max={10} step={0.5}
@@ -247,7 +247,7 @@ export default function RulesSettingsPage() {
               style={{ width: "100%" }}
             />
           </Space>
-          <Space direction="vertical" size={2} style={{ flex: 1 }}>
+          <Space orientation="vertical" size={2} style={{ flex: 1 }}>
             <Text type="secondary" style={{ fontSize: 12 }}>加仓阈值（跌 &lt;）</Text>
             <InputNumber
               min={-10} max={0} step={0.5}
@@ -268,7 +268,7 @@ export default function RulesSettingsPage() {
           沪深300近1周累计涨跌幅超过阈值时调整定投倍数
         </Text>
         <div style={{ display: "flex", gap: 16, marginTop: 8, marginBottom: 16 }}>
-          <Space direction="vertical" size={2} style={{ flex: 1 }}>
+          <Space orientation="vertical" size={2} style={{ flex: 1 }}>
             <Text type="secondary" style={{ fontSize: 12 }}>牛市阈值（累计涨 &gt;）</Text>
             <InputNumber
               min={0} max={30} step={1}
@@ -281,7 +281,7 @@ export default function RulesSettingsPage() {
               style={{ width: "100%" }}
             />
           </Space>
-          <Space direction="vertical" size={2} style={{ flex: 1 }}>
+          <Space orientation="vertical" size={2} style={{ flex: 1 }}>
             <Text type="secondary" style={{ fontSize: 12 }}>熊市阈值（累计跌 &gt;）</Text>
             <InputNumber
               min={0} max={30} step={1}
@@ -318,7 +318,7 @@ export default function RulesSettingsPage() {
         <Divider style={{ margin: "16px 0 12px" }} />
         <Text strong style={{ fontSize: 13 }}>上下限</Text>
         <div style={{ display: "flex", gap: 16, marginTop: 8 }}>
-          <Space direction="vertical" size={2} style={{ flex: 1 }}>
+          <Space orientation="vertical" size={2} style={{ flex: 1 }}>
             <Text type="secondary" style={{ fontSize: 12 }}>上限倍数</Text>
             <InputNumber
               min={1} max={10} step={0.5}
@@ -328,7 +328,7 @@ export default function RulesSettingsPage() {
               style={{ width: "100%" }}
             />
           </Space>
-          <Space direction="vertical" size={2} style={{ flex: 1 }}>
+          <Space orientation="vertical" size={2} style={{ flex: 1 }}>
             <Text type="secondary" style={{ fontSize: 12 }}>下限阈值</Text>
             <InputNumber
               min={0} max={1} step={0.01}
@@ -427,7 +427,7 @@ export default function RulesSettingsPage() {
         <Divider style={{ margin: "16px 0 12px" }} />
         <Text strong style={{ fontSize: 13 }}>反弹信号</Text>
         <div style={{ display: "flex", gap: 16, marginTop: 8 }}>
-          <Space direction="vertical" size={2} style={{ flex: 1 }}>
+          <Space orientation="vertical" size={2} style={{ flex: 1 }}>
             <Text type="secondary" style={{ fontSize: 12 }}>连续涨幅天数</Text>
             <InputNumber
               min={1} max={30}
@@ -440,7 +440,7 @@ export default function RulesSettingsPage() {
               style={{ width: "100%" }}
             />
           </Space>
-          <Space direction="vertical" size={2} style={{ flex: 1 }}>
+          <Space orientation="vertical" size={2} style={{ flex: 1 }}>
             <Text type="secondary" style={{ fontSize: 12 }}>日涨幅阈值</Text>
             <InputNumber
               min={0} max={1} step={0.005}
@@ -453,7 +453,7 @@ export default function RulesSettingsPage() {
               style={{ width: "100%" }}
             />
           </Space>
-          <Space direction="vertical" size={2} style={{ flex: 1 }}>
+          <Space orientation="vertical" size={2} style={{ flex: 1 }}>
             <Text type="secondary" style={{ fontSize: 12 }}>周累计阈值</Text>
             <InputNumber
               min={0} max={1} step={0.005}

@@ -25,6 +25,8 @@ interface McpAssetClassResponse {
 @Injectable()
 export class DashboardService {
   private readonly logger = new Logger(DashboardService.name);
+  private assetAllocationCache: { data: AssetAllocationResponse; fetchedAt: number } | null = null;
+  private readonly ASSET_ALLOCATION_TTL = 60 * 60 * 1000; // 1 小时
 
   constructor(
     @Inject(DB) private readonly db: DbType,
@@ -32,6 +34,12 @@ export class DashboardService {
   ) {}
 
   async getAssetAllocation(): Promise<AssetAllocationResponse> {
+    // 检查缓存
+    if (this.assetAllocationCache && Date.now() - this.assetAllocationCache.fetchedAt < this.ASSET_ALLOCATION_TTL) {
+      this.logger.debug('Asset allocation cache hit');
+      return this.assetAllocationCache.data;
+    }
+
     const positions = await this.db.select().from(schema.positions);
     if (positions.length === 0) {
       return { categoryTree: [], fundDetails: [] };
@@ -44,10 +52,16 @@ export class DashboardService {
       .where(inArray(schema.funds.code, fundCodes));
     const fundMap = new Map(funds.map((f) => [f.code, f]));
 
-    const holdingList = positions.map((p) => ({
-      fundCode: p.fundCode,
-      amount: parseFloat(p.currentValue ?? '0'),
-    }));
+    const holdingList = positions
+      .map((p) => ({
+        fundCode: p.fundCode,
+        amount: parseFloat(p.currentValue ?? '0'),
+      }))
+      .filter((h) => h.amount > 0);
+
+    if (holdingList.length === 0) {
+      return { categoryTree: [], fundDetails: [] };
+    }
 
     // 并行调用：1次聚合树 + N次单基金分类
     const [treeResult, ...fundResults] = await Promise.allSettled([
@@ -81,7 +95,13 @@ export class DashboardService {
       fundDetails.push(detail);
     }
 
-    return { categoryTree, fundDetails };
+    const response: AssetAllocationResponse = { categoryTree, fundDetails };
+    this.assetAllocationCache = { data: response, fetchedAt: Date.now() };
+    return response;
+  }
+
+  clearCache(): void {
+    this.assetAllocationCache = null;
   }
 
   private parseCategoryTree(result: unknown): FundAssetClassNode[] {
