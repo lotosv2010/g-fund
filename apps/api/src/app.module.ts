@@ -17,6 +17,7 @@ import { DcaModule } from './dca/dca.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { RealtimeQuoteModule } from './realtime-quote/realtime-quote.module';
 import { MarketIndexModule } from './market-index/market-index.module';
+import { RulesModule } from './rules/rules.module';
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { MarketIndexModule } from './market-index/market-index.module';
     DashboardModule,
     RealtimeQuoteModule,
     MarketIndexModule,
+    RulesModule,
   ],
 })
 export class AppModule {}

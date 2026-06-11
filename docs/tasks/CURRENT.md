@@ -58,15 +58,15 @@
 
 | ID | 任务 | 状态 | 估时 |
 |----|------|------|------|
-| T11.1.1 | DB：dca_rules 表（P0~P4 阈值与系数 + T1~T4 系数 + 上下限） | [ ] | 0.25d |
-| T11.1.2 | DB：slp_rules 表（止盈三档 / 止损两档 / 深度套牢线 / 预警线） | [ ] | 0.25d |
-| T11.1.3 | DB：fund_rule_overrides 表（fund_code、不止损、止损放宽、暂停调速、固定金额） | [ ] | 0.25d |
-| T11.1.4 | DB：slp_signals_log 表（fund_code、type、level、triggered_at、pnl_rate、message、resolved） | [ ] | 0.25d |
-| T11.1.5 | DB：dca_snapshots 表（plan_date、各基金 base/p0/p1/p2/p3/p4/T/final 明细、是否执行） | [ ] | 0.25d |
-| T11.1.6 | DcaService / StopLossTakeProfitService 改为从 DB 读取规则，移除硬编码常量 | [ ] | 1d |
-| T11.1.7 | 规则配置 UI：/settings/rules 页（DCA 系数表 + 止盈止损档位表，行内编辑） | [ ] | 1d |
-| T11.1.8 | 单基金例外 UI：/funds/[code] 页加 "不止损 / 止损放宽 / 暂停调速 / 固定金额" 开关 | [ ] | 0.5d |
-| T11.1.9 | app_settings 扩展 key=bullet_reserve（金额 + 上次触发日期） | [ ] | 0.25d |
+| T11.1.1 | DB：dca_rules 表（P0~P4 阈值与系数 + T1~T4 系数 + 上下限） | [x] | 0.25d |
+| T11.1.2 | DB：slp_rules 表（止盈三档 / 止损两档 / 深度套牢线 / 预警线） | [x] | 0.25d |
+| T11.1.3 | DB：fund_rule_overrides 表（fund_code、不止损、止损放宽、暂停调速、固定金额） | [x] | 0.25d |
+| T11.1.4 | DB：slp_signals_log 表（fund_code、type、level、triggered_at、pnl_rate、message、resolved） | [x] | 0.25d |
+| T11.1.5 | DB：dca_snapshots 表（plan_date、各基金 base/p0/p1/p2/p3/p4/T/final 明细、是否执行） | [x] | 0.25d |
+| T11.1.6 | DcaService / StopLossTakeProfitService 改为从 DB 读取规则，移除硬编码常量 | [x] | 1d |
+| T11.1.7 | 规则配置 UI：/settings/rules 页（DCA 系数表 + 止盈止损档位表，行内编辑） | [x] | 1d |
+| T11.1.8 | 单基金例外 UI：/funds/[code] 页加 "不止损 / 止损放宽 / 暂停调速 / 固定金额" 开关 | [x] | 0.5d |
+| T11.1.9 | app_settings 扩展 key=bullet_reserve（金额 + 上次触发日期） | [x] | 0.25d |
 
 ## Milestone 12：DCA 规则引擎补全（P1）
 

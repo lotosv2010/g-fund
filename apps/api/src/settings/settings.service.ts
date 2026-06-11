@@ -5,7 +5,7 @@ import * as schema from '@g-fund/db';
 import { DB } from '../db/db.module';
 import { FundsService } from '../funds/funds.service';
 import { McpService } from '../mcp/mcp.service';
-import { AppSetting, AiConfig, McpConfig, DEFAULT_AI_CONFIG, DEFAULT_MCP_CONFIG } from '@g-fund/types';
+import { AppSetting, AiConfig, McpConfig, BulletReserve, DEFAULT_AI_CONFIG, DEFAULT_MCP_CONFIG } from '@g-fund/types';
 
 type DbType = NodePgDatabase<typeof schema>;
 
@@ -77,5 +77,18 @@ export class SettingsService {
     const result = await this.set('mcp_config', JSON.stringify(config));
     await this.mcpService.reconnectAll(config);
     return result;
+  }
+
+  async getBulletReserve(): Promise<BulletReserve> {
+    try {
+      const setting = await this.get('bullet_reserve');
+      return JSON.parse(setting.value) as BulletReserve;
+    } catch {
+      return { amount: 0, lastTriggeredDate: null };
+    }
+  }
+
+  async setBulletReserve(reserve: BulletReserve): Promise<AppSetting> {
+    return this.set('bullet_reserve', JSON.stringify(reserve));
   }
 }

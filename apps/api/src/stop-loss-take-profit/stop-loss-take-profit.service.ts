@@ -3,34 +3,21 @@ import { eq, ne, and, gte, desc } from 'drizzle-orm';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '@g-fund/db';
 import { DB } from '../db/db.module';
+import { RulesService } from '../rules/rules.service';
 import { StopLossTakeProfitSignal, SignalLevel } from '@g-fund/types';
 
 type DbType = NodePgDatabase<typeof schema>;
 
-// 止盈止损阈值配置
-const TAKE_PROFIT_THRESHOLDS = [
-  { level: 'green' as SignalLevel, threshold: 0.25, message: '收益达到25%，建议止盈一档' },
-  { level: 'yellow' as SignalLevel, threshold: 0.40, message: '收益达到40%，建议止盈二档' },
-  { level: 'red' as SignalLevel, threshold: 0.60, message: '收益达到60%，建议止盈三档' },
-];
-
-const STOP_LOSS_THRESHOLDS = [
-  { level: 'yellow' as SignalLevel, threshold: -0.10, message: '亏损达到10%，建议止损一档' },
-  { level: 'red' as SignalLevel, threshold: -0.20, message: '亏损达到20%，建议止损二档' },
-];
-
-// 反弹信号配置
-const REBOUND_THRESHOLDS = {
-  daily: { days: 3, threshold: 0.01, message: '连续3日涨幅超过1%，出现反弹信号' },
-  weekly: { days: 7, threshold: 0.03, message: '周累计涨幅超过3%，出现反弹信号' },
-};
-
 @Injectable()
 export class StopLossTakeProfitService {
-  constructor(@Inject(DB) private readonly db: DbType) {}
+  constructor(
+    @Inject(DB) private readonly db: DbType,
+    private readonly rulesService: RulesService,
+  ) {}
 
   async getSignals(): Promise<StopLossTakeProfitSignal[]> {
-    // 获取所有持仓
+    const rules = await this.rulesService.getSlpRules();
+
     const positions = await this.db
       .select()
       .from(schema.positions)
@@ -46,10 +33,10 @@ export class StopLossTakeProfitService {
 
       const pnlRate = (currentPrice - costPrice) / costPrice;
 
-      // 检查止盈信号（只保留最严重的一档，从高阈值往低阈值遍历）
-      for (let i = TAKE_PROFIT_THRESHOLDS.length - 1; i >= 0; i--) {
-        const threshold = TAKE_PROFIT_THRESHOLDS[i];
-        if (pnlRate >= threshold.threshold) {
+      // 止盈信号（从高阈值往低阈值遍历，只保留最严重的一档）
+      for (let i = rules.takeProfitTiers.length - 1; i >= 0; i--) {
+        const tier = rules.takeProfitTiers[i];
+        if (pnlRate >= tier.threshold) {
           signals.push({
             fundCode: position.fundCode,
             fundName: position.fundName,
@@ -57,19 +44,19 @@ export class StopLossTakeProfitService {
             currentPrice: position.navUnit ?? '0',
             pnlRate: pnlRate.toFixed(4),
             signalType: 'take_profit',
-            level: threshold.level,
+            level: tier.level,
             triggered: true,
-            threshold: (threshold.threshold * 100).toFixed(0) + '%',
-            message: threshold.message,
+            threshold: (tier.threshold * 100).toFixed(0) + '%',
+            message: `收益达到${(tier.threshold * 100).toFixed(0)}%，建议止盈`,
           });
           break;
         }
       }
 
-      // 检查止损信号（只保留最严重的一档，从低阈值往高阈值遍历）
-      for (let i = STOP_LOSS_THRESHOLDS.length - 1; i >= 0; i--) {
-        const threshold = STOP_LOSS_THRESHOLDS[i];
-        if (pnlRate <= threshold.threshold) {
+      // 止损信号（从低阈值往高阈值遍历，只保留最严重的一档）
+      for (let i = rules.stopLossTiers.length - 1; i >= 0; i--) {
+        const tier = rules.stopLossTiers[i];
+        if (pnlRate <= tier.threshold) {
           signals.push({
             fundCode: position.fundCode,
             fundName: position.fundName,
@@ -77,18 +64,22 @@ export class StopLossTakeProfitService {
             currentPrice: position.navUnit ?? '0',
             pnlRate: pnlRate.toFixed(4),
             signalType: 'stop_loss',
-            level: threshold.level,
+            level: tier.level,
             triggered: true,
-            threshold: (Math.abs(threshold.threshold) * 100).toFixed(0) + '%',
-            message: threshold.message,
+            threshold: (Math.abs(tier.threshold) * 100).toFixed(0) + '%',
+            message: `亏损达到${(Math.abs(tier.threshold) * 100).toFixed(0)}%，建议止损`,
           });
           break;
         }
       }
 
-      // 检查反弹信号（仅对亏损基金）
+      // 反弹信号（仅对亏损基金）
       if (pnlRate < 0) {
-        const reboundSignals = await this.checkReboundSignals(position.fundCode);
+        const reboundSignals = await this.checkReboundSignals(
+          position.fundCode,
+          rules.reboundDaily,
+          rules.reboundWeekly,
+        );
         signals.push(...reboundSignals);
       }
     }
@@ -101,12 +92,15 @@ export class StopLossTakeProfitService {
     return allSignals.filter((s) => s.fundCode === fundCode);
   }
 
-  private async checkReboundSignals(fundCode: string): Promise<StopLossTakeProfitSignal[]> {
+  private async checkReboundSignals(
+    fundCode: string,
+    daily: { days: number; threshold: number },
+    weekly: { days: number; threshold: number },
+  ): Promise<StopLossTakeProfitSignal[]> {
     const signals: StopLossTakeProfitSignal[] = [];
 
-    // 获取最近7天的净值数据
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const daysAgo = new Date();
+    daysAgo.setDate(daysAgo.getDate() - weekly.days);
 
     const navHistory = await this.db
       .select()
@@ -114,50 +108,50 @@ export class StopLossTakeProfitService {
       .where(
         and(
           eq(schema.fundNavHistory.fundCode, fundCode),
-          gte(schema.fundNavHistory.navDate, sevenDaysAgo.toISOString().split('T')[0])
+          gte(schema.fundNavHistory.navDate, daysAgo.toISOString().split('T')[0])
         )
       )
       .orderBy(desc(schema.fundNavHistory.navDate));
 
-    if (navHistory.length < 3) return signals;
+    if (navHistory.length < daily.days) return signals;
 
-    // 检查连续3日涨幅
+    // 连续 N 日涨幅
     let consecutiveDays = 0;
-    for (let i = 0; i < navHistory.length - 1 && consecutiveDays < 3; i++) {
+    for (let i = 0; i < navHistory.length - 1 && consecutiveDays < daily.days; i++) {
       const current = parseFloat(navHistory[i].navUnit);
       const previous = parseFloat(navHistory[i + 1].navUnit);
       const dailyReturn = (current - previous) / previous;
 
-      if (dailyReturn > REBOUND_THRESHOLDS.daily.threshold) {
+      if (dailyReturn > daily.threshold) {
         consecutiveDays++;
       } else {
         consecutiveDays = 0;
       }
     }
 
-    if (consecutiveDays >= 3) {
+    if (consecutiveDays >= daily.days) {
       signals.push({
         fundCode,
-        fundName: '', // Will be filled by caller
+        fundName: '',
         costPrice: '',
         currentPrice: navHistory[0].navUnit,
         pnlRate: '',
         signalType: 'take_profit',
         level: 'green',
         triggered: true,
-        threshold: '3日',
-        message: REBOUND_THRESHOLDS.daily.message,
+        threshold: `${daily.days}日`,
+        message: `连续${daily.days}日涨幅超过${(daily.threshold * 100).toFixed(0)}%，出现反弹信号`,
       });
-      return signals; // 已触发最强反弹信号，跳过周累计检查
+      return signals;
     }
 
-    // 检查周累计涨幅
+    // 周累计涨幅
     if (navHistory.length >= 2) {
       const latestPrice = parseFloat(navHistory[0].navUnit);
       const oldestPrice = parseFloat(navHistory[navHistory.length - 1].navUnit);
       const weeklyReturn = (latestPrice - oldestPrice) / oldestPrice;
 
-      if (weeklyReturn > REBOUND_THRESHOLDS.weekly.threshold) {
+      if (weeklyReturn > weekly.threshold) {
         signals.push({
           fundCode,
           fundName: '',
@@ -167,8 +161,8 @@ export class StopLossTakeProfitService {
           signalType: 'take_profit',
           level: 'green',
           triggered: true,
-          threshold: '7日',
-          message: REBOUND_THRESHOLDS.weekly.message,
+          threshold: `${weekly.days}日`,
+          message: `周累计涨幅超过${(weekly.threshold * 100).toFixed(0)}%，出现反弹信号`,
         });
       }
     }

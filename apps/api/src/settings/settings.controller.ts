@@ -2,7 +2,7 @@ import { Controller, Get, Put, Body, Param } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { SettingsService } from './settings.service';
 import { McpService } from '../mcp/mcp.service';
-import type { AiConfig, McpConfig } from '@g-fund/types';
+import type { AiConfig, McpConfig, BulletReserve } from '@g-fund/types';
 
 @ApiTags('settings')
 @Controller('settings')
@@ -56,5 +56,17 @@ export class SettingsController {
       description: t.description,
       inputSchema: t.inputSchema,
     }));
+  }
+
+  @Get('bullet-reserve')
+  @ApiOperation({ summary: '获取子弹仓配置' })
+  getBulletReserve() {
+    return this.settingsService.getBulletReserve();
+  }
+
+  @Put('bullet-reserve')
+  @ApiOperation({ summary: '更新子弹仓配置' })
+  setBulletReserve(@Body() reserve: BulletReserve) {
+    return this.settingsService.setBulletReserve(reserve);
   }
 }

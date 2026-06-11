@@ -179,3 +179,132 @@ export interface AppSetting {
   value: string;
   updatedAt: string;
 }
+
+// --- 规则配置类型 (M11) ---
+
+export interface ValuationPercentileRule {
+  max: number;
+  multiplier: number;
+}
+
+export interface PriorityMultiplierRule {
+  minPriority: number;
+  multiplier: number;
+}
+
+export interface DcaRules {
+  valuationPercentiles: ValuationPercentileRule[];
+  valuationLevelMultipliers: Record<ValuationLevel, number>;
+  priorityMultipliers: PriorityMultiplierRule[];
+  maxMultiplier: number;
+  minThreshold: number;
+}
+
+export interface SlpTierRule {
+  level: SignalLevel;
+  threshold: number;
+}
+
+export interface ReboundRule {
+  days: number;
+  threshold: number;
+}
+
+export interface SlpRules {
+  takeProfitTiers: SlpTierRule[];
+  stopLossTiers: SlpTierRule[];
+  deepLossThreshold: number;
+  warningThreshold: number;
+  reboundDaily: ReboundRule;
+  reboundWeekly: ReboundRule;
+}
+
+export const FUND_RULE_OVERRIDE_TYPES = [
+  'no_stop_loss',
+  'relaxed_stop_loss',
+  'pause_speed',
+  'fixed_amount',
+] as const;
+export type FundRuleOverrideType = (typeof FUND_RULE_OVERRIDE_TYPES)[number];
+
+export const FUND_RULE_OVERRIDE_LABELS: Record<FundRuleOverrideType, string> = {
+  no_stop_loss: '不止损',
+  relaxed_stop_loss: '止损放宽',
+  pause_speed: '暂停调速',
+  fixed_amount: '固定金额',
+};
+
+export interface FundRuleOverride {
+  fundCode: string;
+  overrideType: FundRuleOverrideType;
+  enabled: boolean;
+  value: number | null;
+  updatedAt: string;
+}
+
+export interface SlpSignalLog {
+  id: number;
+  fundCode: string;
+  signalType: string;
+  level: SignalLevel;
+  triggeredAt: string;
+  pnlRate: string | null;
+  message: string | null;
+  resolved: boolean;
+}
+
+export interface DcaSnapshot {
+  id: number;
+  planDate: string;
+  fundCode: string;
+  baseAmount: string | null;
+  p0: string | null;
+  p1: string | null;
+  p2: string | null;
+  p3: string | null;
+  p4: string | null;
+  tFactor: string | null;
+  finalAmount: string | null;
+  executed: boolean;
+  createdAt: string;
+}
+
+export interface BulletReserve {
+  amount: number;
+  lastTriggeredDate: string | null;
+}
+
+export const DEFAULT_DCA_RULES: DcaRules = {
+  valuationPercentiles: [
+    { max: 20, multiplier: 2.0 },
+    { max: 40, multiplier: 1.5 },
+    { max: 60, multiplier: 1.0 },
+    { max: 80, multiplier: 0.5 },
+    { max: 100, multiplier: 0.2 },
+  ],
+  valuationLevelMultipliers: { low: 1.5, normal: 1.0, high: 0.5 },
+  priorityMultipliers: [
+    { minPriority: 3, multiplier: 1.5 },
+    { minPriority: 2, multiplier: 1.2 },
+    { minPriority: 1, multiplier: 1.0 },
+    { minPriority: 0, multiplier: 0.8 },
+  ],
+  maxMultiplier: 3.0,
+  minThreshold: 0.10,
+};
+
+export const DEFAULT_SLP_RULES: SlpRules = {
+  takeProfitTiers: [
+    { level: 'green', threshold: 0.25 },
+    { level: 'yellow', threshold: 0.40 },
+    { level: 'red', threshold: 0.60 },
+  ],
+  stopLossTiers: [
+    { level: 'yellow', threshold: -0.10 },
+    { level: 'red', threshold: -0.20 },
+  ],
+  deepLossThreshold: -0.20,
+  warningThreshold: -0.08,
+  reboundDaily: { days: 3, threshold: 0.01 },
+  reboundWeekly: { days: 7, threshold: 0.03 },
+};

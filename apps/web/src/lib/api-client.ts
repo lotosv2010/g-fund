@@ -7,6 +7,7 @@ import type {
   AppSetting, AiConfig, McpConfig,
   ChatSessionSummary, ChatSessionDetail, PersistChatMessageDto, ChatMessage,
   AssetAllocationResponse,
+  DcaRules, SlpRules, FundRuleOverride, FundRuleOverrideType, BulletReserve,
 } from "@g-fund/types";
 
 const http = axios.create({
@@ -87,6 +88,11 @@ export const mcpConfigApi = {
   set: (config: McpConfig) => http.put<AppSetting>("/settings/mcp/config", config).then((r) => r.data),
 };
 
+export const bulletReserveApi = {
+  get: () => http.get<BulletReserve>("/settings/bullet-reserve").then((r) => r.data),
+  set: (reserve: BulletReserve) => http.put<AppSetting>("/settings/bullet-reserve", reserve).then((r) => r.data),
+};
+
 export const stopLossTakeProfitApi = {
   list: () =>
     http.get<import("@g-fund/types").StopLossTakeProfitSignal[]>("/stop-loss-take-profit").then((r) => r.data),
@@ -99,6 +105,19 @@ export const dcaApi = {
     http.get<import("@g-fund/types").DcaCalculation[]>("/dca").then((r) => r.data),
   calculateByFund: (fundCode: string) =>
     http.get<import("@g-fund/types").DcaCalculation | null>(`/dca/${fundCode}`).then((r) => r.data),
+};
+
+export const rulesApi = {
+  getDca: () => http.get<DcaRules>("/rules/dca").then((r) => r.data),
+  setDca: (rules: DcaRules) => http.put("/rules/dca", rules).then((r) => r.data),
+  resetDca: () => http.post<DcaRules>("/rules/dca/reset").then((r) => r.data),
+  getSlp: () => http.get<SlpRules>("/rules/slp").then((r) => r.data),
+  setSlp: (rules: SlpRules) => http.put("/rules/slp", rules).then((r) => r.data),
+  resetSlp: () => http.post<SlpRules>("/rules/slp/reset").then((r) => r.data),
+  getFundOverrides: (code: string) =>
+    http.get<FundRuleOverride[]>(`/rules/funds/${code}/overrides`).then((r) => r.data),
+  setFundOverride: (code: string, type: FundRuleOverrideType, enabled: boolean, value?: number | null) =>
+    http.put<FundRuleOverride>(`/rules/funds/${code}/overrides/${type}`, { enabled, value }).then((r) => r.data),
 };
 
 export const chatApi = {

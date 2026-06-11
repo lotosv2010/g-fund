@@ -9,6 +9,7 @@ import {
   FundProjectionScreenOutlined,
   SettingOutlined,
   OpenAIOutlined,
+  ControlOutlined,
 } from "@ant-design/icons";
 import { usePathname, useRouter } from "next/navigation";
 import { useAppStore } from "@/store/useAppStore";
@@ -33,6 +34,7 @@ const menuItems = [
     icon: <SettingOutlined />,
     children: [
       { key: "/settings/ai", icon: <SettingOutlined />, label: "AI 设置" },
+      { key: "/settings/rules", icon: <ControlOutlined />, label: "规则配置" },
     ],
   },
 ];

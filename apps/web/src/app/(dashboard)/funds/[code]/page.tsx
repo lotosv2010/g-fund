@@ -3,18 +3,22 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   Card, Col, Row, Typography, Tag, Descriptions, Statistic, Button,
-  Space, Skeleton, message, Divider, Progress, Alert,
+  Space, Skeleton, message, Divider, Progress, Alert, Switch, InputNumber,
 } from "antd";
 import {
   ArrowLeftOutlined, FundOutlined, SafetyOutlined,
   ScheduleOutlined, DollarOutlined,
-  CheckCircleOutlined,
+  CheckCircleOutlined, ControlOutlined,
 } from "@ant-design/icons";
 import type {
   FundListItem, StopLossTakeProfitSignal, DcaCalculation,
+  FundRuleOverride, FundRuleOverrideType,
 } from "@g-fund/types";
-import { FUND_PHASE_LABELS, VALUATION_LEVEL_LABELS, LIFECYCLE_STAGE_LABELS, ASSET_TYPE_LABELS } from "@g-fund/types";
-import { fundsApi, stopLossTakeProfitApi, dcaApi } from "@/lib/api-client";
+import {
+  FUND_PHASE_LABELS, VALUATION_LEVEL_LABELS, LIFECYCLE_STAGE_LABELS,
+  ASSET_TYPE_LABELS, FUND_RULE_OVERRIDE_TYPES, FUND_RULE_OVERRIDE_LABELS,
+} from "@g-fund/types";
+import { fundsApi, stopLossTakeProfitApi, dcaApi, rulesApi } from "@/lib/api-client";
 
 const { Title, Text } = Typography;
 
@@ -26,21 +30,24 @@ export default function FundDiagnosisPage() {
   const [fund, setFund] = useState<FundListItem | null>(null);
   const [signal, setSignal] = useState<StopLossTakeProfitSignal[]>([]);
   const [dca, setDca] = useState<DcaCalculation | null>(null);
+  const [overrides, setOverrides] = useState<FundRuleOverride[]>([]);
   const [loading, setLoading] = useState(true);
   const [messageApi, contextHolder] = message.useMessage();
 
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [fundData, signalData, dcaData] = await Promise.allSettled([
+      const [fundData, signalData, dcaData, overridesData] = await Promise.allSettled([
         fundsApi.get(fundCode),
         stopLossTakeProfitApi.get(fundCode),
         dcaApi.calculateByFund(fundCode),
+        rulesApi.getFundOverrides(fundCode),
       ]);
 
       if (fundData.status === "fulfilled") setFund(fundData.value);
       if (signalData.status === "fulfilled") setSignal(signalData.value);
       if (dcaData.status === "fulfilled") setDca(dcaData.value);
+      if (overridesData.status === "fulfilled") setOverrides(overridesData.value);
     } catch (e) {
       messageApi.error((e as Error).message);
     } finally {
@@ -49,6 +56,28 @@ export default function FundDiagnosisPage() {
   }, [fundCode, messageApi]);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  function getOverride(type: FundRuleOverrideType): FundRuleOverride | undefined {
+    return overrides.find((o) => o.overrideType === type);
+  }
+
+  async function handleOverrideChange(type: FundRuleOverrideType, enabled: boolean, value?: number | null) {
+    try {
+      const result = await rulesApi.setFundOverride(fundCode, type, enabled, value);
+      setOverrides((prev) => {
+        const idx = prev.findIndex((o) => o.overrideType === type);
+        if (idx >= 0) {
+          const next = [...prev];
+          next[idx] = result;
+          return next;
+        }
+        return [...prev, result];
+      });
+      messageApi.success("已更新");
+    } catch (e) {
+      messageApi.error((e as Error).message ?? "更新失败");
+    }
+  }
 
   if (loading) {
     return (
@@ -309,6 +338,65 @@ export default function FundDiagnosisPage() {
               {fund.targetAmount ? `¥${parseFloat(fund.targetAmount).toLocaleString()}` : "—"}
             </Descriptions.Item>
           </Descriptions>
+        </Card>
+
+        <Card title={<><ControlOutlined /> 例外规则</>}>
+          <Text type="secondary" style={{ fontSize: 12, display: "block", marginBottom: 16 }}>
+            为该基金设置特殊规则，覆盖全局配置
+          </Text>
+          <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+            {FUND_RULE_OVERRIDE_TYPES.map((type) => {
+              const override = getOverride(type);
+              const enabled = override?.enabled ?? false;
+              const showValue = type === "relaxed_stop_loss" || type === "fixed_amount";
+
+              return (
+                <div key={type}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <Space>
+                      <Switch
+                        checked={enabled}
+                        onChange={(v) => handleOverrideChange(type, v, override?.value)}
+                      />
+                      <Text strong>{FUND_RULE_OVERRIDE_LABELS[type]}</Text>
+                    </Space>
+                    {enabled && !showValue && (
+                      <Tag color="orange">已启用</Tag>
+                    )}
+                  </div>
+                  {enabled && showValue && (
+                    <div style={{ marginTop: 8, paddingLeft: 44 }}>
+                      {type === "relaxed_stop_loss" ? (
+                        <Space>
+                          <Text type="secondary">止损阈值：</Text>
+                          <InputNumber
+                            size="small"
+                            min={-1} max={0} step={0.01}
+                            value={override?.value ?? -0.15}
+                            onChange={(v) => v !== null && handleOverrideChange(type, true, v)}
+                            addonAfter="%"
+                            style={{ width: 120 }}
+                          />
+                        </Space>
+                      ) : type === "fixed_amount" ? (
+                        <Space>
+                          <Text type="secondary">固定金额：</Text>
+                          <InputNumber
+                            size="small"
+                            min={0} step={100}
+                            value={override?.value ?? 0}
+                            onChange={(v) => v !== null && handleOverrideChange(type, true, v)}
+                            addonAfter="元"
+                            style={{ width: 140 }}
+                          />
+                        </Space>
+                      ) : null}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </Space>
         </Card>
       </Space>
     </>

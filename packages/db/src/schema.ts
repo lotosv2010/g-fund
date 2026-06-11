@@ -123,3 +123,60 @@ export const marketIndexHistory = pgTable('market_index_history', {
 }, (t) => [
   unique('unique_market_index_code_date').on(t.indexCode, t.tradeDate),
 ]);
+
+export const dcaRules = pgTable('dca_rules', {
+  ruleGroup: varchar('rule_group', { length: 20 }).notNull(),
+  ruleKey: varchar('rule_key', { length: 30 }).notNull(),
+  value: jsonb('value').notNull(),
+  defaultValue: jsonb('default_value').notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  unique('dca_rules_pkey').on(t.ruleGroup, t.ruleKey),
+]);
+
+export const slpRules = pgTable('slp_rules', {
+  ruleGroup: varchar('rule_group', { length: 20 }).notNull(),
+  ruleKey: varchar('rule_key', { length: 30 }).notNull(),
+  value: jsonb('value').notNull(),
+  defaultValue: jsonb('default_value').notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  unique('slp_rules_pkey').on(t.ruleGroup, t.ruleKey),
+]);
+
+export const fundRuleOverrides = pgTable('fund_rule_overrides', {
+  fundCode: varchar('fund_code', { length: 20 }).notNull(),
+  overrideType: varchar('override_type', { length: 30 }).notNull(),
+  enabled: boolean('enabled').notNull().default(false),
+  value: jsonb('value'),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  unique('fund_rule_overrides_pkey').on(t.fundCode, t.overrideType),
+]);
+
+export const slpSignalsLog = pgTable('slp_signals_log', {
+  id: serial('id').primaryKey(),
+  fundCode: varchar('fund_code', { length: 20 }).notNull(),
+  signalType: varchar('signal_type', { length: 20 }).notNull(),
+  level: varchar('level', { length: 10 }).notNull(),
+  triggeredAt: timestamp('triggered_at', { withTimezone: true }).notNull().defaultNow(),
+  pnlRate: numeric('pnl_rate', { precision: 8, scale: 4 }),
+  message: text('message'),
+  resolved: boolean('resolved').notNull().default(false),
+});
+
+export const dcaSnapshots = pgTable('dca_snapshots', {
+  id: serial('id').primaryKey(),
+  planDate: date('plan_date').notNull(),
+  fundCode: varchar('fund_code', { length: 20 }).notNull(),
+  baseAmount: numeric('base_amount', { precision: 18, scale: 2 }),
+  p0: numeric('p0', { precision: 8, scale: 4 }),
+  p1: numeric('p1', { precision: 8, scale: 4 }),
+  p2: numeric('p2', { precision: 8, scale: 4 }),
+  p3: numeric('p3', { precision: 8, scale: 4 }),
+  p4: numeric('p4', { precision: 8, scale: 4 }),
+  tFactor: numeric('t_factor', { precision: 8, scale: 4 }),
+  finalAmount: numeric('final_amount', { precision: 18, scale: 2 }),
+  executed: boolean('executed').notNull().default(false),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
