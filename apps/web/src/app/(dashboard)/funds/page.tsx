@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Button, Input, Space, Typography, message, Tabs, Flex } from "antd";
-import { PlusOutlined } from "@ant-design/icons";
+import { Button, Input, Space, Typography, message, Tabs, Flex, Tooltip } from "antd";
+import { PlusOutlined, SyncOutlined } from "@ant-design/icons";
 import type { SorterResult } from "antd/es/table/interface";
 import type { FundListItem, CreateFundDto, UpdateFundDto, FundCategory, StopLossTakeProfitSignal } from "@g-fund/types";
 import { FUND_CATEGORIES, FUND_CATEGORY_LABELS } from "@g-fund/types";
@@ -25,6 +25,7 @@ export default function FundsPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingFund, setEditingFund] = useState<FundListItem | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [refreshingValuations, setRefreshingValuations] = useState(false);
   const [messageApi, contextHolder] = message.useMessage();
 
   const load = useCallback(async () => {
@@ -176,6 +177,19 @@ export default function FundsPage() {
     }
   }
 
+  async function handleRefreshValuations() {
+    setRefreshingValuations(true);
+    try {
+      const result = await fundsApi.refreshValuations();
+      messageApi.success(`估值刷新完成：${result.updated}/${result.total} 已更新`);
+      load();
+    } catch (e) {
+      messageApi.error((e as Error).message);
+    } finally {
+      setRefreshingValuations(false);
+    }
+  }
+
   const tabItems = FUND_CATEGORIES.map((cat) => ({
     key: cat,
     label: `${FUND_CATEGORY_LABELS[cat]}（${categoryCounts[cat]}）`,
@@ -210,13 +224,24 @@ export default function FundsPage() {
             onClear={() => setSearch("")}
             style={{ maxWidth: 320 }}
           />
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => setModalOpen(true)}
-          >
-            添加基金
-          </Button>
+          <Space>
+            <Tooltip title="从外部数据源刷新指数基金的估值百分位">
+              <Button
+                icon={<SyncOutlined spin={refreshingValuations} />}
+                onClick={handleRefreshValuations}
+                loading={refreshingValuations}
+              >
+                刷新估值
+              </Button>
+            </Tooltip>
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={() => setModalOpen(true)}
+            >
+              添加基金
+            </Button>
+          </Space>
         </Flex>
 
         <Tabs

@@ -1,4 +1,4 @@
-import { Injectable, Inject, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, Inject, NotFoundException, ConflictException, Logger } from '@nestjs/common';
 import { eq, asc, inArray, SQL } from 'drizzle-orm';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '@g-fund/db';
@@ -6,6 +6,7 @@ import { DB } from '../db/db.module';
 import { CreateFundDto } from './dto/create-fund.dto';
 import { UpdateFundDto } from './dto/update-fund.dto';
 import { FundListItem, LifecycleStage, StageChange } from '@g-fund/types';
+import { FundEnrichmentService } from './fund-enrichment.service';
 
 const STAGE_THRESHOLD = 0.8;
 
@@ -59,7 +60,12 @@ function toListItem(r: FundRow, position?: PositionRow): FundListItem {
 
 @Injectable()
 export class FundsService {
-  constructor(@Inject(DB) private readonly db: DbType) {}
+  private readonly logger = new Logger(FundsService.name);
+
+  constructor(
+    @Inject(DB) private readonly db: DbType,
+    private readonly enrichmentService: FundEnrichmentService,
+  ) {}
 
   async findAll(category?: string): Promise<FundListItem[]> {
     const conditions: SQL[] = [];
@@ -129,6 +135,14 @@ export class FundsService {
         note: dto.note ?? null,
       })
       .returning();
+
+    // 异步丰富资产类型（不阻塞返回）
+    if (!dto.assetType) {
+      this.enrichmentService.enrichAssetType(dto.code, dto.name).catch((err) => {
+        this.logger.warn(`资产类型丰富失败 ${dto.code}: ${(err as Error).message}`);
+      });
+    }
+
     return toListItem(row);
   }
 

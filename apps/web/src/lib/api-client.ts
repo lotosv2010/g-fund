@@ -34,6 +34,10 @@ export const fundsApi = {
   remove: (code: string) => http.delete(`/funds/${code}`),
   reorder: (items: ReorderFundDto[]) =>
     http.patch("/funds/reorder", { items }).then((r) => r.data),
+  refreshValuations: () =>
+    http.post<{ total: number; updated: number; failed: number }>("/funds/refresh-valuations", undefined, { timeout: 60000 }).then((r) => r.data),
+  enrichAssetType: (code: string) =>
+    http.post<FundListItem>(`/funds/${code}/enrich`).then((r) => r.data),
 };
 
 export const positionsApi = {

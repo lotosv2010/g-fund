@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Patch, Delete, Body, Param, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { FundsService } from './funds.service';
+import { FundEnrichmentService } from './fund-enrichment.service';
 import { CreateFundDto } from './dto/create-fund.dto';
 import { UpdateFundDto } from './dto/update-fund.dto';
 import { ReorderFundDto } from './dto/reorder-fund.dto';
@@ -8,7 +9,10 @@ import { ReorderFundDto } from './dto/reorder-fund.dto';
 @ApiTags('funds')
 @Controller('funds')
 export class FundsController {
-  constructor(private readonly fundsService: FundsService) {}
+  constructor(
+    private readonly fundsService: FundsService,
+    private readonly enrichmentService: FundEnrichmentService,
+  ) {}
 
   @Get()
   @ApiOperation({ summary: '获取基金列表' })
@@ -51,5 +55,17 @@ export class FundsController {
   @ApiOperation({ summary: '删除基金' })
   remove(@Param('code') code: string) {
     return this.fundsService.remove(code);
+  }
+
+  @Post('refresh-valuations')
+  @ApiOperation({ summary: '刷新所有基金估值百分位' })
+  refreshValuations() {
+    return this.enrichmentService.refreshAllValuations();
+  }
+
+  @Post(':code/enrich')
+  @ApiOperation({ summary: '丰富单个基金资产类型' })
+  enrichAssetType(@Param('code') code: string) {
+    return this.enrichmentService.enrichAssetType(code, '');
   }
 }
