@@ -271,8 +271,9 @@ export class PositionsSyncService {
       if (isCancelled()) return;
       const pos = positions[i];
 
-      // 持仓去重：今日已同步的基金跳过
+      // 持仓去重：今日已同步的基金跳过，但仍需尝试确认待确认交易
       if (pos.navDate === today && pos.navUnit) {
+        await this.confirmPending(pos.fundCode, pos.navUnit);
         const skipped: SyncPositionItemResult = {
           fundCode: pos.fundCode,
           fundName: pos.fundName,
@@ -315,6 +316,8 @@ export class PositionsSyncService {
 
         if (item.navUnit && item.navDate) {
           await this.upsertNavHistory(pos.fundCode, item.navDate, item.navUnit);
+        }
+        if (item.navUnit) {
           await this.confirmPending(pos.fundCode, item.navUnit);
         }
       }
