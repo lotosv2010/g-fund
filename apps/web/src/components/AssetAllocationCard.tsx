@@ -102,6 +102,7 @@ function CategoryChart({
             },
           }}
           maxColumnWidth={48}
+          columnWidthRatio={0.4}
         />
       </div>
       <div style={{ textAlign: "right", marginTop: 4 }}>
