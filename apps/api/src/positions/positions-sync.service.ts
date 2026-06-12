@@ -10,6 +10,7 @@ import { McpService } from '../mcp/mcp.service';
 import { SettingsService } from '../settings/settings.service';
 import { RealtimeQuoteService } from '../realtime-quote/realtime-quote.service';
 import { TransactionConfirmationService } from '../transactions/transaction-confirmation.service';
+import { DailySnapshotsService } from '../daily-snapshots/daily-snapshots.service';
 
 type DbType = NodePgDatabase<typeof schema>;
 type PositionRow = typeof schema.positions.$inferSelect;
@@ -157,6 +158,7 @@ export class PositionsSyncService {
     private readonly settings: SettingsService,
     private readonly realtimeQuote: RealtimeQuoteService,
     private readonly confirmationService: TransactionConfirmationService,
+    private readonly dailySnapshots: DailySnapshotsService,
   ) {}
 
   async fetchNav(fundCode: string): Promise<NavInfo> {
@@ -334,6 +336,9 @@ export class PositionsSyncService {
     await this.confirmNewFundPending(existingCodes, navTool, codeArgName, codeArgIsArray);
 
     await this.settings.set('last_sync_at', syncedAt);
+    await this.dailySnapshots.generate().catch((err: unknown) => {
+      this.logger.warn(`Auto snapshot failed: ${(err as Error).message}`);
+    });
 
     subscriber.next({
       type: 'done',
