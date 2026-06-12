@@ -23,8 +23,8 @@ export default function StatCards({ data, loading, todaySnapshot, yesterdaySnaps
   const totalPnlRate = totalCost > 0 ? totalPnl / totalCost : 0;
   const isProfit = totalPnl >= 0;
 
-  const todayPnl = todaySnapshot
-    ? parseFloat(todaySnapshot.totalPnl) - (yesterdaySnapshot ? parseFloat(yesterdaySnapshot.totalPnl) : 0)
+  const todayPnl = todaySnapshot && yesterdaySnapshot
+    ? parseFloat(todaySnapshot.totalValue) - parseFloat(yesterdaySnapshot.totalValue)
     : null;
   const todayProfit = todayPnl !== null ? todayPnl >= 0 : null;
 
