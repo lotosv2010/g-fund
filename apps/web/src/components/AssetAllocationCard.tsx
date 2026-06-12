@@ -101,7 +101,7 @@ function CategoryChart({
               return wrapper;
             },
           }}
-          maxColumnWidth={48}
+          maxColumnWidth={4}
           columnWidthRatio={0.4}
         />
       </div>
@@ -222,6 +222,7 @@ export default function AssetAllocationCard({ data, loading }: AssetAllocationCa
         <Tabs
           size="small"
           className="allocation-inner-tabs"
+          defaultActiveKey="core"
           items={[
             {
               key: "core",
@@ -276,7 +277,7 @@ export default function AssetAllocationCard({ data, loading }: AssetAllocationCa
         }
       `}</style>
       <div className="allocation-tabs" style={{ flex: 1, minHeight: 0 }}>
-        <Tabs items={tabItems} />
+        <Tabs items={tabItems} defaultActiveKey="aggressive" />
       </div>
     </Card>
   );
