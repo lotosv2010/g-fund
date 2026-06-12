@@ -157,8 +157,10 @@ export default function DashboardPage() {
 
   const todayStr = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; })();
   const yesterdayStr = (() => { const d = new Date(); d.setDate(d.getDate() - 1); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; })();
+  const dayBeforeYesterdayStr = (() => { const d = new Date(); d.setDate(d.getDate() - 2); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; })();
   const todaySnapshot = snapshots.find((s) => s.snapshotDate === todayStr) ?? null;
   const yesterdaySnapshot = snapshots.find((s) => s.snapshotDate === yesterdayStr) ?? null;
+  const dayBeforeYesterdaySnapshot = snapshots.find((s) => s.snapshotDate === dayBeforeYesterdayStr) ?? null;
 
   function handleTotalAssetsClick() {
     router.push("/positions");
@@ -191,6 +193,7 @@ export default function DashboardPage() {
           loading={posLoading}
           todaySnapshot={todaySnapshot}
           yesterdaySnapshot={yesterdaySnapshot}
+          dayBeforeYesterdaySnapshot={dayBeforeYesterdaySnapshot}
           onTotalAssetsClick={handleTotalAssetsClick}
           onTotalPnlClick={() => setTotalProfitOpen(true)}
         />

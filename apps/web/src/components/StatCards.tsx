@@ -12,11 +12,12 @@ interface StatCardsProps {
   loading: boolean;
   todaySnapshot?: DailySnapshot | null;
   yesterdaySnapshot?: DailySnapshot | null;
+  dayBeforeYesterdaySnapshot?: DailySnapshot | null;
   onTotalAssetsClick?: () => void;
   onTotalPnlClick?: () => void;
 }
 
-export default function StatCards({ data, loading, todaySnapshot, yesterdaySnapshot, onTotalAssetsClick, onTotalPnlClick }: StatCardsProps) {
+export default function StatCards({ data, loading, todaySnapshot, yesterdaySnapshot, dayBeforeYesterdaySnapshot, onTotalAssetsClick, onTotalPnlClick }: StatCardsProps) {
   const totalAssets = data.reduce((s, r) => s + parseFloat(r.currentValue), 0);
   const totalCost = data.reduce((s, r) => s + parseFloat(r.costAmount), 0);
   const totalPnl = totalAssets - totalCost;
@@ -26,7 +27,17 @@ export default function StatCards({ data, loading, todaySnapshot, yesterdaySnaps
   const todayPnl = todaySnapshot && yesterdaySnapshot
     ? parseFloat(todaySnapshot.totalValue) - parseFloat(yesterdaySnapshot.totalValue)
     : null;
-  const todayProfit = todayPnl !== null ? todayPnl >= 0 : null;
+  const yesterdayPnl = yesterdaySnapshot && dayBeforeYesterdaySnapshot
+    ? parseFloat(yesterdaySnapshot.totalValue) - parseFloat(dayBeforeYesterdaySnapshot.totalValue)
+    : null;
+  const displayPnl = todayPnl !== null ? todayPnl : yesterdayPnl;
+  const displayPnlLabel = todayPnl !== null ? "今日盈亏" : "昨日盈亏";
+  const displayPnlSub = todayPnl !== null
+    ? `市值 ¥${parseFloat(todaySnapshot!.totalValue).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+    : yesterdaySnapshot
+      ? `市值 ¥${parseFloat(yesterdaySnapshot.totalValue).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+      : "暂无快照";
+  const todayProfit = displayPnl !== null ? displayPnl >= 0 : null;
 
   const cards = [
     {
@@ -44,11 +55,11 @@ export default function StatCards({ data, loading, todaySnapshot, yesterdaySnaps
       onClick: onTotalPnlClick,
     },
     {
-      title: "今日盈亏",
-      content: todayPnl !== null
-        ? `${todayPnl >= 0 ? "+" : ""}¥${todayPnl.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+      title: displayPnlLabel,
+      content: displayPnl !== null
+        ? `${displayPnl >= 0 ? "+" : ""}¥${displayPnl.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
         : "—",
-      sub: todaySnapshot ? `市值 ¥${parseFloat(todaySnapshot.totalValue).toLocaleString(undefined, { maximumFractionDigits: 0 })}` : "暂无快照",
+      sub: displayPnlSub,
       color: todayProfit !== null ? (todayProfit ? PROFIT_COLOR : LOSS_COLOR) : undefined,
       onClick: undefined,
     },
