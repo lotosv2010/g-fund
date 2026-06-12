@@ -13,7 +13,18 @@ interface AlertTimelineProps {
 }
 
 export default function AlertTimeline({ data, loading }: AlertTimelineProps) {
-  const sorted = [...data].sort((a, b) => new Date(b.triggeredAt).getTime() - new Date(a.triggeredAt).getTime());
+  const SIGNAL_TYPE_ORDER: Record<string, number> = { take_profit: 0, stop_loss: 1, deep_loss: 2, warning: 3 };
+  const LEVEL_ORDER: Record<string, number> = { red: 0, yellow: 1, blue: 2, green: 3 };
+  const sorted = [...data].sort((a, b) => {
+    if (a.resolved !== b.resolved) return a.resolved ? 1 : -1;
+    const ta = SIGNAL_TYPE_ORDER[a.signalType] ?? 9;
+    const tb = SIGNAL_TYPE_ORDER[b.signalType] ?? 9;
+    if (ta !== tb) return ta - tb;
+    const la = LEVEL_ORDER[a.level] ?? 9;
+    const lb = LEVEL_ORDER[b.level] ?? 9;
+    if (la !== lb) return la - lb;
+    return new Date(b.triggeredAt).getTime() - new Date(a.triggeredAt).getTime();
+  });
 
   if (loading) {
     return (

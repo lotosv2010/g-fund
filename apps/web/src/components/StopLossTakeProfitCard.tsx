@@ -36,7 +36,16 @@ export default function StopLossTakeProfitCard({ data, loading }: StopLossTakePr
       }
     }
   }
-  const displaySignals = [...fundSignals.values()];
+  const SIGNAL_TYPE_ORDER: Record<string, number> = { take_profit: 0, stop_loss: 1, warning: 2, deep_loss: 3 };
+  const LEVEL_ORDER: Record<string, number> = { red: 0, yellow: 1, blue: 2, green: 3 };
+  const displaySignals = [...fundSignals.values()].sort((a, b) => {
+    const ta = SIGNAL_TYPE_ORDER[a.signalType] ?? 9;
+    const tb = SIGNAL_TYPE_ORDER[b.signalType] ?? 9;
+    if (ta !== tb) return ta - tb;
+    const la = LEVEL_ORDER[a.level] ?? 9;
+    const lb = LEVEL_ORDER[b.level] ?? 9;
+    return la - lb;
+  });
   const alertCount = displaySignals.filter((s) => s.level !== 'green' || s.signalType !== 'warning').length;
 
   if (loading) {
@@ -78,15 +87,15 @@ export default function StopLossTakeProfitCard({ data, loading }: StopLossTakePr
                   border: `1px solid ${isGreen ? '#f6ffed30' : `${color}30`}`,
                 }}
               >
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ color }}>{config.icon}</span>
-                  <div>
-                    <Text strong style={{ fontSize: 13, color: isGreen ? undefined : undefined }}>{signal.fundName}</Text>
-                    <Text type="secondary" style={{ fontSize: 12, marginLeft: 8 }}>{signal.fundCode}</Text>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                  <span style={{ color, flexShrink: 0 }}>{config.icon}</span>
+                  <div style={{ minWidth: 0 }}>
+                    <Text strong style={{ fontSize: 13, display: 'block' }} ellipsis>{signal.fundName}</Text>
+                    <Text type="secondary" style={{ fontSize: 12 }}>{signal.fundCode}</Text>
                   </div>
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0, whiteSpace: 'nowrap' }}>
                     <Text style={{ color, fontWeight: isGreen ? 400 : 600 }}>
                       {formatPnlRate(signal.pnlRate)}
                     </Text>

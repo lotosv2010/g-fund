@@ -109,17 +109,30 @@ export default function DcaEstimateCard({ data, loading, snapshots = [], onSnaps
   }
 
   if (data.length === 0) {
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    const isToday = nextDcaDate === todayStr;
+
     return (
       <Card title={<><ScheduleOutlined /> 定投预估</>} style={{ height: "100%" }}>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12, padding: "24px 0" }}>
-          <Text type="secondary">今日非定投日</Text>
-          {nextDcaDate && (
-            <div style={{ textAlign: "center" }}>
-              <Text type="secondary" style={{ fontSize: 13 }}>下次定投</Text>
-              <Title level={4} style={{ margin: "4px 0 0", color: "#1677ff" }}>
-                {formatNextDate(nextDcaDate)}（{getWeekday(nextDcaDate)}）
-              </Title>
-            </div>
+          {isToday ? (
+            <>
+              <Text style={{ color: "#52c41a", fontWeight: 600 }}>今日定投</Text>
+              <Text type="secondary" style={{ fontSize: 12 }}>预估数据计算中…</Text>
+            </>
+          ) : (
+            <>
+              <Text type="secondary">今日非定投日</Text>
+              {nextDcaDate && (
+                <div style={{ textAlign: "center" }}>
+                  <Text type="secondary" style={{ fontSize: 13 }}>下次定投</Text>
+                  <Title level={4} style={{ margin: "4px 0 0", color: "#1677ff" }}>
+                    {formatNextDate(nextDcaDate)}（{getWeekday(nextDcaDate)}）
+                  </Title>
+                </div>
+              )}
+            </>
           )}
         </div>
       </Card>
