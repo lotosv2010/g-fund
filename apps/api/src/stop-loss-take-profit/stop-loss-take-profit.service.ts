@@ -87,7 +87,7 @@ export class StopLossTakeProfitService {
         signalType: alert.signalType,
         level: alert.level,
         triggered: alert.level !== 'green',
-        threshold: '',
+        threshold: alert.threshold,
         message: alert.message,
         lifecycleStage,
         showAction: lifecycleStage === 'holding' && alert.level !== 'green',

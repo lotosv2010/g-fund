@@ -70,14 +70,16 @@ export default function PositionSignalDrawer({
               message={
                 <Space>
                   <Tag color={TYPE_COLORS[s.signalType]}>{TYPE_LABELS[s.signalType]}</Tag>
-                  <Tag color={
-                    s.level === "red" ? "red"
-                      : s.level === "yellow" ? "orange"
-                        : s.level === "blue" ? "blue"
-                          : "green"
-                  }>
-                    {SIGNAL_LEVEL_LABELS[s.level]}
-                  </Tag>
+                  {s.signalType === "warning" && (
+                    <Tag color={
+                      s.level === "red" ? "red"
+                        : s.level === "yellow" ? "orange"
+                          : s.level === "blue" ? "blue"
+                            : "green"
+                    }>
+                      {SIGNAL_LEVEL_LABELS[s.level]}
+                    </Tag>
+                  )}
                   {s.message}
                 </Space>
               }

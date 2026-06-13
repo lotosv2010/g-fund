@@ -10,7 +10,7 @@ export function computeAlertSignal(
   pnlRate: number,
   rules: SlpRules,
   valuationPercentile: number | null,
-): { level: SignalLevel; signalType: StopLossTakeProfitSignal['signalType']; message: string } {
+): { level: SignalLevel; signalType: StopLossTakeProfitSignal['signalType']; message: string; threshold: string } {
   const { alertThresholds } = rules;
 
   if (pnlRate >= alertThresholds.takeProfit) {
@@ -18,6 +18,7 @@ export function computeAlertSignal(
       level: 'red',
       signalType: 'warning',
       message: `接近止盈线（${(alertThresholds.takeProfit * 100).toFixed(0)}%），当前收益${(pnlRate * 100).toFixed(1)}%`,
+      threshold: (alertThresholds.takeProfit * 100).toFixed(0) + '%',
     };
   }
 
@@ -26,6 +27,7 @@ export function computeAlertSignal(
       level: 'yellow',
       signalType: 'warning',
       message: `接近止损线（${(Math.abs(alertThresholds.stopLoss) * 100).toFixed(0)}%），当前亏损${(Math.abs(pnlRate) * 100).toFixed(1)}%`,
+      threshold: (Math.abs(alertThresholds.stopLoss) * 100).toFixed(0) + '%',
     };
   }
 
@@ -37,6 +39,7 @@ export function computeAlertSignal(
       level: 'blue',
       signalType: 'warning',
       message: `低估区间（估值分位${valuationPercentile.toFixed(0)}%<${(alertThresholds.undervalue * 100).toFixed(0)}%）`,
+      threshold: (alertThresholds.undervalue * 100).toFixed(0) + '%',
     };
   }
 
@@ -44,6 +47,7 @@ export function computeAlertSignal(
     level: 'green',
     signalType: 'warning',
     message: '正常区间',
+    threshold: '',
   };
 }
 
