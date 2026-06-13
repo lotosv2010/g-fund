@@ -13,9 +13,21 @@ interface AlertTimelineProps {
 }
 
 export default function AlertTimeline({ data, loading }: AlertTimelineProps) {
-  const SIGNAL_TYPE_ORDER: Record<string, number> = { take_profit: 0, stop_loss: 1, deep_loss: 2, warning: 3 };
+  const SIGNAL_TYPE_ORDER: Record<string, number> = { deep_loss: 0, stop_loss: 1, take_profit: 2, warning: 3 };
   const LEVEL_ORDER: Record<string, number> = { red: 0, yellow: 1, blue: 2, green: 3 };
-  const sorted = [...data].sort((a, b) => {
+
+  // 按 (fundCode, signalType, date) 去重，保留同组最新一条
+  const deduped = new Map<string, SlpSignalLog>();
+  for (const log of data) {
+    const dateKey = new Date(log.triggeredAt).toISOString().split("T")[0];
+    const key = `${log.fundCode}|${log.signalType}|${dateKey}`;
+    const existing = deduped.get(key);
+    if (!existing || new Date(log.triggeredAt) > new Date(existing.triggeredAt)) {
+      deduped.set(key, log);
+    }
+  }
+
+  const sorted = [...deduped.values()].sort((a, b) => {
     if (a.resolved !== b.resolved) return a.resolved ? 1 : -1;
     const ta = SIGNAL_TYPE_ORDER[a.signalType] ?? 9;
     const tb = SIGNAL_TYPE_ORDER[b.signalType] ?? 9;

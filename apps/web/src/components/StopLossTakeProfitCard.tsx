@@ -36,7 +36,7 @@ export default function StopLossTakeProfitCard({ data, loading }: StopLossTakePr
       }
     }
   }
-  const SIGNAL_TYPE_ORDER: Record<string, number> = { take_profit: 0, stop_loss: 1, warning: 2, deep_loss: 3 };
+  const SIGNAL_TYPE_ORDER: Record<string, number> = { deep_loss: 0, stop_loss: 1, take_profit: 2, warning: 3 };
   const LEVEL_ORDER: Record<string, number> = { red: 0, yellow: 1, blue: 2, green: 3 };
   const displaySignals = [...fundSignals.values()].sort((a, b) => {
     const ta = SIGNAL_TYPE_ORDER[a.signalType] ?? 9;
