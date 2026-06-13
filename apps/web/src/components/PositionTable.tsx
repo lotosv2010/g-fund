@@ -1,8 +1,12 @@
 "use client";
-import { Table, Typography, Button, Space } from "antd";
-import { ShoppingCartOutlined, TagOutlined, FileTextOutlined, EditOutlined } from "@ant-design/icons";
+import { Table, Typography, Button, Space, Tag } from "antd";
+import { ShoppingCartOutlined, TagOutlined, FileTextOutlined, EditOutlined, AlertOutlined } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table/interface";
 import type { PositionListItem } from "@g-fund/types";
+import {
+  LIFECYCLE_STAGE_LABELS, SIGNAL_LEVEL_LABELS,
+  type LifecycleStage, type SignalLevel, type StopLossTakeProfitSignal, type FundListItem,
+} from "@g-fund/types";
 
 const { Text } = Typography;
 
@@ -23,14 +27,17 @@ function PnlCell({ value, raw, onClick }: { value: string; raw?: number; onClick
 interface PositionTableProps {
   data: PositionListItem[];
   loading: boolean;
+  signals?: StopLossTakeProfitSignal[];
+  funds?: FundListItem[];
   onBuy?: (fundCode: string) => void;
   onSell?: (fundCode: string) => void;
   onViewLog?: (fundCode: string) => void;
   onEditSnapshot?: (record: PositionListItem) => void;
   onPnlClick?: (fundCode: string, fundName: string) => void;
+  onSignal?: (fundCode: string, fundName: string) => void;
 }
 
-export default function PositionTable({ data, loading, onBuy, onSell, onViewLog, onEditSnapshot, onPnlClick }: PositionTableProps) {
+export default function PositionTable({ data, loading, signals = [], funds = [], onBuy, onSell, onViewLog, onEditSnapshot, onPnlClick, onSignal }: PositionTableProps) {
   const totalCost = data.reduce((s, r) => s + parseFloat(r.costAmount), 0);
   const totalValue = data.reduce((s, r) => s + parseFloat(r.currentValue), 0);
   const totalPnl = totalValue - totalCost;
@@ -39,6 +46,35 @@ export default function PositionTable({ data, loading, onBuy, onSell, onViewLog,
   const columns: ColumnsType<PositionListItem> = [
     { title: "基金代码", dataIndex: "fundCode", width: 100 },
     { title: "基金名称", dataIndex: "fundName", ellipsis: true },
+    {
+      title: "预警等级",
+      width: 100,
+      align: "center",
+      render: (_, record) => {
+        const fundSignals = signals.filter((s) => s.fundCode === record.fundCode && s.triggered);
+        if (fundSignals.length === 0) return <Tag color="default">正常</Tag>;
+        const levelColors: Record<SignalLevel, string> = { green: "success", blue: "processing", yellow: "warning", red: "error" };
+        const worst = fundSignals.reduce((w, s) => {
+          const order: Record<SignalLevel, number> = { green: 0, blue: 1, yellow: 2, red: 3 };
+          return order[s.level] > order[w.level] ? s : w;
+        });
+        return <Tag color={levelColors[worst.level]}>{SIGNAL_LEVEL_LABELS[worst.level]}</Tag>;
+      },
+    },
+    {
+      title: "生命周期",
+      width: 90,
+      align: "center",
+      render: (_, record) => {
+        const fund = funds.find((f) => f.code === record.fundCode);
+        const stage = (fund?.lifecycleStage ?? "dca") as LifecycleStage;
+        return (
+          <Tag color={stage === "holding" ? "purple" : "cyan"}>
+            {LIFECYCLE_STAGE_LABELS[stage]}
+          </Tag>
+        );
+      },
+    },
     {
       title: "持有份额", dataIndex: "shares", width: 120, align: "right", ellipsis: true,
       render: (v) => parseFloat(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
@@ -69,14 +105,19 @@ export default function PositionTable({ data, loading, onBuy, onSell, onViewLog,
       title: "盈亏率", dataIndex: "pnlRate", width: 100, align: "right", ellipsis: true,
       render: (v) => <PnlCell value={`${(parseFloat(v) * 100).toFixed(2)}%`} raw={parseFloat(v)} />,
     },
-    ...(onBuy || onSell || onViewLog || onEditSnapshot
+    ...(onBuy || onSell || onViewLog || onEditSnapshot || onSignal
       ? [
           {
             title: "操作",
-            width: 280,
+            width: 320,
             fixed: "right" as const,
             render: (_: unknown, record: PositionListItem) => (
               <Space size={0}>
+                {onSignal && (
+                  <Button type="link" size="small" icon={<AlertOutlined />} onClick={() => onSignal(record.fundCode, record.fundName)}>
+                    信号
+                  </Button>
+                )}
                 {onBuy && (
                   <Button type="link" size="small" icon={<ShoppingCartOutlined />} onClick={() => onBuy(record.fundCode)}>
                     买入

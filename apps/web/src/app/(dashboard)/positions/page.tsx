@@ -2,15 +2,16 @@
 import { useState, useEffect, useCallback } from "react";
 import { Tabs, Typography, Flex, Button, Popconfirm, message, Form, Input, DatePicker, List, Card, Modal, Table, Tag } from "antd";
 import { PlusOutlined, EditOutlined, DeleteOutlined, ShoppingCartOutlined, FileAddOutlined, ReloadOutlined } from "@ant-design/icons";
-import type { PositionListItem, FundListItem, Transaction, CreateTransactionDto, DailyLog, CreateDailyLogDto, UpsertPositionDto } from "@g-fund/types";
+import type { PositionListItem, FundListItem, Transaction, CreateTransactionDto, DailyLog, CreateDailyLogDto, UpsertPositionDto, StopLossTakeProfitSignal } from "@g-fund/types";
 import type { ColumnsType } from "antd/es/table/interface";
-import { positionsApi, transactionsApi, fundsApi, dailyLogsApi, settingsApi } from "@/lib/api-client";
+import { positionsApi, transactionsApi, fundsApi, dailyLogsApi, settingsApi, stopLossTakeProfitApi } from "@/lib/api-client";
 import PositionTable from "@/components/PositionTable";
 import TransactionForm from "@/components/TransactionForm";
 import TransactionLogDrawer from "@/components/TransactionLogDrawer";
 import FundProfitDrawer from "@/components/FundProfitDrawer";
 import SyncPositionsButton from "@/components/SyncPositionsButton";
 import PositionSnapshotModal from "@/components/PositionSnapshotModal";
+import PositionSignalDrawer from "@/components/PositionSignalDrawer";
 import { TargetPositionCard } from "../funds/components/target-position-card";
 import { SettingsModal } from "../funds/components/settings-modal";
 import dayjs from "dayjs";
@@ -21,6 +22,7 @@ const { TextArea } = Input;
 export default function PositionsPage() {
   const [positions, setPositions] = useState<PositionListItem[]>([]);
   const [funds, setFunds] = useState<FundListItem[]>([]);
+  const [signals, setSignals] = useState<StopLossTakeProfitSignal[]>([]);
   const [dailyLogs, setDailyLogs] = useState<DailyLog[]>([]);
   const [loading, setLoading] = useState(false);
   const [logLoading, setLogLoading] = useState(false);
@@ -38,6 +40,10 @@ export default function PositionsPage() {
   const [fundProfitOpen, setFundProfitOpen] = useState(false);
   const [fundProfitCode, setFundProfitCode] = useState<string>("");
   const [fundProfitName, setFundProfitName] = useState<string>("");
+
+  const [signalDrawerOpen, setSignalDrawerOpen] = useState(false);
+  const [signalFundCode, setSignalFundCode] = useState<string>("");
+  const [signalFundName, setSignalFundName] = useState<string>("");
 
   const [snapshotModalOpen, setSnapshotModalOpen] = useState(false);
   const [snapshotEditing, setSnapshotEditing] = useState<PositionListItem | null>(null);
@@ -69,8 +75,12 @@ export default function PositionsPage() {
 
   const loadFunds = useCallback(async () => {
     try {
-      const data = await fundsApi.list();
-      setFunds(data);
+      const [fundsData, signalsData] = await Promise.allSettled([
+        fundsApi.list(),
+        stopLossTakeProfitApi.list(),
+      ]);
+      if (fundsData.status === "fulfilled") setFunds(fundsData.value);
+      if (signalsData.status === "fulfilled") setSignals(signalsData.value);
     } catch {
       // silent
     }
@@ -225,6 +235,12 @@ export default function PositionsPage() {
     setFundProfitOpen(true);
   }
 
+  function handleSignal(fundCode: string, fundName: string) {
+    setSignalFundCode(fundCode);
+    setSignalFundName(fundName);
+    setSignalDrawerOpen(true);
+  }
+
   function openTradeModal() {
     setTradeFundCode("");
     setTradeType("buy");
@@ -357,11 +373,14 @@ export default function PositionsPage() {
           <PositionTable
             data={filteredPositions}
             loading={loading}
+            signals={signals}
+            funds={funds}
             onBuy={handleRowBuy}
             onSell={handleRowSell}
             onViewLog={handleViewLog}
             onEditSnapshot={openEditSnapshot}
             onPnlClick={handlePnlClick}
+            onSignal={handleSignal}
           />
         </>
       ),
@@ -509,6 +528,14 @@ export default function PositionsPage() {
         fundName={fundProfitName}
         open={fundProfitOpen}
         onClose={() => setFundProfitOpen(false)}
+      />
+
+      <PositionSignalDrawer
+        open={signalDrawerOpen}
+        fundCode={signalFundCode}
+        fundName={signalFundName}
+        signals={signals.filter((s) => s.fundCode === signalFundCode)}
+        onClose={() => setSignalDrawerOpen(false)}
       />
 
       <PositionSnapshotModal

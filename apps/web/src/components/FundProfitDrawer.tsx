@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useMemo } from "react";
-import { Drawer, Table, Empty, Spin, Typography } from "antd";
+import { Drawer, Table, Empty, Spin, Typography, Segmented } from "antd";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, ReferenceLine } from "recharts";
 import type { FundDailyPnl } from "@g-fund/types";
 import type { ColumnsType } from "antd/es/table/interface";
@@ -18,6 +18,8 @@ function PnlCell({ value, raw }: { value: string; raw?: number }) {
   return <span style={{ color }}>{prefix}{value}</span>;
 }
 
+type ChartMode = "daily" | "cumulative";
+
 interface FundProfitDrawerProps {
   fundCode: string | null;
   fundName: string;
@@ -28,6 +30,7 @@ interface FundProfitDrawerProps {
 export default function FundProfitDrawer({ fundCode, fundName, open, onClose }: FundProfitDrawerProps) {
   const [data, setData] = useState<FundDailyPnl[]>([]);
   const [loading, setLoading] = useState(false);
+  const [chartMode, setChartMode] = useState<ChartMode>("daily");
 
   useEffect(() => {
     if (!open || !fundCode) return;
@@ -35,11 +38,21 @@ export default function FundProfitDrawer({ fundCode, fundName, open, onClose }: 
     dailySnapshotsApi
       .list()
       .then((snapshots) => {
+        const sorted = [...snapshots].sort((a, b) => a.snapshotDate.localeCompare(b.snapshotDate));
         const rows: FundDailyPnl[] = [];
-        for (const s of snapshots) {
+        let prevCurrentValue: number | null = null;
+
+        for (const s of sorted) {
           if (!s.positionsSnapshot) continue;
           const item = s.positionsSnapshot.find((p) => p.fundCode === fundCode);
-          if (!item) continue;
+          if (!item) { prevCurrentValue = null; continue; }
+
+          const currentValue = parseFloat(item.currentValue);
+          const netBuyAmount = parseFloat(item.netBuyAmount ?? "0");
+          const base = prevCurrentValue !== null ? prevCurrentValue + netBuyAmount : null;
+          const dailyPnlAmount = base !== null ? currentValue - base : 0;
+          const dailyPnlRate = base !== null && base > 0 ? dailyPnlAmount / base : 0;
+
           rows.push({
             snapshotDate: s.snapshotDate,
             fundCode: item.fundCode,
@@ -47,31 +60,49 @@ export default function FundProfitDrawer({ fundCode, fundName, open, onClose }: 
             pnlAmount: parseFloat(item.pnlAmount),
             pnlRate: parseFloat(item.pnlRate),
             costAmount: parseFloat(item.costAmount),
-            currentValue: parseFloat(item.currentValue),
+            currentValue,
+            dailyPnlAmount,
+            dailyPnlRate,
           });
+          prevCurrentValue = currentValue;
         }
-        rows.sort((a, b) => a.snapshotDate.localeCompare(b.snapshotDate));
         setData(rows);
       })
       .finally(() => setLoading(false));
   }, [open, fundCode]);
 
-  const chartData = useMemo(
-    () => data.map((d) => ({ date: d.snapshotDate.slice(5), pnl: d.pnlAmount })),
-    [data],
-  );
+  const chartData = useMemo(() => {
+    return data.map((d) => ({
+      date: d.snapshotDate.slice(5),
+      pnl: chartMode === "daily" ? d.dailyPnlAmount : d.pnlAmount,
+    }));
+  }, [data, chartMode]);
 
   const columns: ColumnsType<FundDailyPnl> = [
     { title: "日期", dataIndex: "snapshotDate", width: 110 },
     {
-      title: "盈亏金额",
+      title: "当日盈亏",
+      dataIndex: "dailyPnlAmount",
+      width: 120,
+      align: "right",
+      render: (v: number) => <PnlCell value={`¥${v.toLocaleString(undefined, { minimumFractionDigits: 2 })}`} raw={v} />,
+    },
+    {
+      title: "当日盈亏率",
+      dataIndex: "dailyPnlRate",
+      width: 100,
+      align: "right",
+      render: (v: number) => <PnlCell value={`${(v * 100).toFixed(2)}%`} raw={v} />,
+    },
+    {
+      title: "累计盈亏",
       dataIndex: "pnlAmount",
       width: 120,
       align: "right",
       render: (v: number) => <PnlCell value={`¥${v.toLocaleString(undefined, { minimumFractionDigits: 2 })}`} raw={v} />,
     },
     {
-      title: "盈亏率",
+      title: "累计盈亏率",
       dataIndex: "pnlRate",
       width: 100,
       align: "right",
@@ -107,6 +138,17 @@ export default function FundProfitDrawer({ fundCode, fundName, open, onClose }: 
         <Empty description="暂无快照数据" />
       ) : (
         <>
+          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
+            <Segmented
+              value={chartMode}
+              onChange={(v) => setChartMode(v as ChartMode)}
+              options={[
+                { label: "当日盈亏", value: "daily" },
+                { label: "累计盈亏", value: "cumulative" },
+              ]}
+            />
+          </div>
+
           <div style={{ background: "#fafafa", borderRadius: 8, padding: "16px 8px 16px 0", marginBottom: 24 }}>
             <ResponsiveContainer width="100%" height={Math.max(240, chartData.length * 32)}>
               <BarChart
@@ -129,7 +171,7 @@ export default function FundProfitDrawer({ fundCode, fundName, open, onClose }: 
                 <Tooltip
                   formatter={(val) => {
                     const n = Number(val ?? 0);
-                    return [`${n >= 0 ? "+" : ""}¥${n.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, "盈亏"];
+                    return [`${n >= 0 ? "+" : ""}¥${n.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, chartMode === "daily" ? "当日盈亏" : "累计盈亏"];
                   }}
                 />
                 <ReferenceLine x={0} stroke="#d9d9d9" />
@@ -148,7 +190,7 @@ export default function FundProfitDrawer({ fundCode, fundName, open, onClose }: 
             dataSource={data}
             pagination={{ pageSize: 15, showTotal: (t) => `共 ${t} 条` }}
             size="small"
-            scroll={{ x: 600 }}
+            scroll={{ x: 800 }}
           />
         </>
       )}

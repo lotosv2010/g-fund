@@ -53,6 +53,18 @@ export class DailySnapshotsService {
     const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
     const posRows = await this.db.select().from(schema.positions);
+
+    // 查昨日快照，用于计算 netBuyAmount
+    const yesterday = new Date(d);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
+    const [prevRow] = await this.db
+      .select()
+      .from(schema.dailySnapshots)
+      .where(eq(schema.dailySnapshots.snapshotDate, yesterdayStr));
+    const prevItems = (prevRow?.positionsSnapshot as PositionSnapshotItem[] | null) ?? [];
+    const prevCostMap = new Map(prevItems.map((p) => [p.fundCode, parseFloat(p.costAmount)]));
+
     const items: PositionSnapshotItem[] = [];
     let totalCost = 0;
     let totalValue = 0;
@@ -70,6 +82,8 @@ export class DailySnapshotsService {
         const cost = parseFloat(pos.costAmount ?? '0');
         const current = parseFloat(pos.currentValue ?? '0');
         const pnl = current - cost;
+        const prevCost = prevCostMap.get(pos.fundCode) ?? cost; // 首次快照 netBuyAmount=0
+        const netBuyAmount = cost - prevCost;
         totalCost += cost;
         totalValue += current;
         items.push({
@@ -80,6 +94,7 @@ export class DailySnapshotsService {
           currentValue: pos.currentValue ?? '0',
           pnlAmount: pnl.toFixed(2),
           pnlRate: cost > 0 ? (pnl / cost).toFixed(4) : '0.0000',
+          netBuyAmount: netBuyAmount.toFixed(2),
         });
       }
     }

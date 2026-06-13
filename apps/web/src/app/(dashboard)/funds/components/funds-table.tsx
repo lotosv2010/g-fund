@@ -4,14 +4,9 @@ import { Table, Button, Space, Popconfirm, Tag, Progress } from "antd";
 import { EditOutlined, FundOutlined } from "@ant-design/icons";
 import {
   VALUATION_LEVEL_LABELS,
-  LIFECYCLE_STAGE_LABELS,
   ASSET_TYPE_LABELS,
-  SIGNAL_LEVEL_LABELS,
   type ValuationLevel,
-  type LifecycleStage,
   type AssetType,
-  type SignalLevel,
-  type StopLossTakeProfitSignal,
 } from "@g-fund/types";
 import { useRouter } from "next/navigation";
 import type { ColumnsType, SorterResult } from "antd/es/table/interface";
@@ -36,7 +31,6 @@ interface FundsTableProps {
   dataSource: FundListItem[];
   loading: boolean;
   isCustomSort: boolean;
-  signals?: StopLossTakeProfitSignal[];
   onDragEnd: (event: DragEndEvent) => void;
   onEdit: (record: FundListItem) => void;
   onDelete: (code: string) => void;
@@ -51,7 +45,6 @@ export function FundsTable({
   dataSource,
   loading,
   isCustomSort,
-  signals = [],
   onDragEnd,
   onEdit,
   onDelete,
@@ -125,35 +118,6 @@ export function FundsTable({
             {VALUATION_LEVEL_LABELS[level]}
           </Tag>
         ) : "—";
-      },
-    },
-    {
-      title: "生命周期",
-      dataIndex: "lifecycleStage",
-      width: 90,
-      align: "center",
-      render: (v) => {
-        const stage = (v ?? "dca") as LifecycleStage;
-        return (
-          <Tag color={stage === "holding" ? "purple" : "cyan"}>
-            {LIFECYCLE_STAGE_LABELS[stage]}
-          </Tag>
-        );
-      },
-    },
-    {
-      title: "预警等级",
-      width: 100,
-      align: "center",
-      render: (_, record) => {
-        const fundSignals = signals.filter((s) => s.fundCode === record.code && s.triggered);
-        if (fundSignals.length === 0) return <Tag color="default">正常</Tag>;
-        const levelColors: Record<SignalLevel, string> = { green: "success", blue: "processing", yellow: "warning", red: "error" };
-        const worst = fundSignals.reduce((w, s) => {
-          const order: Record<SignalLevel, number> = { green: 0, blue: 1, yellow: 2, red: 3 };
-          return order[s.level] > order[w.level] ? s : w;
-        });
-        return <Tag color={levelColors[worst.level]}>{SIGNAL_LEVEL_LABELS[worst.level]}</Tag>;
       },
     },
     {

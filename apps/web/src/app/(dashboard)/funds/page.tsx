@@ -4,9 +4,9 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { Button, Input, Space, Typography, message, Tabs, Flex, Tooltip } from "antd";
 import { PlusOutlined, SyncOutlined } from "@ant-design/icons";
 import type { SorterResult } from "antd/es/table/interface";
-import type { FundListItem, CreateFundDto, UpdateFundDto, FundCategory, StopLossTakeProfitSignal } from "@g-fund/types";
+import type { FundListItem, CreateFundDto, UpdateFundDto, FundCategory } from "@g-fund/types";
 import { FUND_CATEGORIES, FUND_CATEGORY_LABELS } from "@g-fund/types";
-import { fundsApi, stopLossTakeProfitApi } from "@/lib/api-client";
+import { fundsApi } from "@/lib/api-client";
 import type { DragEndEvent } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
 import { FundsTable } from "./components/funds-table";
@@ -16,7 +16,6 @@ const { Title } = Typography;
 
 export default function FundsPage() {
   const [funds, setFunds] = useState<FundListItem[]>([]);
-  const [signals, setSignals] = useState<StopLossTakeProfitSignal[]>([]);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<FundCategory>("all");
   const [search, setSearch] = useState("");
@@ -31,12 +30,8 @@ export default function FundsPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [fundsData, signalsData] = await Promise.all([
-        fundsApi.list(),
-        stopLossTakeProfitApi.list().catch(() => []),
-      ]);
+      const fundsData = await fundsApi.list();
       setFunds(fundsData);
-      setSignals(signalsData);
     } catch (e) {
       messageApi.error((e as Error).message);
     } finally {
@@ -201,7 +196,6 @@ export default function FundsPage() {
         dataSource={categoryFunds}
         loading={loading}
         isCustomSort={isCustomSort}
-        signals={signals}
         onDragEnd={handleDragEnd}
         onEdit={(record) => setEditingFund(record)}
         onDelete={handleDelete}
