@@ -1,10 +1,10 @@
 import { Injectable, Inject, Logger } from '@nestjs/common';
-import { eq, inArray } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '@g-fund/db';
 import { DB } from '../db/db.module';
 import { McpService } from '../mcp/mcp.service';
-import type { AssetType, ValuationLevel } from '@g-fund/types';
+import type { AssetType, ValuationLevel, FundInfoPreview, SyncFundInfoResult } from '@g-fund/types';
 
 type DbType = NodePgDatabase<typeof schema>;
 
@@ -27,13 +27,46 @@ interface ValuationCacheEntry {
   fetchedAt: number;
 }
 
+interface FundInfoCacheEntry {
+  info: EastmoneyFundInfo;
+  fetchedAt: number;
+}
+
+interface EastmoneyFundInfo {
+  name: string | null;
+  type: string | null;
+  riskLevel: number | null;
+}
+
 const VALUATION_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 小时
+const FUND_INFO_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 小时
 const FETCH_TIMEOUT = 5000; // 5 秒超时
+const SYNC_CONCURRENCY = 5;
+
+// 天天基金 FTYPE → 风险等级映射
+const FTYPE_TO_RISK: Record<string, number> = {
+  '货币型': 1,
+  '债券型': 2,
+  '债券型-长债': 2,
+  '债券型-中短债': 2,
+  '债券型-混合债': 2,
+  '指数型-固收': 2,
+  '混合型-偏债': 2,
+  '混合型-灵活': 3,
+  '混合型-偏股': 3,
+  '混合型-平衡': 3,
+  '指数型-股票': 4,
+  '指数型-海外股票': 5,
+  '股票型': 4,
+  'QDII': 5,
+  'QDII-纯债': 3,
+};
 
 @Injectable()
 export class FundEnrichmentService {
   private readonly logger = new Logger(FundEnrichmentService.name);
   private readonly valuationCache = new Map<string, ValuationCacheEntry>();
+  private readonly fundInfoCache = new Map<string, FundInfoCacheEntry>();
 
   constructor(
     @Inject(DB) private readonly db: DbType,
@@ -72,12 +105,7 @@ export class FundEnrichmentService {
     const result = { total: 0, updated: 0, failed: 0 };
 
     try {
-      // 只查询指数和权益类基金（这些有可靠的外部估值数据）
-      const funds = await this.db
-        .select()
-        .from(schema.funds)
-        .where(inArray(schema.funds.assetType, ['index', 'equity']));
-
+      const funds = await this.db.select().from(schema.funds);
       result.total = funds.length;
       this.logger.log(`Starting valuation refresh for ${funds.length} funds`);
 
@@ -107,56 +135,49 @@ export class FundEnrichmentService {
   }
 
   /**
-   * 从外部 API 获取单个基金的估值百分位
-   * 使用蛋卷基金指数估值 API
+   * 从盈米 MCP GetFundDiagnosis 获取单个基金的估值百分位
+   * 解析 valuation 文本中的百分比数字，如"低于67%的时期" -> 67
    */
   private async fetchValuationPercentile(fundCode: string): Promise<number | null> {
-    // 检查缓存
     const cached = this.valuationCache.get(fundCode);
     if (cached && Date.now() - cached.fetchedAt < VALUATION_CACHE_TTL) {
       return cached.percentile;
     }
 
+    if (!this.mcp.isConnected()) {
+      this.logger.debug(`MCP not connected, skipping valuation for ${fundCode}`);
+      return null;
+    }
+
     try {
-      // 蛋卷基金指数估值 API
-      const url = `https://danjuanfunds.com/djapi/index_eva/pe/${fundCode}`;
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
+      const result = await this.mcp.callTool('GetFundDiagnosis', { fundNameOrCode: fundCode });
+      const text = (result as { content?: { type: string; text?: string }[] })
+        ?.content?.find((c) => c.type === 'text')?.text ?? '';
+      if (!text) return null;
 
-      const response = await fetch(url, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-          'Accept': 'application/json',
-        },
-        signal: controller.signal,
-      });
-
-      clearTimeout(timeout);
-
-      if (!response.ok) {
-        this.logger.warn(`Valuation API returned ${response.status} for ${fundCode}`);
-        return null;
-      }
-
-      const data = await response.json() as {
-        data?: {
-          pe_percentile?: number;
+      const data = JSON.parse(text) as {
+        fundSummary?: {
+          riskAndOpportunity?: {
+            data?: { valuation?: string };
+          };
         };
       };
 
-      const percentile = data?.data?.pe_percentile;
-      if (typeof percentile !== 'number' || percentile < 0 || percentile > 100) {
-        this.logger.debug(`Valuation data missing or invalid for ${fundCode}: ${JSON.stringify(data?.data)}`);
+      const valuation = data?.fundSummary?.riskAndOpportunity?.data?.valuation ?? '';
+      // 匹配"低于X%"或"高于X%"，X 即为历史百分位
+      const match = valuation.match(/(\d+(?:\.\d+)?)%/);
+      if (!match) {
+        this.logger.debug(`No percentile found in valuation text for ${fundCode}: ${valuation}`);
         return null;
       }
 
-      // 缓存结果
+      const percentile = parseFloat(match[1]);
+      if (percentile < 0 || percentile > 100) return null;
+
       this.valuationCache.set(fundCode, { percentile, fetchedAt: Date.now() });
       return percentile;
     } catch (err) {
-      if ((err as Error).name === 'AbortError') {
-        this.logger.warn(`Valuation fetch timeout for ${fundCode}`);
-      }
+      this.logger.warn(`Valuation fetch failed for ${fundCode}: ${(err as Error).message}`);
       return null;
     }
   }
@@ -328,5 +349,134 @@ export class FundEnrichmentService {
         updatedAt: new Date(),
       })
       .where(eq(schema.funds.code, fundCode));
+  }
+
+  /**
+   * 预览基金信息（用于添加基金时自动填充）
+   * 不写数据库，仅返回查询结果
+   */
+  async previewFundInfo(fundCode: string): Promise<FundInfoPreview> {
+    const info = await this.fetchFundInfoFromEastmoney(fundCode);
+    const assetType = info?.type ? this.mapFtypeToAssetType(info.type) : null;
+    return {
+      name: info?.name ?? null,
+      type: info?.type ?? null,
+      riskLevel: info?.riskLevel ?? null,
+      assetType,
+    };
+  }
+
+  /**
+   * 批量为所有基金补全缺失字段（type / riskLevel / assetType）
+   * 最多 SYNC_CONCURRENCY 并发
+   */
+  async syncAllFundInfo(): Promise<SyncFundInfoResult> {
+    const result: SyncFundInfoResult = { total: 0, updated: 0, skipped: 0, failed: 0 };
+
+    const funds = await this.db.select().from(schema.funds);
+    result.total = funds.length;
+
+    this.logger.log(`Sync fund info: ${funds.length} funds to process`);
+
+    for (let i = 0; i < funds.length; i += SYNC_CONCURRENCY) {
+      const batch = funds.slice(i, i + SYNC_CONCURRENCY);
+      const settled = await Promise.allSettled(
+        batch.map((fund) => this.syncOneFundInfo(fund)),
+      );
+      for (const r of settled) {
+        if (r.status === 'fulfilled' && r.value === true) result.updated++;
+        else if (r.status === 'fulfilled' && r.value === false) result.skipped++;
+        else if (r.status === 'rejected') result.failed++;
+      }
+    }
+
+    this.logger.log(`Sync fund info completed: ${result.updated} updated, ${result.failed} failed`);
+
+    result.valuations = await this.refreshAllValuations();
+    return result;
+  }
+
+  private async syncOneFundInfo(fund: typeof schema.funds.$inferSelect): Promise<boolean> {
+    const info = await this.fetchFundInfoFromEastmoney(fund.code);
+    if (!info) return false;
+
+    const inferredAssetType = info.type ? this.mapFtypeToAssetType(info.type) : null;
+
+    const updateData: Record<string, unknown> = { updatedAt: new Date() };
+    if (info.type && info.type !== fund.type) updateData.type = info.type;
+    if (info.riskLevel != null && info.riskLevel !== fund.riskLevel) updateData.riskLevel = info.riskLevel;
+    if (inferredAssetType && inferredAssetType !== fund.assetType) updateData.assetType = inferredAssetType;
+
+    if (Object.keys(updateData).length === 1) return false; // 只有 updatedAt，无实际更新
+
+    await this.db.update(schema.funds).set(updateData).where(eq(schema.funds.code, fund.code));
+    this.logger.debug(`Synced fund info: ${fund.code} -> type=${updateData.type ?? '-'}, riskLevel=${updateData.riskLevel ?? '-'}, assetType=${updateData.assetType ?? '-'}`);
+    return true;
+  }
+
+  /**
+   * 从天天基金搜索接口获取基金基础信息
+   */
+  private async fetchFundInfoFromEastmoney(fundCode: string): Promise<EastmoneyFundInfo | null> {
+    const cached = this.fundInfoCache.get(fundCode);
+    if (cached && Date.now() - cached.fetchedAt < FUND_INFO_CACHE_TTL) {
+      return cached.info;
+    }
+
+    try {
+      const url = `https://fundsuggest.eastmoney.com/FundSearch/api/FundSearchAPI.ashx?callback=jQuery&m=1&key=${encodeURIComponent(fundCode)}`;
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
+
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+          'Referer': 'https://fund.eastmoney.com/',
+        },
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeout);
+      if (!response.ok) return null;
+
+      const text = await response.text();
+      const match = text.match(/jQuery\((.*)\)/s);
+      if (!match) return null;
+
+      const data = JSON.parse(match[1]) as {
+        ErrCode: number;
+        Datas?: { CODE: string; FundBaseInfo?: { SHORTNAME?: string; FTYPE?: string } }[];
+      };
+
+      const item = data.Datas?.find((d) => d.CODE === fundCode);
+      const base = item?.FundBaseInfo;
+      if (!base) return null;
+
+      const ftype = base.FTYPE ?? null;
+      const info: EastmoneyFundInfo = {
+        name: base.SHORTNAME ?? null,
+        type: ftype,
+        riskLevel: ftype ? (FTYPE_TO_RISK[ftype] ?? null) : null,
+      };
+
+      this.fundInfoCache.set(fundCode, { info, fetchedAt: Date.now() });
+      return info;
+    } catch (err) {
+      if ((err as Error).name !== 'AbortError') {
+        this.logger.warn(`fetchFundInfo failed for ${fundCode}: ${(err as Error).message}`);
+      }
+      return null;
+    }
+  }
+
+  /**
+   * 将天天基金 FTYPE 映射到 AssetType
+   */
+  private mapFtypeToAssetType(ftype: string): AssetType {
+    if (ftype.startsWith('债券型') || ftype === '指数型-固收' || ftype === '混合型-偏债') return 'bond';
+    if (ftype === '货币型') return 'bond';
+    if (ftype.startsWith('QDII') || ftype.includes('海外')) return 'qdii';
+    if (ftype.startsWith('指数型')) return 'index';
+    return 'equity';
   }
 }

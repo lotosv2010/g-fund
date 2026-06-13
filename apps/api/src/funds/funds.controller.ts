@@ -21,6 +21,18 @@ export class FundsController {
     return this.fundsService.findAll(category);
   }
 
+  @Post('sync-info')
+  @ApiOperation({ summary: '批量补全所有基金缺失的 type/riskLevel/assetType 并刷新估值' })
+  syncInfo() {
+    return this.enrichmentService.syncAllFundInfo();
+  }
+
+  @Get(':code/preview')
+  @ApiOperation({ summary: '根据基金代码预览基本信息（用于添加时自动填充）' })
+  previewFundInfo(@Param('code') code: string) {
+    return this.enrichmentService.previewFundInfo(code);
+  }
+
   @Get(':code/stage')
   @ApiOperation({ summary: '获取基金阶段判断' })
   getStage(@Param('code') code: string) {
@@ -57,15 +69,10 @@ export class FundsController {
     return this.fundsService.remove(code);
   }
 
-  @Post('refresh-valuations')
-  @ApiOperation({ summary: '刷新所有基金估值百分位' })
-  refreshValuations() {
-    return this.enrichmentService.refreshAllValuations();
-  }
-
   @Post(':code/enrich')
   @ApiOperation({ summary: '丰富单个基金资产类型' })
   enrichAssetType(@Param('code') code: string) {
     return this.enrichmentService.enrichAssetType(code, '');
   }
 }
+

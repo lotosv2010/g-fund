@@ -47,6 +47,27 @@ export const ASSET_TYPE_LABELS: Record<AssetType, string> = {
   index: '指数',
 };
 
+// 基金信息预览（添加基金时自动补全用）
+export interface FundInfoPreview {
+  name: string | null;
+  type: string | null;
+  riskLevel: number | null;
+  assetType: AssetType | null;
+}
+
+// 批量同步基金信息结果
+export interface SyncFundInfoResult {
+  total: number;
+  updated: number;
+  skipped: number;
+  failed: number;
+  valuations?: {
+    total: number;
+    updated: number;
+    failed: number;
+  };
+}
+
 // 止盈止损信号（四态）
 export const SIGNAL_LEVELS = ['green', 'blue', 'yellow', 'red'] as const;
 export type SignalLevel = (typeof SIGNAL_LEVELS)[number];

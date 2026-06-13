@@ -25,7 +25,7 @@ export default function FundsPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingFund, setEditingFund] = useState<FundListItem | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [refreshingValuations, setRefreshingValuations] = useState(false);
+  const [syncingInfo, setSyncingInfo] = useState(false);
   const [messageApi, contextHolder] = message.useMessage();
 
   const load = useCallback(async () => {
@@ -177,16 +177,19 @@ export default function FundsPage() {
     }
   }
 
-  async function handleRefreshValuations() {
-    setRefreshingValuations(true);
+  async function handleSyncInfo() {
+    setSyncingInfo(true);
     try {
-      const result = await fundsApi.refreshValuations();
-      messageApi.success(`估值刷新完成：${result.updated}/${result.total} 已更新`);
+      const result = await fundsApi.syncInfo();
+      const valMsg = result.valuations
+        ? `，估值 ${result.valuations.updated}/${result.valuations.total} 已刷新`
+        : "";
+      messageApi.success(`同步完成：${result.updated} 更新 / ${result.skipped} 跳过 / ${result.failed} 失败${valMsg}`);
       load();
     } catch (e) {
       messageApi.error((e as Error).message);
     } finally {
-      setRefreshingValuations(false);
+      setSyncingInfo(false);
     }
   }
 
@@ -225,13 +228,13 @@ export default function FundsPage() {
             style={{ maxWidth: 320 }}
           />
           <Space>
-            <Tooltip title="从外部数据源刷新指数基金的估值百分位">
+            <Tooltip title="从外部数据源同步所有基金的名称、类型、风险等级，并刷新估值百分位">
               <Button
-                icon={<SyncOutlined spin={refreshingValuations} />}
-                onClick={handleRefreshValuations}
-                loading={refreshingValuations}
+                icon={<SyncOutlined spin={syncingInfo} />}
+                onClick={handleSyncInfo}
+                loading={syncingInfo}
               >
-                刷新估值
+                同步基金信息
               </Button>
             </Tooltip>
             <Button
