@@ -4,6 +4,7 @@ import { eq, and, gte, desc, sql } from 'drizzle-orm';
 import * as schema from '@g-fund/db';
 import { stocks } from 'stock-api';
 import { DB } from '../db/db.module';
+import { SettingsService } from '../settings/settings.service';
 import type { MarketIndexQuote, IndexConfig } from './market-index.types';
 import { DEFAULT_INDICES } from './market-index.types';
 
@@ -19,7 +20,34 @@ export class MarketIndexService {
   private readonly cache = new Map<string, { quote: MarketIndexQuote; fetchedAt: number }>();
   private readonly CACHE_TTL = 30_000;
 
-  constructor(@Inject(DB) private readonly db: DbType) {}
+  constructor(
+    @Inject(DB) private readonly db: DbType,
+    private readonly settingsService: SettingsService,
+  ) {}
+
+  async resolveIndices(codesParam?: string): Promise<IndexConfig[]> {
+    if (codesParam) {
+      return codesParam.split(',').map((c) => {
+        const found = DEFAULT_INDICES.find((d) => d.code === c.trim());
+        return found ?? { code: c.trim(), name: c.trim() };
+      });
+    }
+
+    try {
+      const setting = await this.settingsService.get('watchlist_indices');
+      const watchlist: unknown = JSON.parse(setting.value);
+      if (Array.isArray(watchlist) && watchlist.length > 0) {
+        return (watchlist as string[]).map((c) => {
+          const found = DEFAULT_INDICES.find((d) => d.code === c);
+          return found ?? { code: c, name: c };
+        });
+      }
+    } catch {
+      // no watchlist configured, use defaults
+    }
+
+    return DEFAULT_INDICES;
+  }
 
   async fetchRealtime(indices: IndexConfig[] = DEFAULT_INDICES): Promise<MarketIndexQuote[]> {
     const codes = indices.map((i) => i.code);

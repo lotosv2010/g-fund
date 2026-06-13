@@ -4,7 +4,7 @@ import { ShoppingCartOutlined, TagOutlined, FileTextOutlined, EditOutlined, Aler
 import type { ColumnsType } from "antd/es/table/interface";
 import type { PositionListItem } from "@g-fund/types";
 import {
-  LIFECYCLE_STAGE_LABELS, SIGNAL_LEVEL_LABELS,
+  LIFECYCLE_STAGE_LABELS,
   type LifecycleStage, type SignalLevel, type StopLossTakeProfitSignal, type FundListItem,
 } from "@g-fund/types";
 
@@ -45,20 +45,28 @@ export default function PositionTable({ data, loading, signals = [], funds = [],
 
   const columns: ColumnsType<PositionListItem> = [
     { title: "基金代码", dataIndex: "fundCode", width: 100 },
-    { title: "基金名称", dataIndex: "fundName", ellipsis: true },
+    { title: "基金名称", dataIndex: "fundName", width: 200, ellipsis: true },
     {
       title: "预警等级",
-      width: 100,
+      width: 110,
       align: "center",
       render: (_, record) => {
         const fundSignals = signals.filter((s) => s.fundCode === record.fundCode && s.triggered);
         if (fundSignals.length === 0) return <Tag color="default">正常</Tag>;
-        const levelColors: Record<SignalLevel, string> = { green: "success", blue: "processing", yellow: "warning", red: "error" };
-        const worst = fundSignals.reduce((w, s) => {
-          const order: Record<SignalLevel, number> = { green: 0, blue: 1, yellow: 2, red: 3 };
-          return order[s.level] > order[w.level] ? s : w;
-        });
-        return <Tag color={levelColors[worst.level]}>{SIGNAL_LEVEL_LABELS[worst.level]}</Tag>;
+
+        // 优先级：deep_loss > stop_loss > take_profit > warning > rebound
+        const typeOrder: Record<string, number> = { deep_loss: 4, stop_loss: 3, take_profit: 2, warning: 1, rebound: 0 };
+        const worst = fundSignals.reduce((w, s) => (typeOrder[s.signalType] ?? 0) > (typeOrder[w.signalType] ?? 0) ? s : w);
+
+        const labelMap: Record<string, [string, string]> = {
+          deep_loss:   ["深度套牢", "error"],
+          stop_loss:   ["触发止损", "error"],
+          take_profit: ["触发止盈", "success"],
+          warning:     worst.level === "blue" ? ["低估关注", "processing"] : worst.level === "yellow" ? ["接近止损", "warning"] : worst.level === "red" ? ["接近止盈", "volcano"] : ["正常", "default"],
+          rebound:     ["反弹信号", "cyan"],
+        };
+        const [label, color] = labelMap[worst.signalType] ?? ["信号", "default"];
+        return <Tag color={color}>{label}</Tag>;
       },
     },
     {
@@ -76,23 +84,23 @@ export default function PositionTable({ data, loading, signals = [], funds = [],
       },
     },
     {
-      title: "持有份额", dataIndex: "shares", width: 120, align: "right", ellipsis: true,
+      title: "持有份额", dataIndex: "shares", width: 120, align: "right",
       render: (v) => parseFloat(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
     },
     {
-      title: "成本价", dataIndex: "costPrice", width: 100, align: "right", ellipsis: true,
+      title: "成本价", dataIndex: "costPrice", width: 100, align: "right",
       render: (v) => parseFloat(v).toFixed(4),
     },
     {
-      title: "成本金额", dataIndex: "costAmount", width: 120, align: "right", ellipsis: true,
+      title: "成本金额", dataIndex: "costAmount", width: 120, align: "right",
       render: (v) => `¥${parseFloat(v).toLocaleString()}`,
     },
     {
-      title: "当前市值", dataIndex: "currentValue", width: 120, align: "right", ellipsis: true,
+      title: "当前市值", dataIndex: "currentValue", width: 120, align: "right",
       render: (v) => `¥${parseFloat(v).toLocaleString()}`,
     },
     {
-      title: "盈亏金额", dataIndex: "pnlAmount", width: 120, align: "right", ellipsis: true,
+      title: "盈亏金额", dataIndex: "pnlAmount", width: 120, align: "right",
       render: (v, record) => (
         <PnlCell
           value={`¥${parseFloat(v).toLocaleString()}`}
@@ -102,14 +110,14 @@ export default function PositionTable({ data, loading, signals = [], funds = [],
       ),
     },
     {
-      title: "盈亏率", dataIndex: "pnlRate", width: 100, align: "right", ellipsis: true,
+      title: "盈亏率", dataIndex: "pnlRate", width: 100, align: "right",
       render: (v) => <PnlCell value={`${(parseFloat(v) * 100).toFixed(2)}%`} raw={parseFloat(v)} />,
     },
     ...(onBuy || onSell || onViewLog || onEditSnapshot || onSignal
       ? [
           {
             title: "操作",
-            width: 320,
+            width: 350,
             fixed: "right" as const,
             render: (_: unknown, record: PositionListItem) => (
               <Space size={0}>
@@ -154,29 +162,28 @@ export default function PositionTable({ data, loading, signals = [], funds = [],
         loading={loading}
         pagination={false}
         size="middle"
-        scroll={{ x: 900 }}
+        scroll={{ x: 1200 }}
         summary={() => {
-          const hasActions = !!(onBuy || onSell || onViewLog || onEditSnapshot);
           return (
             <Table.Summary fixed>
               <Table.Summary.Row>
-                <Table.Summary.Cell index={0} colSpan={hasActions ? 5 : 4}>
+                <Table.Summary.Cell index={0} colSpan={6}>
                   <div style={{ whiteSpace: "nowrap" }}><Text strong>合计</Text></div>
                 </Table.Summary.Cell>
-                <Table.Summary.Cell index={4} align="right">
+                <Table.Summary.Cell index={6} align="right">
                   <div style={{ whiteSpace: "nowrap", textAlign: "right" }}><Text strong>¥{totalCost.toLocaleString()}</Text></div>
                 </Table.Summary.Cell>
-                <Table.Summary.Cell index={5} align="right">
+                <Table.Summary.Cell index={7} align="right">
                   <div style={{ whiteSpace: "nowrap", textAlign: "right" }}><Text strong>¥{totalValue.toLocaleString()}</Text></div>
                 </Table.Summary.Cell>
-                <Table.Summary.Cell index={6} align="right">
+                <Table.Summary.Cell index={8} align="right">
                   <div style={{ whiteSpace: "nowrap", textAlign: "right" }}>
                     <Text strong style={{ color: totalPnl >= 0 ? "#dc2626" : "#16a34a" }}>
                       {totalPnl >= 0 ? "+" : ""}¥{totalPnl.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                     </Text>
                   </div>
                 </Table.Summary.Cell>
-                <Table.Summary.Cell index={7} align="right">
+                <Table.Summary.Cell index={9} align="right">
                   <div style={{ whiteSpace: "nowrap", textAlign: "right" }}>
                     <Text strong style={{ color: totalPnlRate >= 0 ? "#dc2626" : "#16a34a" }}>
                       {totalPnlRate >= 0 ? "+" : ""}{(totalPnlRate * 100).toFixed(2)}%

@@ -133,6 +133,10 @@ export default function FundsPage() {
         riskLevel: values.riskLevel,
         category: values.category,
         targetRatio: values.targetRatio !== undefined ? String(values.targetRatio) : undefined,
+        baseAmount: values.baseAmount !== undefined ? String(values.baseAmount) : undefined,
+        priority: values.priority,
+        valuationLevel: values.valuationLevel,
+        assetType: values.assetType,
         note: values.note,
       };
       await fundsApi.update(editingFund.code, dto);
