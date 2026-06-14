@@ -1,6 +1,7 @@
 "use client";
 import { Card, Typography, Skeleton, Empty, Progress, Tag, Space, Tooltip, Button, message } from "antd";
 import { ScheduleOutlined, DollarOutlined, ThunderboltOutlined, InfoCircleOutlined, CheckCircleOutlined, ClockCircleOutlined } from "@ant-design/icons";
+// InfoCircleOutlined 已导入，用于标题提示
 import { useState, useCallback } from "react";
 import type { DcaCalculation, DcaSnapshot } from "@g-fund/types";
 import { dcaApi } from "@/lib/api-client";
@@ -102,7 +103,7 @@ export default function DcaEstimateCard({ data, loading, snapshots = [], onSnaps
 
   if (loading) {
     return (
-      <Card title={<><ScheduleOutlined /> 定投预估</>} style={{ height: "100%" }}>
+      <Card title={<><ScheduleOutlined /> 定投预估 <Tooltip title="基于估值百分位、大盘趋势等系数计算的定投金额建议。计算公式：最终金额 = 基础金额 × p0 × p1 × p2 × p3 × p4 × tFactor × 再平衡调整系数"><InfoCircleOutlined style={{ fontSize: 13, color: "#999" }} /></Tooltip></>} style={{ height: "100%" }}>
         <Skeleton active paragraph={{ rows: 3 }} />
       </Card>
     );
@@ -114,7 +115,7 @@ export default function DcaEstimateCard({ data, loading, snapshots = [], onSnaps
     const isToday = nextDcaDate === todayStr;
 
     return (
-      <Card title={<><ScheduleOutlined /> 定投预估</>} style={{ height: "100%" }}>
+      <Card title={<><ScheduleOutlined /> 定投预估 <Tooltip title="基于估值百分位、大盘趋势等系数计算的定投金额建议。计算公式：最终金额 = 基础金额 × p0 × p1 × p2 × p3 × p4 × tFactor × 再平衡调整系数"><InfoCircleOutlined style={{ fontSize: 13, color: "#999" }} /></Tooltip></>} style={{ height: "100%" }}>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12, padding: "24px 0" }}>
           {isToday ? (
             <>
@@ -141,7 +142,7 @@ export default function DcaEstimateCard({ data, loading, snapshots = [], onSnaps
 
   return (
     <Card
-      title={<><ScheduleOutlined /> 定投预估</>}
+      title={<><ScheduleOutlined /> 定投预估 <Tooltip title="基于估值百分位、大盘趋势等系数计算的定投金额建议。计算公式：最终金额 = 基础金额 × p0 × p1 × p2 × p3 × p4 × tFactor × 再平衡调整系数"><InfoCircleOutlined style={{ fontSize: 13, color: "#999" }} /></Tooltip></>}
       style={{ height: "100%" }}
       styles={{ body: { padding: "12px 16px" } }}
     >

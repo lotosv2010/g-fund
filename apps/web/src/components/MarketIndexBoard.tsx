@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Card, Row, Col, Skeleton, Typography, Tag, Space, Button, Drawer, Empty, Segmented, Modal, Checkbox, message } from "antd";
-import { SettingOutlined, ReloadOutlined } from "@ant-design/icons";
+import { Card, Row, Col, Skeleton, Typography, Tag, Space, Button, Drawer, Empty, Segmented, Modal, Checkbox, message, Tooltip as AntTooltip } from "antd";
+import { SettingOutlined, ReloadOutlined, InfoCircleOutlined } from "@ant-design/icons";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import type { MarketIndexQuote, MarketIndexHistory } from "@g-fund/types";
 import { DEFAULT_INDICES } from "@g-fund/types";
@@ -284,6 +284,9 @@ export default function MarketIndexBoard({ loading: externalLoading }: MarketInd
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
         <Space size={8}>
           <Text strong style={{ fontSize: 15 }}>大盘行情</Text>
+          <AntTooltip title="实时展示主要市场指数行情。交易时段每 15 秒自动刷新，收盘后显示收盘价">
+            <InfoCircleOutlined style={{ fontSize: 13, color: "#999" }} />
+          </AntTooltip>
           {marketOpen && <Tag color="green">交易中</Tag>}
           {!marketOpen && <Tag color="default">已收盘</Tag>}
           {updatedAt && (

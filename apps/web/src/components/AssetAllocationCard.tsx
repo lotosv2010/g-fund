@@ -1,6 +1,6 @@
 "use client";
-import { Card, Tabs, Skeleton, Empty, Typography } from "antd";
-import { PieChartOutlined } from "@ant-design/icons";
+import { Card, Tabs, Skeleton, Empty, Typography, Tooltip } from "antd";
+import { PieChartOutlined, InfoCircleOutlined } from "@ant-design/icons";
 import { useMemo } from "react";
 import dynamic from "next/dynamic";
 import type { AssetAllocationResponse, FundAssetDetail } from "@g-fund/types";
@@ -160,7 +160,7 @@ export default function AssetAllocationCard({ data, loading }: AssetAllocationCa
 
   if (loading) {
     return (
-      <Card title={<><PieChartOutlined /> 持仓分布</>} style={{ height: "100%" }}>
+      <Card title={<><PieChartOutlined /> 持仓分布 <Tooltip title="按资产类型（保守/核心/卫星）展示持仓金额分布。分类依据基金的投资风格和风险等级"><InfoCircleOutlined style={{ fontSize: 13, color: "#999" }} /></Tooltip></>} style={{ height: "100%" }}>
         <Skeleton active paragraph={{ rows: 6 }} />
       </Card>
     );
@@ -168,7 +168,7 @@ export default function AssetAllocationCard({ data, loading }: AssetAllocationCa
 
   if (!data || details.length === 0) {
     return (
-      <Card title={<><PieChartOutlined /> 持仓分布</>} style={{ height: "100%" }}>
+      <Card title={<><PieChartOutlined /> 持仓分布 <Tooltip title="按资产类型（保守/核心/卫星）展示持仓金额分布。分类依据基金的投资风格和风险等级"><InfoCircleOutlined style={{ fontSize: 13, color: "#999" }} /></Tooltip></>} style={{ height: "100%" }}>
         <Empty description="暂无持仓数据" />
       </Card>
     );
@@ -257,7 +257,7 @@ export default function AssetAllocationCard({ data, loading }: AssetAllocationCa
 
   return (
     <Card
-      title={<><PieChartOutlined /> 持仓分布</>}
+      title={<><PieChartOutlined /> 持仓分布 <Tooltip title="按资产类型（保守/核心/卫星）展示持仓金额分布。分类依据基金的投资风格和风险等级"><InfoCircleOutlined style={{ fontSize: 13, color: "#999" }} /></Tooltip></>}
       style={{ height: "100%" }}
       styles={{ body: { padding: "12px 16px", display: "flex", flexDirection: "column", height: "calc(100% - 56px)", overflow: "hidden" } }}
     >

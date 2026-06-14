@@ -1,6 +1,6 @@
 "use client";
-import { Card, Tag, Typography, Skeleton, Empty } from "antd";
-import { AlertOutlined } from "@ant-design/icons";
+import { Card, Tag, Typography, Skeleton, Empty, Tooltip } from "antd";
+import { AlertOutlined, InfoCircleOutlined } from "@ant-design/icons";
 import type { StopLossTakeProfitSignal } from "@g-fund/types";
 import { SIGNAL_CONFIG, LEVEL_COLORS, formatPnlRate } from "@/lib/signal-config";
 
@@ -58,7 +58,7 @@ export default function StopLossTakeProfitCard({ data, loading }: StopLossTakePr
 
   return (
     <Card
-      title={<><AlertOutlined /> 止盈止损{alertCount > 0 && <Tag color="red" style={{ marginLeft: 8 }}>{alertCount}</Tag>}</>}
+      title={<><AlertOutlined /> 止盈止损 <Tooltip title="监控各基金收益率，当触及预设的止盈/止损阈值时发出信号。信号优先级：深度亏损 > 止损 > 止盈 > 预警"><InfoCircleOutlined style={{ fontSize: 13, color: "#999" }} /></Tooltip>{alertCount > 0 && <Tag color="red" style={{ marginLeft: 8 }}>{alertCount}</Tag>}</>}
       style={{ height: "100%" }}
       styles={{ body: { padding: "12px 16px", maxHeight: 400, overflow: "auto" } }}
     >

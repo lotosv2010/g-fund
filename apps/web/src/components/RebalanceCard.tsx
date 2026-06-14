@@ -1,6 +1,6 @@
 "use client";
 import { Card, Tag, Typography, Skeleton, Empty, Tooltip } from "antd";
-import { SwapOutlined } from "@ant-design/icons";
+import { SwapOutlined, InfoCircleOutlined } from "@ant-design/icons";
 import type { RebalanceResponse } from "@g-fund/types";
 
 const { Text } = Typography;
@@ -34,7 +34,7 @@ export default function RebalanceCard({ data, loading }: RebalanceCardProps) {
     <Card
       title={
         <>
-          <SwapOutlined /> 再平衡建议
+          <SwapOutlined /> 再平衡建议 <Tooltip title="当基金实际持仓比例偏离目标配置超过阈值时，生成买入/卖出建议以恢复平衡"><InfoCircleOutlined style={{ fontSize: 13, color: "#999" }} /></Tooltip>
           {actionCount > 0 && (
             <Tag color="blue" style={{ marginLeft: 8 }}>{actionCount}</Tag>
           )}

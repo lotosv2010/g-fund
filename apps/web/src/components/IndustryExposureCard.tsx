@@ -1,6 +1,6 @@
 "use client";
-import { Card, Empty, Skeleton, Typography } from "antd";
-import { PieChartOutlined } from "@ant-design/icons";
+import { Card, Empty, Skeleton, Typography, Tooltip } from "antd";
+import { PieChartOutlined, InfoCircleOutlined } from "@ant-design/icons";
 import dynamic from "next/dynamic";
 import { useMemo } from "react";
 import type { IndustryExposureResponse } from "@g-fund/types";
@@ -38,7 +38,7 @@ export default function IndustryExposureCard({ data, loading }: IndustryExposure
 
   if (loading) {
     return (
-      <Card title={<><PieChartOutlined /> 行业暴露</>} style={{ height: "100%" }}>
+      <Card title={<><PieChartOutlined /> 行业暴露 <Tooltip title="展示持仓基金在各行业的投资分布，帮助识别行业集中度风险"><InfoCircleOutlined style={{ fontSize: 13, color: "#999" }} /></Tooltip></>} style={{ height: "100%" }}>
         <Skeleton active paragraph={{ rows: 5 }} />
       </Card>
     );
@@ -46,7 +46,7 @@ export default function IndustryExposureCard({ data, loading }: IndustryExposure
 
   if (!data || chartData.length === 0) {
     return (
-      <Card title={<><PieChartOutlined /> 行业暴露</>} style={{ height: "100%" }}>
+      <Card title={<><PieChartOutlined /> 行业暴露 <Tooltip title="展示持仓基金在各行业的投资分布，帮助识别行业集中度风险"><InfoCircleOutlined style={{ fontSize: 13, color: "#999" }} /></Tooltip></>} style={{ height: "100%" }}>
         <Empty description="暂无持仓数据" />
       </Card>
     );
@@ -54,7 +54,7 @@ export default function IndustryExposureCard({ data, loading }: IndustryExposure
 
   return (
     <Card
-      title={<><PieChartOutlined /> 行业暴露</>}
+      title={<><PieChartOutlined /> 行业暴露 <Tooltip title="展示持仓基金在各行业的投资分布，帮助识别行业集中度风险"><InfoCircleOutlined style={{ fontSize: 13, color: "#999" }} /></Tooltip></>}
       style={{ height: "100%" }}
       styles={{ body: { padding: "12px 16px", display: "flex", flexDirection: "column", height: "calc(100% - 56px)", overflow: "hidden" } }}
     >

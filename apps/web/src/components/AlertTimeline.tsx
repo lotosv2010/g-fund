@@ -1,6 +1,6 @@
 "use client";
-import { Card, Timeline, Typography, Skeleton, Empty, Tag } from "antd";
-import { ClockCircleOutlined } from "@ant-design/icons";
+import { Card, Timeline, Typography, Skeleton, Empty, Tag, Tooltip } from "antd";
+import { ClockCircleOutlined, InfoCircleOutlined } from "@ant-design/icons";
 import type { SlpSignalLog } from "@g-fund/types";
 import { DEEP_LOSS_DECISION_LABELS } from "@g-fund/types";
 import { SIGNAL_CONFIG, LEVEL_COLORS, formatPnlRate } from "@/lib/signal-config";
@@ -40,7 +40,7 @@ export default function AlertTimeline({ data, loading }: AlertTimelineProps) {
 
   if (loading) {
     return (
-      <Card title={<><ClockCircleOutlined /> 预警时间线</>} style={{ height: "100%" }}>
+      <Card title={<><ClockCircleOutlined /> 预警时间线 <Tooltip title="按时间顺序展示止盈止损信号的历史记录，按信号类型和严重程度排序"><InfoCircleOutlined style={{ fontSize: 13, color: "#999" }} /></Tooltip></>} style={{ height: "100%" }}>
         <Skeleton active paragraph={{ rows: 4 }} />
       </Card>
     );
@@ -48,7 +48,7 @@ export default function AlertTimeline({ data, loading }: AlertTimelineProps) {
 
   return (
     <Card
-      title={<><ClockCircleOutlined /> 预警时间线</>}
+      title={<><ClockCircleOutlined /> 预警时间线 <Tooltip title="按时间顺序展示止盈止损信号的历史记录，按信号类型和严重程度排序"><InfoCircleOutlined style={{ fontSize: 13, color: "#999" }} /></Tooltip></>}
       style={{ height: "100%" }}
       styles={{ body: { padding: "12px 16px", height: "calc(100% - 56px)", overflow: "auto" } }}
     >

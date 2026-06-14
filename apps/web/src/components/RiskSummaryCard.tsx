@@ -1,6 +1,6 @@
 "use client";
 import { Card, Skeleton, Empty, Tooltip, Progress } from "antd";
-import { SafetyOutlined } from "@ant-design/icons";
+import { SafetyOutlined, InfoCircleOutlined } from "@ant-design/icons";
 import type { RiskSummaryResponse } from "@g-fund/types";
 
 interface RiskSummaryCardProps {
@@ -21,7 +21,7 @@ function riskColor(value: number, thresholds: [number, number]): string {
 export default function RiskSummaryCard({ data, loading }: RiskSummaryCardProps) {
   if (loading) {
     return (
-      <Card title={<><SafetyOutlined /> 组合风险简表</>} style={{ height: "100%" }}>
+      <Card title={<><SafetyOutlined /> 组合风险简表 <Tooltip title="基于每日快照数据计算的核心风险指标。最大回撤：历史峰值到谷底的最大跌幅；年化波动率：日收益率标准差×√252；当前回撤：当前净值相对历史最高点的跌幅"><InfoCircleOutlined style={{ fontSize: 13, color: "#999" }} /></Tooltip></>} style={{ height: "100%" }}>
         <Skeleton active paragraph={{ rows: 4 }} />
       </Card>
     );
@@ -29,7 +29,7 @@ export default function RiskSummaryCard({ data, loading }: RiskSummaryCardProps)
 
   if (!data || data.snapshotDays < 2) {
     return (
-      <Card title={<><SafetyOutlined /> 组合风险简表</>} style={{ height: "100%" }}>
+      <Card title={<><SafetyOutlined /> 组合风险简表 <Tooltip title="基于每日快照数据计算的核心风险指标。最大回撤：历史峰值到谷底的最大跌幅；年化波动率：日收益率标准差×√252；当前回撤：当前净值相对历史最高点的跌幅"><InfoCircleOutlined style={{ fontSize: 13, color: "#999" }} /></Tooltip></>} style={{ height: "100%" }}>
         <Empty
           image={Empty.PRESENTED_IMAGE_SIMPLE}
           description="快照数据不足，无法计算风险指标"
@@ -62,7 +62,7 @@ export default function RiskSummaryCard({ data, loading }: RiskSummaryCardProps)
 
   return (
     <Card
-      title={<><SafetyOutlined /> 组合风险简表</>}
+      title={<><SafetyOutlined /> 组合风险简表 <Tooltip title="基于每日快照数据计算的核心风险指标。最大回撤：历史峰值到谷底的最大跌幅；年化波动率：日收益率标准差×√252；当前回撤：当前净值相对历史最高点的跌幅"><InfoCircleOutlined style={{ fontSize: 13, color: "#999" }} /></Tooltip></>}
       style={{ height: "100%" }}
       styles={{ body: { padding: "16px" } }}
       extra={

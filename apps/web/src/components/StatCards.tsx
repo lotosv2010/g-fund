@@ -1,5 +1,6 @@
 "use client";
-import { Card, Col, Row, Skeleton, Typography } from "antd";
+import { Card, Col, Row, Skeleton, Typography, Tooltip } from "antd";
+import { InfoCircleOutlined } from "@ant-design/icons";
 import type { PositionListItem, DailySnapshot } from "@g-fund/types";
 
 const { Text } = Typography;
@@ -60,6 +61,7 @@ export default function StatCards({ data, loading, latestSnapshot, prevSnapshot,
   const cards = [
     {
       title: "总资产",
+      tooltip: "所有基金持仓的当前市值之和，即 sum(各基金持有份额 × 最新净值)",
       content: `¥${totalAssets.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
       sub: `${data.length} 只基金`,
       color: undefined as string | undefined,
@@ -67,6 +69,7 @@ export default function StatCards({ data, loading, latestSnapshot, prevSnapshot,
     },
     {
       title: "总盈亏",
+      tooltip: "总市值 - 总成本。收益率 = 总盈亏 / 总成本 × 100%",
       content: `${totalPnl >= 0 ? "+" : ""}¥${totalPnl.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
       sub: `${totalPnlRate >= 0 ? "+" : ""}${(totalPnlRate * 100).toFixed(2)}%`,
       color: isProfit ? PROFIT_COLOR : LOSS_COLOR,
@@ -74,6 +77,7 @@ export default function StatCards({ data, loading, latestSnapshot, prevSnapshot,
     },
     {
       title: displayPnlLabel,
+      tooltip: "当日盈亏 = 今日市值 - 昨日市值 - 当日净买入金额。数据来源于每日快照",
       content: displayPnl !== null
         ? `${displayPnl >= 0 ? "+" : ""}¥${displayPnl.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
         : "—",
@@ -83,6 +87,7 @@ export default function StatCards({ data, loading, latestSnapshot, prevSnapshot,
     },
     {
       title: "持仓数量",
+      tooltip: "当前持有的基金数量",
       content: `${data.length}`,
       sub: "只基金",
       color: undefined as string | undefined,
@@ -114,7 +119,12 @@ export default function StatCards({ data, loading, latestSnapshot, prevSnapshot,
             hoverable={!!card.onClick}
           >
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              <Text type="secondary" style={{ fontSize: 13 }}>{card.title}</Text>
+              <Text type="secondary" style={{ fontSize: 13 }}>
+                {card.title}
+                <Tooltip title={card.tooltip}>
+                  <InfoCircleOutlined style={{ marginLeft: 4, fontSize: 11, color: "#999" }} />
+                </Tooltip>
+              </Text>
               <Text strong style={{ fontSize: 24, color: card.color, lineHeight: 1.3 }}>
                 {card.content}
               </Text>

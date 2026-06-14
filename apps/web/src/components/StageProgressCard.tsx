@@ -1,6 +1,6 @@
 "use client";
 import { Card, Progress, Tag, Typography, Skeleton, Space, Tooltip } from "antd";
-import { FundOutlined, RocketOutlined, PauseCircleOutlined } from "@ant-design/icons";
+import { FundOutlined, RocketOutlined, PauseCircleOutlined, InfoCircleOutlined } from "@ant-design/icons";
 import type { FundListItem } from "@g-fund/types";
 
 const { Text } = Typography;
@@ -27,7 +27,7 @@ export default function StageProgressCard({ data, loading }: StageProgressCardPr
 
   if (loading) {
     return (
-      <Card title={<><FundOutlined /> 阶段进度</>} style={{ height: "100%" }}>
+      <Card title={<><FundOutlined /> 阶段进度 <Tooltip title="展示各基金定投目标完成进度。定投期：正在按计划积累份额；持有期：已达目标金额，进入持有阶段"><InfoCircleOutlined style={{ fontSize: 13, color: "#999" }} /></Tooltip></>} style={{ height: "100%" }}>
         <Skeleton active paragraph={{ rows: 3 }} />
       </Card>
     );
@@ -35,7 +35,7 @@ export default function StageProgressCard({ data, loading }: StageProgressCardPr
 
   if (fundsWithTarget.length === 0) {
     return (
-      <Card title={<><FundOutlined /> 阶段进度</>} style={{ height: "100%" }}>
+      <Card title={<><FundOutlined /> 阶段进度 <Tooltip title="展示各基金定投目标完成进度。定投期：正在按计划积累份额；持有期：已达目标金额，进入持有阶段"><InfoCircleOutlined style={{ fontSize: 13, color: "#999" }} /></Tooltip></>} style={{ height: "100%" }}>
         <Text type="secondary">暂无目标金额配置</Text>
       </Card>
     );
@@ -43,21 +43,21 @@ export default function StageProgressCard({ data, loading }: StageProgressCardPr
 
   return (
     <Card
-      title={<><FundOutlined /> 阶段进度</>}
+      title={<><FundOutlined /> 阶段进度 <Tooltip title="展示各基金定投目标完成进度。定投期：正在按计划积累份额；持有期：已达目标金额，进入持有阶段"><InfoCircleOutlined style={{ fontSize: 13, color: "#999" }} /></Tooltip></>}
       style={{ height: "100%" }}
-      styles={{ body: { padding: "12px 16px" } }}
+      styles={{ body: { padding: "12px 16px 0px 16px", maxHeight: 390, overflowY: "auto" } }}
     >
-      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <div style={{ textAlign: "center" }}>
           <Text type="secondary" style={{ fontSize: 13 }}>整体持仓 / 目标</Text>
           <Progress
             type="circle"
             percent={Math.min(overallPercent, 100)}
-            size={100}
+            size={90}
             strokeColor={overallPercent >= 80 ? "#52c41a" : "#1677ff"}
             format={(p) => (
               <div>
-                <Text strong style={{ fontSize: 18 }}>{p?.toFixed(1)}%</Text>
+                <Text strong style={{ fontSize: 16 }}>{p?.toFixed(1)}%</Text>
                 <br />
                 <Text type="secondary" style={{ fontSize: 11 }}>
                   {overallPercent >= 80 ? "已达标" : "定投中"}
@@ -72,7 +72,7 @@ export default function StageProgressCard({ data, loading }: StageProgressCardPr
           <Tag icon={<PauseCircleOutlined />} color="green">持有期 {holdingCount}</Tag>
         </div>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 360, overflowY: "auto", paddingRight: 4 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           {fundsWithTarget.map((fund) => {
             const percent = parseFloat(fund.targetAmount) > 0
               ? (parseFloat(fund.currentValue) / parseFloat(fund.targetAmount)) * 100
@@ -104,11 +104,6 @@ export default function StageProgressCard({ data, loading }: StageProgressCardPr
               </Tooltip>
             );
           })}
-          {fundsWithTarget.length > 6 && (
-            <Text type="secondary" style={{ textAlign: "center", fontSize: 12 }}>
-              共 {fundsWithTarget.length} 只基金，滚动查看更多
-            </Text>
-          )}
         </div>
       </div>
     </Card>
