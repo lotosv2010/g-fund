@@ -156,6 +156,8 @@ export const dashboardApi = {
     http.get<RebalanceResponse>("/dashboard/rebalance").then((r) => r.data),
   riskSummary: () =>
     http.get<RiskSummaryResponse>("/dashboard/risk-summary").then((r) => r.data),
+  benchmark: () =>
+    http.get<import("@g-fund/types").BenchmarkComparisonResponse>("/dashboard/benchmark").then((r) => r.data),
 };
 
 export const marketIndexApi = {

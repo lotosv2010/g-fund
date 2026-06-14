@@ -1,29 +1,57 @@
 "use client";
 import { Card, Empty, Skeleton } from "antd";
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import type { DailySnapshot } from "@g-fund/types";
+import {
+  ComposedChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Legend,
+} from "recharts";
+import type { DailySnapshot, BenchmarkComparisonResponse } from "@g-fund/types";
 import { useMemo } from "react";
 
 interface PnLChartProps {
   data?: DailySnapshot[];
+  benchmark?: BenchmarkComparisonResponse | null;
   loading?: boolean;
 }
 
-export default function PnLChart({ data, loading }: PnLChartProps) {
+export default function PnLChart({ data, benchmark, loading }: PnLChartProps) {
   const chartData = useMemo(() => {
     if (!data || data.length === 0) return [];
     const sorted = [...data].sort((a, b) => a.snapshotDate.localeCompare(b.snapshotDate));
-    return sorted.map((s, i) => {
-      const pnl = parseFloat(s.totalPnl);
-      const prevPnl = i > 0 ? parseFloat(sorted[i - 1].totalPnl) : 0;
+
+    // 按日期排序的基准点列表，用于最近邻填充
+    const benchmarkPoints = benchmark
+      ? [...benchmark.points].sort((a, b) => a.date.localeCompare(b.date))
+      : [];
+
+    function nearestBenchmark(date: string): number | null {
+      if (benchmarkPoints.length === 0) return null;
+      // 找最近的基准点（优先 <=，否则取最早的）
+      let best = benchmarkPoints[0];
+      for (const p of benchmarkPoints) {
+        if (p.date <= date) best = p;
+        else break;
+      }
+      return best.benchmarkCumReturn;
+    }
+
+    return sorted.map((s) => {
+      const totalValue = parseFloat(s.totalValue);
+      const totalCost = parseFloat(s.totalCost);
+      const portfolioCumReturn = totalCost > 0 ? (totalValue - totalCost) / totalCost : 0;
+      const bm = nearestBenchmark(s.snapshotDate);
       return {
         date: s.snapshotDate.slice(5),
-        dailyPnl: i > 0 ? pnl - prevPnl : pnl,
-        cumPnl: pnl,
-        value: parseFloat(s.totalValue),
+        portfolioCumReturn: parseFloat((portfolioCumReturn * 100).toFixed(2)),
+        benchmarkCumReturn: bm !== null ? parseFloat((bm * 100).toFixed(2)) : null,
       };
     });
-  }, [data]);
+  }, [data, benchmark]);
 
   if (loading) {
     return (
@@ -41,29 +69,48 @@ export default function PnLChart({ data, loading }: PnLChartProps) {
     );
   }
 
+  const hasBenchmark = chartData.some((d) => d.benchmarkCumReturn !== null);
+
   return (
     <Card title="盈亏曲线">
       <ResponsiveContainer width="100%" height={280}>
-        <AreaChart data={chartData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+        <ComposedChart data={chartData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
           <XAxis dataKey="date" tick={{ fontSize: 12 }} />
-          <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
+          <YAxis
+            tick={{ fontSize: 12 }}
+            tickFormatter={(v) => `${v}%`}
+            domain={["auto", "auto"]}
+          />
           <Tooltip
-            formatter={(val, name) => [
-              `¥${Number(val).toLocaleString(undefined, { minimumFractionDigits: 2 })}`,
-              name === "dailyPnl" ? "当日盈亏" : "累计盈亏",
+            formatter={(val: unknown, name: unknown) => [
+              `${Number(val).toFixed(2)}%`,
+              name === "portfolioCumReturn" ? "组合收益率" : benchmark?.benchmarkName ?? "沪深300",
             ]}
             labelFormatter={(label) => `日期: ${label}`}
           />
-          <Area
+          {hasBenchmark && <Legend formatter={(name) => name === "portfolioCumReturn" ? "组合收益率" : benchmark?.benchmarkName ?? "沪深300"} />}
+          <Line
             type="monotone"
-            dataKey="dailyPnl"
+            dataKey="portfolioCumReturn"
             stroke="#2563eb"
-            fill="#2563eb"
-            fillOpacity={0.15}
             strokeWidth={2}
+            dot={false}
+            name="portfolioCumReturn"
           />
-        </AreaChart>
+          {hasBenchmark && (
+            <Line
+              type="monotone"
+              dataKey="benchmarkCumReturn"
+              stroke="#f59e0b"
+              strokeWidth={1.5}
+              strokeDasharray="4 2"
+              dot={false}
+              connectNulls
+              name="benchmarkCumReturn"
+            />
+          )}
+        </ComposedChart>
       </ResponsiveContainer>
     </Card>
   );

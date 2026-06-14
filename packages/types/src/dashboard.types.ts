@@ -50,3 +50,17 @@ export interface RiskSummaryResponse {
   /** 计算所用的快照天数 */
   snapshotDays: number;
 }
+
+export interface BenchmarkPoint {
+  date: string;
+  /** 组合累计收益率（0~1，如 0.12 = +12%） */
+  portfolioCumReturn: number;
+  /** 基准指数累计收益率（0~1） */
+  benchmarkCumReturn: number;
+}
+
+export interface BenchmarkComparisonResponse {
+  points: BenchmarkPoint[];
+  benchmarkName: string;
+  snapshotCount: number;
+}

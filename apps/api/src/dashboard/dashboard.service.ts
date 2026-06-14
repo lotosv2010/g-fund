@@ -4,7 +4,8 @@ import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '@g-fund/db';
 import { DB } from '../db/db.module';
 import { McpService } from '../mcp/mcp.service';
-import type { AssetAllocationResponse, FundAssetClassNode, FundAssetDetail, RebalanceResponse, RebalanceSuggestion, RiskSummaryResponse } from '@g-fund/types';
+import { MarketIndexService } from '../market-index/market-index.service';
+import type { AssetAllocationResponse, FundAssetClassNode, FundAssetDetail, RebalanceResponse, RebalanceSuggestion, RiskSummaryResponse, BenchmarkComparisonResponse, BenchmarkPoint } from '@g-fund/types';
 
 type DbType = NodePgDatabase<typeof schema>;
 
@@ -31,6 +32,7 @@ export class DashboardService {
   constructor(
     @Inject(DB) private readonly db: DbType,
     private readonly mcp: McpService,
+    private readonly marketIndex: MarketIndexService,
   ) {}
 
   async getAssetAllocation(): Promise<AssetAllocationResponse> {
@@ -354,5 +356,94 @@ export class DashboardService {
       currentDrawdown,
       snapshotDays: snapshots.length,
     };
+  }
+
+  async getBenchmarkComparison(benchmarkCode = 'sh000300'): Promise<BenchmarkComparisonResponse> {
+    const rows = await this.db
+      .select({
+        snapshotDate: schema.dailySnapshots.snapshotDate,
+        totalValue: schema.dailySnapshots.totalValue,
+        totalCost: schema.dailySnapshots.totalCost,
+      })
+      .from(schema.dailySnapshots)
+      .orderBy(asc(schema.dailySnapshots.snapshotDate));
+
+    const snapshots = rows.filter((r) => {
+      const dow = new Date(r.snapshotDate + 'T00:00:00').getDay();
+      return dow !== 0 && dow !== 6;
+    });
+
+    if (snapshots.length === 0) {
+      return { points: [], benchmarkName: '沪深300', snapshotCount: 0 };
+    }
+
+    const startDate = snapshots[0].snapshotDate;
+    const endDate = snapshots[snapshots.length - 1].snapshotDate;
+    const daysDiff = Math.max(
+      Math.ceil((new Date(endDate).getTime() - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24)) + 5,
+      5,
+    );
+
+    let indexHistory = await this.marketIndex.fetchHistory(benchmarkCode, daysDiff);
+
+    // 历史表无数据时，用实时行情构造当日基准点
+    if (indexHistory.length === 0) {
+      const realtimeQuotes = await this.marketIndex.fetchRealtime([{ code: benchmarkCode, name: '沪深300' }]);
+      if (realtimeQuotes.length > 0) {
+        const q = realtimeQuotes[0];
+        indexHistory = [{
+          id: 0,
+          indexCode: q.indexCode,
+          name: q.name,
+          close: q.close.toFixed(4),
+          changePct: q.changePct.toFixed(4),
+          turnover: '0',
+          tradeDate: q.tradeDate,
+          updatedAt: new Date(),
+        }];
+      }
+    }
+
+    // 按日期建立 Map
+    const indexMap = new Map<string, number>();
+    for (const h of indexHistory) {
+      indexMap.set(h.tradeDate, parseFloat(h.close));
+    }
+
+    // 找到最接近 startDate 的基准点：优先找 >= startDate，否则取最近日期
+    const sortedDates = [...indexMap.keys()].sort();
+    const baseDate =
+      sortedDates.find((d) => d >= startDate) ??
+      sortedDates.reduceRight<string | undefined>((found, d) => found ?? (d <= startDate ? d : undefined), undefined) ??
+      sortedDates[0];
+    const baseClose = baseDate ? indexMap.get(baseDate) : undefined;
+
+    if (!baseClose) {
+      return { points: [], benchmarkName: '沪深300', snapshotCount: snapshots.length };
+    }
+
+    const baseCost = parseFloat(snapshots[0].totalCost);
+
+    // 前向填充：初始值为最接近起始日的基准收盘价
+    // 若基准数据晚于快照（如只有今日实时价），也能为所有快照提供基准值
+    let lastKnownClose = baseClose;
+    const points: BenchmarkPoint[] = [];
+
+    for (const snap of snapshots) {
+      const close = indexMap.get(snap.snapshotDate);
+      if (close !== undefined) lastKnownClose = close;
+
+      const portfolioValue = parseFloat(snap.totalValue);
+      const portfolioCost = parseFloat(snap.totalCost);
+      const effectiveCost = portfolioCost > 0 ? portfolioCost : baseCost;
+
+      points.push({
+        date: snap.snapshotDate,
+        portfolioCumReturn: effectiveCost > 0 ? (portfolioValue - effectiveCost) / effectiveCost : 0,
+        benchmarkCumReturn: (lastKnownClose - baseClose) / baseClose,
+      });
+    }
+
+    return { points, benchmarkName: '沪深300', snapshotCount: snapshots.length };
   }
 }
