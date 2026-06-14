@@ -6,4 +6,20 @@ export const RISK_LABELS: Record<number, { label: string; color: string }> = {
   5: { label: "高风险", color: "red" },
 };
 
-export const FUND_TYPE_OPTIONS = ["股票型", "混合型", "债券型", "货币型", "指数型"] as const;
+export const FUND_TYPE_COLORS: Record<string, string> = {
+  "货币型": "green",
+  "债券型": "blue",
+  "债券型-长债": "blue",
+  "债券型-中短债": "blue",
+  "债券型-混合债": "geekblue",
+  "指数型-固收": "cyan",
+  "混合型-偏债": "gold",
+  "混合型-灵活": "orange",
+  "混合型-偏股": "orange",
+  "混合型-平衡": "gold",
+  "指数型-股票": "cyan",
+  "指数型-海外股票": "purple",
+  "股票型": "red",
+  "QDII": "purple",
+  "QDII-纯债": "magenta",
+};

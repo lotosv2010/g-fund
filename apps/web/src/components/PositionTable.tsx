@@ -1,6 +1,6 @@
 "use client";
-import { Table, Typography, Button, Space, Tag } from "antd";
-import { ShoppingCartOutlined, TagOutlined, FileTextOutlined, EditOutlined, AlertOutlined, RobotOutlined } from "@ant-design/icons";
+import { Table, Typography, Button, Space, Tag, Dropdown } from "antd";
+import { ShoppingCartOutlined, TagOutlined, FileTextOutlined, EditOutlined, AlertOutlined, MoreOutlined, OpenAIOutlined } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table/interface";
 import type { PositionListItem } from "@g-fund/types";
 import {
@@ -44,6 +44,13 @@ export default function PositionTable({ data, loading, signals = [], funds = [],
   const totalPnl = totalValue - totalCost;
   const totalPnlRate = totalCost > 0 ? totalPnl / totalCost : 0;
 
+  function getSignalPriority(record: PositionListItem): number {
+    const fundSignals = signals.filter((s) => s.fundCode === record.fundCode && s.triggered);
+    if (fundSignals.length === 0) return -1;
+    const typeOrder: Record<string, number> = { deep_loss: 4, stop_loss: 3, take_profit: 2, warning: 1, rebound: 0 };
+    return Math.max(...fundSignals.map((s) => typeOrder[s.signalType] ?? 0));
+  }
+
   const columns: ColumnsType<PositionListItem> = [
     { title: "基金代码", dataIndex: "fundCode", width: 100 },
     { title: "基金名称", dataIndex: "fundName", width: 200, ellipsis: true },
@@ -51,9 +58,10 @@ export default function PositionTable({ data, loading, signals = [], funds = [],
       title: "预警等级",
       width: 110,
       align: "center",
+      sorter: (a, b) => getSignalPriority(a) - getSignalPriority(b),
       render: (_, record) => {
         const fundSignals = signals.filter((s) => s.fundCode === record.fundCode && s.triggered);
-        if (fundSignals.length === 0) return <Tag color="default">正常</Tag>;
+        if (fundSignals.length === 0) return <Tag color="green">正常</Tag>;
 
         // 优先级：deep_loss > stop_loss > take_profit > warning > rebound
         const typeOrder: Record<string, number> = { deep_loss: 4, stop_loss: 3, take_profit: 2, warning: 1, rebound: 0 };
@@ -74,6 +82,12 @@ export default function PositionTable({ data, loading, signals = [], funds = [],
       title: "生命周期",
       width: 90,
       align: "center",
+      sorter: (a, b) => {
+        const order = { dca: 0, holding: 1 };
+        const sa = order[(funds.find((f) => f.code === a.fundCode)?.lifecycleStage ?? "dca") as LifecycleStage] ?? 0;
+        const sb = order[(funds.find((f) => f.code === b.fundCode)?.lifecycleStage ?? "dca") as LifecycleStage] ?? 0;
+        return sa - sb;
+      },
       render: (_, record) => {
         const fund = funds.find((f) => f.code === record.fundCode);
         const stage = (fund?.lifecycleStage ?? "dca") as LifecycleStage;
@@ -86,22 +100,27 @@ export default function PositionTable({ data, loading, signals = [], funds = [],
     },
     {
       title: "持有份额", dataIndex: "shares", width: 120, align: "right",
+      sorter: (a, b) => parseFloat(a.shares) - parseFloat(b.shares),
       render: (v) => parseFloat(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
     },
     {
       title: "成本价", dataIndex: "costPrice", width: 100, align: "right",
+      sorter: (a, b) => parseFloat(a.costPrice) - parseFloat(b.costPrice),
       render: (v) => parseFloat(v).toFixed(4),
     },
     {
       title: "成本金额", dataIndex: "costAmount", width: 120, align: "right",
+      sorter: (a, b) => parseFloat(a.costAmount) - parseFloat(b.costAmount),
       render: (v) => `¥${parseFloat(v).toLocaleString()}`,
     },
     {
       title: "当前市值", dataIndex: "currentValue", width: 120, align: "right",
+      sorter: (a, b) => parseFloat(a.currentValue) - parseFloat(b.currentValue),
       render: (v) => `¥${parseFloat(v).toLocaleString()}`,
     },
     {
       title: "盈亏金额", dataIndex: "pnlAmount", width: 120, align: "right",
+      sorter: (a, b) => parseFloat(a.pnlAmount) - parseFloat(b.pnlAmount),
       render: (v, record) => (
         <PnlCell
           value={`¥${parseFloat(v).toLocaleString()}`}
@@ -112,46 +131,43 @@ export default function PositionTable({ data, loading, signals = [], funds = [],
     },
     {
       title: "盈亏率", dataIndex: "pnlRate", width: 100, align: "right",
+      sorter: (a, b) => parseFloat(a.pnlRate) - parseFloat(b.pnlRate),
       render: (v) => <PnlCell value={`${(parseFloat(v) * 100).toFixed(2)}%`} raw={parseFloat(v)} />,
     },
     ...(onBuy || onSell || onViewLog || onEditSnapshot || onSignal || onAiAnalysis
       ? [
           {
             title: "操作",
-            width: 400,
+            width: 120,
             fixed: "right" as const,
             render: (_: unknown, record: PositionListItem) => (
-              <Space size={0}>
-                {onSignal && (
-                  <Button type="link" size="small" icon={<AlertOutlined />} onClick={() => onSignal(record.fundCode, record.fundName)}>
-                    信号
-                  </Button>
-                )}
+              <Space size="small">
                 {onAiAnalysis && (
-                  <Button type="link" size="small" icon={<RobotOutlined />} onClick={() => onAiAnalysis(record.fundCode, record.fundName)}>
+                  <Button type="link" size="small" icon={<OpenAIOutlined />} onClick={() => onAiAnalysis(record.fundCode, record.fundName)}>
                     AI
                   </Button>
                 )}
-                {onBuy && (
-                  <Button type="link" size="small" icon={<ShoppingCartOutlined />} onClick={() => onBuy(record.fundCode)}>
-                    买入
-                  </Button>
-                )}
-                {onSell && (
-                  <Button type="link" size="small" icon={<TagOutlined />} onClick={() => onSell(record.fundCode)}>
-                    卖出
-                  </Button>
-                )}
-                {onEditSnapshot && (
-                  <Button type="link" size="small" icon={<EditOutlined />} onClick={() => onEditSnapshot(record)}>
-                    修正
-                  </Button>
-                )}
-                {onViewLog && (
-                  <Button type="link" size="small" icon={<FileTextOutlined />} onClick={() => onViewLog(record.fundCode)}>
-                    日志
-                  </Button>
-                )}
+                <Dropdown
+                  menu={{
+                    items: [
+                      ...(onSignal ? [{ key: "signal", label: <span style={{ color: "#1677ff" }}>信号</span>, icon: <AlertOutlined style={{ color: "#1677ff" }} /> }] : []),
+                      ...(onBuy ? [{ key: "buy", label: <span style={{ color: "#1677ff" }}>买入</span>, icon: <ShoppingCartOutlined style={{ color: "#1677ff" }} /> }] : []),
+                      ...(onSell ? [{ key: "sell", label: <span style={{ color: "#1677ff" }}>卖出</span>, icon: <TagOutlined style={{ color: "#1677ff" }} /> }] : []),
+                      ...(onEditSnapshot ? [{ key: "edit", label: <span style={{ color: "#1677ff" }}>修正</span>, icon: <EditOutlined style={{ color: "#1677ff" }} /> }] : []),
+                      ...(onViewLog ? [{ key: "log", label: <span style={{ color: "#1677ff" }}>日志</span>, icon: <FileTextOutlined style={{ color: "#1677ff" }} /> }] : []),
+                    ],
+                    onClick: ({ key }) => {
+                      if (key === "signal") onSignal?.(record.fundCode, record.fundName);
+                      if (key === "buy") onBuy?.(record.fundCode);
+                      if (key === "sell") onSell?.(record.fundCode);
+                      if (key === "edit") onEditSnapshot?.(record);
+                      if (key === "log") onViewLog?.(record.fundCode);
+                    },
+                  }}
+                  trigger={["click"]}
+                >
+                  <Button type="link" size="small" icon={<MoreOutlined />} style={{ color: "#1677ff" }} />
+                </Dropdown>
               </Space>
             ),
           },

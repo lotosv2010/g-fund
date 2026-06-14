@@ -47,6 +47,26 @@ export const ASSET_TYPE_LABELS: Record<AssetType, string> = {
   index: '指数',
 };
 
+// 基金类型（天天基金 FTYPE）
+export const FUND_TYPES = [
+  '货币型',
+  '债券型',
+  '债券型-长债',
+  '债券型-中短债',
+  '债券型-混合债',
+  '指数型-固收',
+  '混合型-偏债',
+  '混合型-灵活',
+  '混合型-偏股',
+  '混合型-平衡',
+  '指数型-股票',
+  '指数型-海外股票',
+  '股票型',
+  'QDII',
+  'QDII-纯债',
+] as const;
+export type FundType = (typeof FUND_TYPES)[number];
+
 // 基金信息预览（添加基金时自动补全用）
 export interface FundInfoPreview {
   name: string | null;

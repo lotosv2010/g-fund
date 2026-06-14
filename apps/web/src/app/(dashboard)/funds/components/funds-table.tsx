@@ -1,7 +1,7 @@
 "use client";
 
-import { Table, Button, Space, Popconfirm, Tag, Progress } from "antd";
-import { EditOutlined, FundOutlined } from "@ant-design/icons";
+import { Table, Button, Space, Tag, Progress, Dropdown, Modal } from "antd";
+import { EditOutlined, FundOutlined, MoreOutlined, DeleteOutlined } from "@ant-design/icons";
 import {
   VALUATION_LEVEL_LABELS,
   ASSET_TYPE_LABELS,
@@ -25,7 +25,7 @@ import {
 } from "@dnd-kit/sortable";
 import { DragHandle } from "./drag-handle";
 import { SortableRow } from "./sortable-row";
-import { RISK_LABELS } from "../constants";
+import { RISK_LABELS, FUND_TYPE_COLORS } from "../constants";
 
 interface FundsTableProps {
   dataSource: FundListItem[];
@@ -63,11 +63,12 @@ export function FundsTable({
     },
     { title: "基金代码", dataIndex: "code", width: 100 },
     { title: "基金名称", dataIndex: "name", width: 220, ellipsis: true, sorter: true },
-    { title: "类型", dataIndex: "type", width: 100, render: (v) => v ?? "—" },
+    { title: "类型", dataIndex: "type", width: 130, sorter: true, render: (v) => v ? <Tag color={FUND_TYPE_COLORS[v]}>{v}</Tag> : "—" },
     {
       title: "风险等级",
       dataIndex: "riskLevel",
       width: 100,
+      sorter: (a, b) => (a.riskLevel ?? 0) - (b.riskLevel ?? 0),
       render: (v) =>
         v ? <Tag color={RISK_LABELS[v]?.color}>{RISK_LABELS[v]?.label}</Tag> : "—",
     },
@@ -76,6 +77,7 @@ export function FundsTable({
       dataIndex: "targetAmount",
       width: 120,
       align: "right",
+      sorter: (a, b) => parseFloat(a.targetAmount) - parseFloat(b.targetAmount),
       render: (v) => `¥${parseFloat(v).toLocaleString()}`,
     },
     {
@@ -83,6 +85,7 @@ export function FundsTable({
       dataIndex: "targetRatio",
       width: 100,
       align: "right",
+      sorter: (a, b) => parseFloat(a.targetRatio) - parseFloat(b.targetRatio),
       render: (v) => `${v}%`,
     },
     {
@@ -90,6 +93,7 @@ export function FundsTable({
       dataIndex: "baseAmount",
       width: 100,
       align: "right",
+      sorter: (a, b) => parseFloat(a.baseAmount) - parseFloat(b.baseAmount),
       render: (v) => {
         const n = parseFloat(v);
         return n > 0 ? `¥${n.toLocaleString()}` : "—";
@@ -100,6 +104,7 @@ export function FundsTable({
       dataIndex: "priority",
       width: 80,
       align: "center",
+      sorter: (a, b) => a.priority - b.priority,
       render: (v) => {
         const labels: Record<number, string> = { 0: "低", 1: "普通", 2: "较高", 3: "高" };
         const colors: Record<number, string> = { 0: "default", 1: "blue", 2: "orange", 3: "red" };
@@ -111,6 +116,12 @@ export function FundsTable({
       dataIndex: "valuationLevel",
       width: 90,
       align: "center",
+      sorter: (a, b) => {
+        const order = { low: 0, normal: 1, high: 2 };
+        const la = order[(a.valuationLevel ?? a.phase) as ValuationLevel] ?? 1;
+        const lb = order[(b.valuationLevel ?? b.phase) as ValuationLevel] ?? 1;
+        return la - lb;
+      },
       render: (v, record) => {
         const level = (v ?? record.phase) as ValuationLevel | null;
         return level ? (
@@ -125,6 +136,7 @@ export function FundsTable({
       dataIndex: "assetType",
       width: 90,
       align: "center",
+      sorter: (a, b) => (a.assetType ?? "").localeCompare(b.assetType ?? ""),
       render: (v) => {
         const type = (v ?? "equity") as AssetType;
         const colors: Record<AssetType, string> = {
@@ -142,6 +154,7 @@ export function FundsTable({
       dataIndex: "valuationPercentile",
       width: 100,
       align: "center",
+      sorter: (a, b) => (parseFloat(a.valuationPercentile ?? "0") || 0) - (parseFloat(b.valuationPercentile ?? "0") || 0),
       render: (v) => {
         if (v === null || v === undefined) return "—";
         const p = parseFloat(v);
@@ -163,18 +176,10 @@ export function FundsTable({
     },
     {
       title: "操作",
-      width: 200,
+      width: 120,
       fixed: "right",
       render: (_, record) => (
         <Space size="small">
-          <Button
-            type="link"
-            size="small"
-            icon={<FundOutlined />}
-            onClick={() => router.push(`/funds/${record.code}`)}
-          >
-            诊断
-          </Button>
           <Button
             type="link"
             size="small"
@@ -183,17 +188,31 @@ export function FundsTable({
           >
             编辑
           </Button>
-          <Popconfirm
-            title="确认删除该基金？"
-            onConfirm={() => onDelete(record.code)}
-            okText="删除"
-            okButtonProps={{ danger: true }}
-            cancelText="取消"
+          <Dropdown
+            menu={{
+              items: [
+                { key: "diagnose", label: <span style={{ color: "#1677ff" }}>诊断</span>, icon: <FundOutlined style={{ color: "#1677ff" }} /> },
+                { type: "divider" as const },
+                { key: "delete", label: "删除", icon: <DeleteOutlined />, danger: true },
+              ],
+              onClick: ({ key }) => {
+                if (key === "diagnose") {
+                  router.push(`/funds/${record.code}`);
+                } else if (key === "delete") {
+                  Modal.confirm({
+                    title: "确认删除该基金？",
+                    okText: "删除",
+                    okButtonProps: { danger: true },
+                    cancelText: "取消",
+                    onOk: () => onDelete(record.code),
+                  });
+                }
+              },
+            }}
+            trigger={["click"]}
           >
-            <Button type="link" danger size="small">
-              删除
-            </Button>
-          </Popconfirm>
+            <Button type="link" size="small" icon={<MoreOutlined />} style={{ color: "#1677ff" }} />
+          </Dropdown>
         </Space>
       ),
     },

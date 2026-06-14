@@ -10,8 +10,9 @@ import {
   VALUATION_LEVEL_LABELS,
   ASSET_TYPES,
   ASSET_TYPE_LABELS,
+  FUND_TYPES,
 } from "@g-fund/types";
-import { RISK_LABELS, FUND_TYPE_OPTIONS } from "../constants";
+import { RISK_LABELS } from "../constants";
 import { fundsApi } from "@/lib/api-client";
 
 interface FundFormModalProps {
@@ -114,8 +115,8 @@ export function FundFormModal({
             </Select>
           </Form.Item>
           <Form.Item name="type" label="基金类型">
-            <Select placeholder="请选择" allowClear>
-              {FUND_TYPE_OPTIONS.map((t) => (
+            <Select placeholder="请选择" allowClear showSearch>
+              {FUND_TYPES.map((t) => (
                 <Select.Option key={t} value={t}>
                   {t}
                 </Select.Option>

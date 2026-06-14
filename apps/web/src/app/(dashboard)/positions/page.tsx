@@ -1,7 +1,8 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
-import { Tabs, Typography, Flex, Button, Popconfirm, message, Form, Input, DatePicker, List, Card, Modal, Table, Tag } from "antd";
-import { PlusOutlined, EditOutlined, DeleteOutlined, ShoppingCartOutlined, FileAddOutlined, ReloadOutlined, ImportOutlined } from "@ant-design/icons";
+import { Tabs, Typography, Flex, Button, Popconfirm, message, Form, Input, DatePicker, List, Card, Modal, Table, Tag, Dropdown } from "antd";
+import { PlusOutlined, EditOutlined, DeleteOutlined, ShoppingCartOutlined, FileAddOutlined, ReloadOutlined, ImportOutlined, MoreOutlined, CloudSyncOutlined } from "@ant-design/icons";
+import type { MenuProps } from "antd";
 import type { PositionListItem, FundListItem, Transaction, CreateTransactionDto, DailyLog, CreateDailyLogDto, UpsertPositionDto, StopLossTakeProfitSignal } from "@g-fund/types";
 import type { ColumnsType } from "antd/es/table/interface";
 import { positionsApi, transactionsApi, fundsApi, dailyLogsApi, settingsApi, stopLossTakeProfitApi } from "@/lib/api-client";
@@ -510,12 +511,21 @@ export default function PositionsPage() {
             刷新
           </Button>
           <SyncPositionsButton onDone={() => loadPositions()} />
-          <Button icon={<ImportOutlined />} onClick={() => setImportModalOpen(true)}>
-            批量导入
-          </Button>
-          <Button icon={<FileAddOutlined />} onClick={openCreateSnapshot}>
-            建仓快照
-          </Button>
+          <Dropdown
+            menu={{
+              items: [
+                { key: "import", label: "批量导入", icon: <ImportOutlined /> },
+                { key: "snapshot", label: "建仓快照", icon: <FileAddOutlined /> },
+              ],
+              onClick: ({ key }) => {
+                if (key === "import") setImportModalOpen(true);
+                if (key === "snapshot") openCreateSnapshot();
+              },
+            }}
+            trigger={["click"]}
+          >
+            <Button icon={<MoreOutlined />}>更多</Button>
+          </Dropdown>
           <Button type="primary" icon={<ShoppingCartOutlined />} onClick={openTradeModal}>
             新建交易
           </Button>
