@@ -1,11 +1,11 @@
 import { Injectable, Inject, Logger } from '@nestjs/common';
-import { inArray, asc } from 'drizzle-orm';
+import { inArray, asc, ne, and, desc, gte } from 'drizzle-orm';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '@g-fund/db';
 import { DB } from '../db/db.module';
 import { McpService } from '../mcp/mcp.service';
 import { MarketIndexService } from '../market-index/market-index.service';
-import type { AssetAllocationResponse, FundAssetClassNode, FundAssetDetail, RebalanceResponse, RebalanceSuggestion, RiskSummaryResponse, BenchmarkComparisonResponse, BenchmarkPoint } from '@g-fund/types';
+import type { AssetAllocationResponse, FundAssetClassNode, FundAssetDetail, RebalanceResponse, RebalanceSuggestion, RiskSummaryResponse, BenchmarkComparisonResponse, BenchmarkPoint, AnomalyAlert, AnomalyResponse } from '@g-fund/types';
 
 type DbType = NodePgDatabase<typeof schema>;
 
@@ -445,5 +445,131 @@ export class DashboardService {
     }
 
     return { points, benchmarkName: '沪深300', snapshotCount: snapshots.length };
+  }
+
+  async getAnomalies(): Promise<AnomalyResponse> {
+    const PRICE_THRESHOLD = 0.03;
+    const VALUATION_HIGH = 80;
+    const VALUATION_LOW = 20;
+
+    const positions = await this.db
+      .select()
+      .from(schema.positions)
+      .where(ne(schema.positions.shares, '0'));
+
+    if (positions.length === 0) {
+      return { alerts: [], checkedAt: new Date().toISOString() };
+    }
+
+    const fundCodes = positions.map((p) => p.fundCode);
+
+    const funds = await this.db
+      .select()
+      .from(schema.funds)
+      .where(inArray(schema.funds.code, fundCodes));
+    const fundMap = new Map(funds.map((f) => [f.code, f]));
+
+    const navHistory = await this.db
+      .select()
+      .from(schema.fundNavHistory)
+      .where(inArray(schema.fundNavHistory.fundCode, fundCodes))
+      .orderBy(desc(schema.fundNavHistory.navDate));
+
+    const latestNavMap = new Map<string, typeof navHistory[0]>();
+    for (const nav of navHistory) {
+      if (!latestNavMap.has(nav.fundCode)) {
+        latestNavMap.set(nav.fundCode, nav);
+      }
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todaySignals = await this.db
+      .select()
+      .from(schema.slpSignalsLog)
+      .where(
+        and(
+          inArray(schema.slpSignalsLog.fundCode, fundCodes),
+          gte(schema.slpSignalsLog.triggeredAt, today),
+        ),
+      )
+      .orderBy(desc(schema.slpSignalsLog.triggeredAt));
+
+    const alerts: AnomalyAlert[] = [];
+
+    for (const position of positions) {
+      const fund = fundMap.get(position.fundCode);
+      const latestNav = latestNavMap.get(position.fundCode);
+
+      if (latestNav?.dailyReturn) {
+        const dailyReturn = parseFloat(latestNav.dailyReturn);
+        if (dailyReturn >= PRICE_THRESHOLD) {
+          alerts.push({
+            fundCode: position.fundCode,
+            fundName: position.fundName,
+            type: 'price_surge',
+            severity: dailyReturn >= 0.05 ? 'danger' : 'warning',
+            message: `今日涨幅 ${(dailyReturn * 100).toFixed(2)}%，关注是否止盈`,
+            value: dailyReturn,
+          });
+        } else if (dailyReturn <= -PRICE_THRESHOLD) {
+          alerts.push({
+            fundCode: position.fundCode,
+            fundName: position.fundName,
+            type: 'price_drop',
+            severity: dailyReturn <= -0.05 ? 'danger' : 'warning',
+            message: `今日跌幅 ${(Math.abs(dailyReturn) * 100).toFixed(2)}%，关注是否补仓或止损`,
+            value: dailyReturn,
+          });
+        }
+      }
+
+      if (fund?.valuationPercentile) {
+        const vp = parseFloat(fund.valuationPercentile);
+        if (vp > VALUATION_HIGH) {
+          alerts.push({
+            fundCode: position.fundCode,
+            fundName: position.fundName,
+            type: 'valuation_high',
+            severity: 'warning',
+            message: `估值分位 ${vp.toFixed(0)}%，处于历史高位，建议关注止盈时机`,
+            value: vp,
+          });
+        } else if (vp < VALUATION_LOW) {
+          alerts.push({
+            fundCode: position.fundCode,
+            fundName: position.fundName,
+            type: 'valuation_low',
+            severity: 'info',
+            message: `估值分位 ${vp.toFixed(0)}%，处于历史低位，可关注加仓机会`,
+            value: vp,
+          });
+        }
+      }
+    }
+
+    const signalSeen = new Set<string>();
+    for (const signal of todaySignals) {
+      if (!signal.message) continue;
+      const key = `${signal.fundCode}:${signal.signalType}`;
+      if (signalSeen.has(key)) continue;
+      signalSeen.add(key);
+
+      const position = positions.find((p) => p.fundCode === signal.fundCode);
+      const isStopLoss = signal.signalType === 'stop_loss' || signal.signalType === 'deep_loss';
+      alerts.push({
+        fundCode: signal.fundCode,
+        fundName: position?.fundName ?? signal.fundCode,
+        type: isStopLoss ? 'stop_loss' : 'take_profit',
+        severity: signal.level === 'red' ? 'danger' : signal.level === 'orange' ? 'warning' : 'info',
+        message: signal.message,
+        value: signal.pnlRate ? parseFloat(signal.pnlRate) : undefined,
+      });
+    }
+
+    const severityOrder: Record<string, number> = { danger: 0, warning: 1, info: 2 };
+    alerts.sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity]);
+
+    return { alerts, checkedAt: new Date().toISOString() };
   }
 }

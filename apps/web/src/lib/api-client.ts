@@ -7,7 +7,7 @@ import type {
   DailyLog, CreateDailyLogDto, UpdateDailyLogDto, DailySnapshot,
   AppSetting, AiConfig, McpConfig,
   ChatSessionSummary, ChatSessionDetail, PersistChatMessageDto, ChatMessage,
-  AssetAllocationResponse, RebalanceResponse, RiskSummaryResponse,
+  AssetAllocationResponse, RebalanceResponse, RiskSummaryResponse, AnomalyResponse,
   DcaRules, SlpRules, FundRuleOverride, FundRuleOverrideType, BulletReserve,
   MarketIndexQuote, MarketIndexHistory,
 } from "@g-fund/types";
@@ -158,6 +158,8 @@ export const dashboardApi = {
     http.get<RiskSummaryResponse>("/dashboard/risk-summary").then((r) => r.data),
   benchmark: () =>
     http.get<import("@g-fund/types").BenchmarkComparisonResponse>("/dashboard/benchmark").then((r) => r.data),
+  anomalies: () =>
+    http.get<AnomalyResponse>("/dashboard/anomalies").then((r) => r.data),
 };
 
 export const marketIndexApi = {

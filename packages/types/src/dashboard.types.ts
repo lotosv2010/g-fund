@@ -64,3 +64,27 @@ export interface BenchmarkComparisonResponse {
   benchmarkName: string;
   snapshotCount: number;
 }
+
+export type AnomalyType =
+  | 'price_surge'
+  | 'price_drop'
+  | 'valuation_high'
+  | 'valuation_low'
+  | 'stop_loss'
+  | 'take_profit';
+
+export type AnomalySeverity = 'info' | 'warning' | 'danger';
+
+export interface AnomalyAlert {
+  fundCode: string;
+  fundName: string;
+  type: AnomalyType;
+  severity: AnomalySeverity;
+  message: string;
+  value?: number;
+}
+
+export interface AnomalyResponse {
+  alerts: AnomalyAlert[];
+  checkedAt: string;
+}

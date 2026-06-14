@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Layout, Menu, Button, Tooltip } from "antd";
+import { useEffect, useState, useCallback } from "react";
+import { Layout, Menu, Button, Tooltip, Badge } from "antd";
 import {
   DashboardOutlined,
   FundOutlined,
@@ -10,10 +10,14 @@ import {
   SettingOutlined,
   OpenAIOutlined,
   ControlOutlined,
+  BellOutlined,
 } from "@ant-design/icons";
 import { usePathname, useRouter } from "next/navigation";
 import { useAppStore } from "@/store/useAppStore";
 import ChatDrawer from "@/components/ChatDrawer";
+import AnomalyDrawer from "@/components/AnomalyDrawer";
+import { dashboardApi } from "@/lib/api-client";
+import type { AnomalyAlert } from "@g-fund/types";
 
 const { Sider, Content, Header } = Layout;
 
@@ -45,6 +49,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const openChatDrawer = useAppStore((s) => s.openChatDrawer);
   const toggleChatDrawer = useAppStore((s) => s.toggleChatDrawer);
 
+  const [anomalyOpen, setAnomalyOpen] = useState(false);
+  const [anomalyAlerts, setAnomalyAlerts] = useState<AnomalyAlert[]>([]);
+
+  const loadAnomalies = useCallback(async () => {
+    try {
+      const res = await dashboardApi.anomalies();
+      setAnomalyAlerts(res.alerts);
+    } catch {
+      // silently ignore
+    }
+  }, []);
+
   const flatKeys = menuItems.flatMap((item) =>
     Array.isArray(item.children) ? item.children.map((c) => c.key) : [item.key],
   );
@@ -54,6 +70,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   useEffect(() => {
     setSelectedKey(flatKeys.find((key) => pathname.startsWith(key)) ?? "/dashboard");
   }, [pathname]);
+
+  useEffect(() => {
+    loadAnomalies();
+  }, [loadAnomalies]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -111,6 +131,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             height: 56,
           }}
         >
+          <Tooltip title="异动提示">
+            <Badge count={anomalyAlerts.length} size="small" offset={[-2, 2]}>
+              <Button
+                type="text"
+                icon={<BellOutlined style={{ fontSize: 18 }} />}
+                onClick={() => setAnomalyOpen(true)}
+              />
+            </Badge>
+          </Tooltip>
           <Tooltip title="AI 分析 (⌘K)">
             <Button
               type="text"
@@ -122,6 +151,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <Content style={{ padding: 24, overflow: "auto" }}>{children}</Content>
       </Layout>
       <ChatDrawer />
+      <AnomalyDrawer
+        open={anomalyOpen}
+        onClose={() => setAnomalyOpen(false)}
+        alerts={anomalyAlerts}
+      />
     </Layout>
   );
 }

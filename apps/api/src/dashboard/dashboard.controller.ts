@@ -1,7 +1,7 @@
 import { Controller, Get } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { DashboardService } from './dashboard.service';
-import type { AssetAllocationResponse, RebalanceResponse, RiskSummaryResponse, BenchmarkComparisonResponse } from '@g-fund/types';
+import type { AssetAllocationResponse, RebalanceResponse, RiskSummaryResponse, BenchmarkComparisonResponse, AnomalyResponse } from '@g-fund/types';
 
 @ApiTags('Dashboard')
 @Controller('dashboard')
@@ -30,5 +30,11 @@ export class DashboardController {
   @ApiOperation({ summary: '获取组合 vs 沪深300 累计收益率对比' })
   async getBenchmark(): Promise<BenchmarkComparisonResponse> {
     return this.service.getBenchmarkComparison();
+  }
+
+  @Get('anomalies')
+  @ApiOperation({ summary: '获取持仓异动提示（涨跌>3%/估值越线/止损触发）' })
+  async getAnomalies(): Promise<AnomalyResponse> {
+    return this.service.getAnomalies();
   }
 }
