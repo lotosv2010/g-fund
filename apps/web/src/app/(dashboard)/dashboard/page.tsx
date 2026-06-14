@@ -155,12 +155,14 @@ export default function DashboardPage() {
     loadFunds();
   }, [loadPositions, loadTransactions, loadSnapshots, loadSignals, loadDca, loadAssetAllocation, loadFunds]);
 
-  const todayStr = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; })();
-  const yesterdayStr = (() => { const d = new Date(); d.setDate(d.getDate() - 1); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; })();
-  const dayBeforeYesterdayStr = (() => { const d = new Date(); d.setDate(d.getDate() - 2); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; })();
-  const todaySnapshot = snapshots.find((s) => s.snapshotDate === todayStr) ?? null;
-  const yesterdaySnapshot = snapshots.find((s) => s.snapshotDate === yesterdayStr) ?? null;
-  const dayBeforeYesterdaySnapshot = snapshots.find((s) => s.snapshotDate === dayBeforeYesterdayStr) ?? null;
+  const tradingSnapshots = snapshots.filter((s) => {
+    const dow = new Date(s.snapshotDate + "T00:00:00").getDay();
+    return dow !== 0 && dow !== 6;
+  });
+  const sortedSnapshots = [...tradingSnapshots].sort((a, b) => b.snapshotDate.localeCompare(a.snapshotDate));
+  const latestSnapshot = sortedSnapshots[0] ?? null;
+  const prevSnapshot = sortedSnapshots[1] ?? null;
+  const prevPrevSnapshot = sortedSnapshots[2] ?? null;
 
   function handleTotalAssetsClick() {
     router.push("/positions");
@@ -191,9 +193,9 @@ export default function DashboardPage() {
         <StatCards
           data={positions}
           loading={posLoading}
-          todaySnapshot={todaySnapshot}
-          yesterdaySnapshot={yesterdaySnapshot}
-          dayBeforeYesterdaySnapshot={dayBeforeYesterdaySnapshot}
+          latestSnapshot={latestSnapshot}
+          prevSnapshot={prevSnapshot}
+          prevPrevSnapshot={prevPrevSnapshot}
           onTotalAssetsClick={handleTotalAssetsClick}
           onTotalPnlClick={() => setTotalProfitOpen(true)}
         />
@@ -208,7 +210,7 @@ export default function DashboardPage() {
       </Row>
       <Row gutter={[16, 16]} style={{ marginTop: 16 }} align="stretch">
         <Col xs={24}>
-          <PnLChart data={snapshots} loading={snapLoading} />
+          <PnLChart data={tradingSnapshots} loading={snapLoading} />
         </Col>
       </Row>
       <Row gutter={[16, 16]} style={{ marginTop: 16 }} align="stretch">

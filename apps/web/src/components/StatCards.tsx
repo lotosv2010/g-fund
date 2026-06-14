@@ -10,33 +10,51 @@ const LOSS_COLOR = "#16a34a";
 interface StatCardsProps {
   data: PositionListItem[];
   loading: boolean;
-  todaySnapshot?: DailySnapshot | null;
-  yesterdaySnapshot?: DailySnapshot | null;
-  dayBeforeYesterdaySnapshot?: DailySnapshot | null;
+  latestSnapshot?: DailySnapshot | null;
+  prevSnapshot?: DailySnapshot | null;
+  prevPrevSnapshot?: DailySnapshot | null;
   onTotalAssetsClick?: () => void;
   onTotalPnlClick?: () => void;
 }
 
-export default function StatCards({ data, loading, todaySnapshot, yesterdaySnapshot, dayBeforeYesterdaySnapshot, onTotalAssetsClick, onTotalPnlClick }: StatCardsProps) {
+export default function StatCards({ data, loading, latestSnapshot, prevSnapshot, prevPrevSnapshot, onTotalAssetsClick, onTotalPnlClick }: StatCardsProps) {
   const totalAssets = data.reduce((s, r) => s + parseFloat(r.currentValue), 0);
   const totalCost = data.reduce((s, r) => s + parseFloat(r.costAmount), 0);
   const totalPnl = totalAssets - totalCost;
   const totalPnlRate = totalCost > 0 ? totalPnl / totalCost : 0;
   const isProfit = totalPnl >= 0;
 
-  const todayPnl = todaySnapshot && yesterdaySnapshot
-    ? parseFloat(todaySnapshot.totalValue) - parseFloat(yesterdaySnapshot.totalValue)
+  const todayStr = new Date().toISOString().split("T")[0];
+  const isLatestToday = latestSnapshot?.snapshotDate === todayStr;
+
+  const latestNetBuy = latestSnapshot?.positionsSnapshot
+    ? latestSnapshot.positionsSnapshot.reduce((sum, p) => sum + parseFloat(p.netBuyAmount || "0"), 0)
+    : 0;
+  const prevNetBuy = prevSnapshot?.positionsSnapshot
+    ? prevSnapshot.positionsSnapshot.reduce((sum, p) => sum + parseFloat(p.netBuyAmount || "0"), 0)
+    : 0;
+
+  const latestPnl = latestSnapshot && prevSnapshot
+    ? parseFloat(latestSnapshot.totalValue) - parseFloat(prevSnapshot.totalValue) - latestNetBuy
     : null;
-  const yesterdayPnl = yesterdaySnapshot && dayBeforeYesterdaySnapshot
-    ? parseFloat(yesterdaySnapshot.totalValue) - parseFloat(dayBeforeYesterdaySnapshot.totalValue)
+  const prevPnl = prevSnapshot && prevPrevSnapshot
+    ? parseFloat(prevSnapshot.totalValue) - parseFloat(prevPrevSnapshot.totalValue) - prevNetBuy
     : null;
-  const displayPnl = todayPnl !== null ? todayPnl : yesterdayPnl;
-  const displayPnlLabel = todayPnl !== null ? "今日盈亏" : "昨日盈亏";
-  const displayPnlSub = todayPnl !== null
-    ? `市值 ¥${parseFloat(todaySnapshot!.totalValue).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
-    : yesterdaySnapshot
-      ? `市值 ¥${parseFloat(yesterdaySnapshot.totalValue).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
-      : "暂无快照";
+
+  const displayPnl = latestPnl !== null ? latestPnl : prevPnl;
+  const displaySnapshot = latestPnl !== null ? latestSnapshot : prevSnapshot;
+  const displayDate = displaySnapshot?.snapshotDate;
+
+  const displayPnlLabel = (() => {
+    if (!displayDate) return "昨日盈亏";
+    if (latestPnl !== null && isLatestToday) return "今日盈亏";
+    const [, mm, dd] = displayDate.split("-");
+    return `${mm}/${dd} 盈亏`;
+  })();
+
+  const displayPnlSub = displaySnapshot
+    ? `市值 ¥${parseFloat(displaySnapshot.totalValue).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+    : "暂无快照";
   const todayProfit = displayPnl !== null ? displayPnl >= 0 : null;
 
   const cards = [

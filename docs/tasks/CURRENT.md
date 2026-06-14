@@ -1,35 +1,5 @@
 # 当前任务（CURRENT）
 
-## REQ-013：基金信息自动补全 + 一键同步
-
-**进度**：5/5 完成 ✅
-
-### Milestone 1：后端能力
-
-- [x] T13.1.1 后端 `fetchFundInfo`：调天天基金 API 获取 name/type/riskLevel
-- [x] T13.1.2 后端 `GET /funds/:code/preview` 接口
-- [x] T13.1.3 后端 `POST /funds/sync-info` 批量补全接口
-
-### Milestone 2：前端
-
-- [x] T13.2.1 添加基金表单：代码输入失焦自动查询并预填字段
-- [x] T13.2.2 列表页新增「同步基金信息」按钮 + 结果展示
-
-## REQ-014：信息架构重构（funds / positions / 诊断页边界对齐）
-
-- [x] T14.1 funds 列表移除「预警等级」列，迁至 positions
-- [x] T14.2 funds 列表移除「生命周期」列，迁至 positions
-- [x] T14.3 诊断页移除「止盈止损分析」模块，迁至持仓抽屉
-- [x] T14.4 诊断页移除「持仓详情」模块，统一由 positions 展示
-- [x] T14.5 positions 行新增「信号」入口（抽屉含止盈止损分析 + 触发距离）
-- [x] T14.6 诊断页保留估值信息 / 例外规则 / 定投建议，定位为「基金画像」
-
-## REQ-015：收益明细抽屉补当日盈亏
-
-- [x] T15.1 FundProfitDrawer 新增「当日盈亏金额 / 当日盈亏率」列
-- [x] T15.2 柱状图默认切换为当日盈亏，保留累计盈亏 tab
-- [x] T15.3 后端 snapshot 补 `netBuyAmount` 字段以剔除买卖基数干扰
-
 ## REQ-016：再平衡建议
 
 - [ ] T16.1 按 targetRatio 与当前偏离计算调仓清单（卖谁 X 元 / 买谁 Y 元）

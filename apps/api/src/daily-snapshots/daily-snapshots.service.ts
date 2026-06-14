@@ -52,6 +52,18 @@ export class DailySnapshotsService {
     const d = new Date();
     const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
+    // 周末不生成快照，返回最近一条已有快照
+    const dayOfWeek = d.getDay();
+    if (dayOfWeek === 0 || dayOfWeek === 6) {
+      const [recent] = await this.db
+        .select()
+        .from(schema.dailySnapshots)
+        .orderBy(desc(schema.dailySnapshots.snapshotDate))
+        .limit(1);
+      if (recent) return toSnapshot(recent);
+      throw new Error('周末不生成快照，且暂无历史快照');
+    }
+
     const posRows = await this.db.select().from(schema.positions);
 
     // 查昨日快照，用于计算 netBuyAmount
