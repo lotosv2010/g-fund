@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Col, Row, Space, Typography, message } from "antd";
-import type { PositionListItem, Transaction, DailySnapshot, StopLossTakeProfitSignal, SlpSignalLog, DcaCalculation, DcaSnapshot, AssetAllocationResponse, FundListItem, RebalanceResponse } from "@g-fund/types";
+import type { PositionListItem, Transaction, DailySnapshot, StopLossTakeProfitSignal, SlpSignalLog, DcaCalculation, DcaSnapshot, AssetAllocationResponse, FundListItem, RebalanceResponse, RiskSummaryResponse } from "@g-fund/types";
 import { positionsApi, transactionsApi, dailySnapshotsApi, stopLossTakeProfitApi, dcaApi, dashboardApi, fundsApi } from "@/lib/api-client";
 import StatCards from "@/components/StatCards";
 import PnLChart from "@/components/PnLChart";
@@ -17,6 +17,7 @@ import TotalProfitDrawer from "@/components/TotalProfitDrawer";
 import FundProfitDrawer from "@/components/FundProfitDrawer";
 import MarketIndexBoard from "@/components/MarketIndexBoard";
 import RebalanceCard from "@/components/RebalanceCard";
+import RiskSummaryCard from "@/components/RiskSummaryCard";
 
 const { Title } = Typography;
 
@@ -32,6 +33,7 @@ export default function DashboardPage() {
   const [nextDcaDate, setNextDcaDate] = useState<string | null>(null);
   const [assetAllocation, setAssetAllocation] = useState<AssetAllocationResponse | null>(null);
   const [rebalance, setRebalance] = useState<RebalanceResponse | null>(null);
+  const [riskSummary, setRiskSummary] = useState<RiskSummaryResponse | null>(null);
   const [funds, setFunds] = useState<FundListItem[]>([]);
   const [posLoading, setPosLoading] = useState(false);
   const [txLoading, setTxLoading] = useState(false);
@@ -40,6 +42,7 @@ export default function DashboardPage() {
   const [dcaLoading, setDcaLoading] = useState(false);
   const [allocLoading, setAllocLoading] = useState(false);
   const [rebalanceLoading, setRebalanceLoading] = useState(false);
+  const [riskSummaryLoading, setRiskSummaryLoading] = useState(false);
   const [fundsLoading, setFundsLoading] = useState(false);
   const [messageApi, contextHolder] = message.useMessage();
 
@@ -160,6 +163,18 @@ export default function DashboardPage() {
     }
   }, []);
 
+  const loadRiskSummary = useCallback(async () => {
+    setRiskSummaryLoading(true);
+    try {
+      const data = await dashboardApi.riskSummary();
+      setRiskSummary(data);
+    } catch {
+      // may not have data yet
+    } finally {
+      setRiskSummaryLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     loadPositions();
     loadTransactions();
@@ -169,7 +184,8 @@ export default function DashboardPage() {
     loadAssetAllocation();
     loadFunds();
     loadRebalance();
-  }, [loadPositions, loadTransactions, loadSnapshots, loadSignals, loadDca, loadAssetAllocation, loadFunds, loadRebalance]);
+    loadRiskSummary();
+  }, [loadPositions, loadTransactions, loadSnapshots, loadSignals, loadDca, loadAssetAllocation, loadFunds, loadRebalance, loadRiskSummary]);
 
   const tradingSnapshots = snapshots.filter((s) => {
     const dow = new Date(s.snapshotDate + "T00:00:00").getDay();
@@ -249,6 +265,9 @@ export default function DashboardPage() {
       <Row gutter={[16, 16]} style={{ marginTop: 16 }} align="stretch">
         <Col xs={24} lg={8}>
           <RebalanceCard data={rebalance} loading={rebalanceLoading} />
+        </Col>
+        <Col xs={24} lg={8}>
+          <RiskSummaryCard data={riskSummary} loading={riskSummaryLoading} />
         </Col>
       </Row>
       <div style={{ marginTop: 16 }}>

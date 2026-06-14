@@ -39,3 +39,14 @@ export interface RebalanceResponse {
   totalValue: number;
   suggestions: RebalanceSuggestion[];
 }
+
+export interface RiskSummaryResponse {
+  /** 最大回撤（0~1，如 0.15 = 15%），基于 daily_snapshots 全历史 */
+  maxDrawdown: number;
+  /** 年化波动率（0~1），基于交易日日收益率标准差 × √252 */
+  annualizedVolatility: number;
+  /** 当前回撤（0~1），从历史峰值到当前净值的幅度 */
+  currentDrawdown: number;
+  /** 计算所用的快照天数 */
+  snapshotDays: number;
+}

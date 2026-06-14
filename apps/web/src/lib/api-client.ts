@@ -7,7 +7,7 @@ import type {
   DailyLog, CreateDailyLogDto, UpdateDailyLogDto, DailySnapshot,
   AppSetting, AiConfig, McpConfig,
   ChatSessionSummary, ChatSessionDetail, PersistChatMessageDto, ChatMessage,
-  AssetAllocationResponse, RebalanceResponse,
+  AssetAllocationResponse, RebalanceResponse, RiskSummaryResponse,
   DcaRules, SlpRules, FundRuleOverride, FundRuleOverrideType, BulletReserve,
   MarketIndexQuote, MarketIndexHistory,
 } from "@g-fund/types";
@@ -154,6 +154,8 @@ export const dashboardApi = {
     http.get<AssetAllocationResponse>("/dashboard/asset-allocation", { timeout: 30000 }).then((r) => r.data),
   rebalance: () =>
     http.get<RebalanceResponse>("/dashboard/rebalance").then((r) => r.data),
+  riskSummary: () =>
+    http.get<RiskSummaryResponse>("/dashboard/risk-summary").then((r) => r.data),
 };
 
 export const marketIndexApi = {

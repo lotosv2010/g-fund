@@ -1,10 +1,10 @@
 import { Injectable, Inject, Logger } from '@nestjs/common';
-import { inArray } from 'drizzle-orm';
+import { inArray, asc } from 'drizzle-orm';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '@g-fund/db';
 import { DB } from '../db/db.module';
 import { McpService } from '../mcp/mcp.service';
-import type { AssetAllocationResponse, FundAssetClassNode, FundAssetDetail, RebalanceResponse, RebalanceSuggestion } from '@g-fund/types';
+import type { AssetAllocationResponse, FundAssetClassNode, FundAssetDetail, RebalanceResponse, RebalanceSuggestion, RiskSummaryResponse } from '@g-fund/types';
 
 type DbType = NodePgDatabase<typeof schema>;
 
@@ -296,5 +296,63 @@ export class DashboardService {
       if (fundName.includes(kw)) return cat;
     }
     return '大盘均衡';
+  }
+
+  async getRiskSummary(): Promise<RiskSummaryResponse> {
+    const rows = await this.db
+      .select({
+        snapshotDate: schema.dailySnapshots.snapshotDate,
+        totalValue: schema.dailySnapshots.totalValue,
+      })
+      .from(schema.dailySnapshots)
+      .orderBy(asc(schema.dailySnapshots.snapshotDate));
+
+    // 过滤掉周末（粗略过滤：只保留交易日，按 snapshotDate 判断）
+    const snapshots = rows.filter((r) => {
+      const dow = new Date(r.snapshotDate + 'T00:00:00').getDay();
+      return dow !== 0 && dow !== 6;
+    });
+
+    if (snapshots.length < 2) {
+      return { maxDrawdown: 0, annualizedVolatility: 0, currentDrawdown: 0, snapshotDays: snapshots.length };
+    }
+
+    const values = snapshots.map((r) => parseFloat(r.totalValue));
+
+    // 最大回撤 & 当前回撤
+    let peak = values[0];
+    let maxDrawdown = 0;
+    for (const v of values) {
+      if (v > peak) peak = v;
+      const dd = peak > 0 ? (peak - v) / peak : 0;
+      if (dd > maxDrawdown) maxDrawdown = dd;
+    }
+
+    // 当前回撤（从历史最高点到最新净值）
+    const allTimePeak = Math.max(...values);
+    const latestValue = values[values.length - 1];
+    const currentDrawdown = allTimePeak > 0 ? (allTimePeak - latestValue) / allTimePeak : 0;
+
+    // 年化波动率：日收益率标准差 × √252
+    const dailyReturns: number[] = [];
+    for (let i = 1; i < values.length; i++) {
+      if (values[i - 1] > 0) {
+        dailyReturns.push((values[i] - values[i - 1]) / values[i - 1]);
+      }
+    }
+
+    let annualizedVolatility = 0;
+    if (dailyReturns.length >= 2) {
+      const mean = dailyReturns.reduce((s, r) => s + r, 0) / dailyReturns.length;
+      const variance = dailyReturns.reduce((s, r) => s + (r - mean) ** 2, 0) / (dailyReturns.length - 1);
+      annualizedVolatility = Math.sqrt(variance) * Math.sqrt(252);
+    }
+
+    return {
+      maxDrawdown,
+      annualizedVolatility,
+      currentDrawdown,
+      snapshotDays: snapshots.length,
+    };
   }
 }
