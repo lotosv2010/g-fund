@@ -1,7 +1,7 @@
 import { Controller, Get } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { DashboardService } from './dashboard.service';
-import type { AssetAllocationResponse, RebalanceResponse, RiskSummaryResponse, BenchmarkComparisonResponse, AnomalyResponse } from '@g-fund/types';
+import type { AssetAllocationResponse, RebalanceResponse, RiskSummaryResponse, BenchmarkComparisonResponse, AnomalyResponse, IndustryExposureResponse } from '@g-fund/types';
 
 @ApiTags('Dashboard')
 @Controller('dashboard')
@@ -36,5 +36,11 @@ export class DashboardController {
   @ApiOperation({ summary: '获取持仓异动提示（涨跌>3%/估值越线/止损触发）' })
   async getAnomalies(): Promise<AnomalyResponse> {
     return this.service.getAnomalies();
+  }
+
+  @Get('industry-exposure')
+  @ApiOperation({ summary: '获取持仓行业暴露分布（level2 行业聚合）' })
+  async getIndustryExposure(): Promise<IndustryExposureResponse> {
+    return this.service.getIndustryExposure();
   }
 }

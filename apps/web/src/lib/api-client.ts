@@ -7,7 +7,7 @@ import type {
   DailyLog, CreateDailyLogDto, UpdateDailyLogDto, DailySnapshot,
   AppSetting, AiConfig, McpConfig,
   ChatSessionSummary, ChatSessionDetail, PersistChatMessageDto, ChatMessage,
-  AssetAllocationResponse, RebalanceResponse, RiskSummaryResponse, AnomalyResponse,
+  AssetAllocationResponse, RebalanceResponse, RiskSummaryResponse, AnomalyResponse, IndustryExposureResponse,
   DcaRules, SlpRules, FundRuleOverride, FundRuleOverrideType, BulletReserve,
   MarketIndexQuote, MarketIndexHistory,
 } from "@g-fund/types";
@@ -160,6 +160,8 @@ export const dashboardApi = {
     http.get<import("@g-fund/types").BenchmarkComparisonResponse>("/dashboard/benchmark").then((r) => r.data),
   anomalies: () =>
     http.get<AnomalyResponse>("/dashboard/anomalies").then((r) => r.data),
+  industryExposure: () =>
+    http.get<IndustryExposureResponse>("/dashboard/industry-exposure", { timeout: 30000 }).then((r) => r.data),
 };
 
 export const marketIndexApi = {

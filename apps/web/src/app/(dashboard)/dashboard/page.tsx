@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Col, Row, Space, Typography, message } from "antd";
-import type { PositionListItem, Transaction, DailySnapshot, StopLossTakeProfitSignal, SlpSignalLog, DcaCalculation, DcaSnapshot, AssetAllocationResponse, FundListItem, RebalanceResponse, RiskSummaryResponse, BenchmarkComparisonResponse } from "@g-fund/types";
+import type { PositionListItem, Transaction, DailySnapshot, StopLossTakeProfitSignal, SlpSignalLog, DcaCalculation, DcaSnapshot, AssetAllocationResponse, FundListItem, RebalanceResponse, RiskSummaryResponse, BenchmarkComparisonResponse, IndustryExposureResponse } from "@g-fund/types";
 import { positionsApi, transactionsApi, dailySnapshotsApi, stopLossTakeProfitApi, dcaApi, dashboardApi, fundsApi } from "@/lib/api-client";
 import StatCards from "@/components/StatCards";
 import PnLChart from "@/components/PnLChart";
@@ -18,6 +18,7 @@ import FundProfitDrawer from "@/components/FundProfitDrawer";
 import MarketIndexBoard from "@/components/MarketIndexBoard";
 import RebalanceCard from "@/components/RebalanceCard";
 import RiskSummaryCard from "@/components/RiskSummaryCard";
+import IndustryExposureCard from "@/components/IndustryExposureCard";
 
 const { Title } = Typography;
 
@@ -35,6 +36,7 @@ export default function DashboardPage() {
   const [rebalance, setRebalance] = useState<RebalanceResponse | null>(null);
   const [riskSummary, setRiskSummary] = useState<RiskSummaryResponse | null>(null);
   const [benchmark, setBenchmark] = useState<BenchmarkComparisonResponse | null>(null);
+  const [industryExposure, setIndustryExposure] = useState<IndustryExposureResponse | null>(null);
   const [funds, setFunds] = useState<FundListItem[]>([]);
   const [posLoading, setPosLoading] = useState(false);
   const [txLoading, setTxLoading] = useState(false);
@@ -46,6 +48,7 @@ export default function DashboardPage() {
   const [riskSummaryLoading, setRiskSummaryLoading] = useState(false);
   const [benchmarkLoading, setBenchmarkLoading] = useState(false);
   const [fundsLoading, setFundsLoading] = useState(false);
+  const [industryExposureLoading, setIndustryExposureLoading] = useState(false);
   const [messageApi, contextHolder] = message.useMessage();
 
   const [totalProfitOpen, setTotalProfitOpen] = useState(false);
@@ -189,6 +192,18 @@ export default function DashboardPage() {
     }
   }, []);
 
+  const loadIndustryExposure = useCallback(async () => {
+    setIndustryExposureLoading(true);
+    try {
+      const data = await dashboardApi.industryExposure();
+      setIndustryExposure(data);
+    } catch {
+      // may not have data yet
+    } finally {
+      setIndustryExposureLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     loadPositions();
     loadTransactions();
@@ -200,7 +215,8 @@ export default function DashboardPage() {
     loadRebalance();
     loadRiskSummary();
     loadBenchmark();
-  }, [loadPositions, loadTransactions, loadSnapshots, loadSignals, loadDca, loadAssetAllocation, loadFunds, loadRebalance, loadRiskSummary, loadBenchmark]);
+    loadIndustryExposure();
+  }, [loadPositions, loadTransactions, loadSnapshots, loadSignals, loadDca, loadAssetAllocation, loadFunds, loadRebalance, loadRiskSummary, loadBenchmark, loadIndustryExposure]);
 
   const tradingSnapshots = snapshots.filter((s) => {
     const dow = new Date(s.snapshotDate + "T00:00:00").getDay();
@@ -283,6 +299,9 @@ export default function DashboardPage() {
         </Col>
         <Col xs={24} lg={8}>
           <RiskSummaryCard data={riskSummary} loading={riskSummaryLoading} />
+        </Col>
+        <Col xs={24} lg={8}>
+          <IndustryExposureCard data={industryExposure} loading={industryExposureLoading} />
         </Col>
       </Row>
       <div style={{ marginTop: 16 }}>

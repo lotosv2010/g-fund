@@ -88,3 +88,14 @@ export interface AnomalyResponse {
   alerts: AnomalyAlert[];
   checkedAt: string;
 }
+
+export interface IndustryExposureItem {
+  industry: string;
+  amount: number;
+  ratio: number;
+}
+
+export interface IndustryExposureResponse {
+  items: IndustryExposureItem[];
+  totalAmount: number;
+}

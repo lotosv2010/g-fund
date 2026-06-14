@@ -5,7 +5,7 @@ import * as schema from '@g-fund/db';
 import { DB } from '../db/db.module';
 import { McpService } from '../mcp/mcp.service';
 import { MarketIndexService } from '../market-index/market-index.service';
-import type { AssetAllocationResponse, FundAssetClassNode, FundAssetDetail, RebalanceResponse, RebalanceSuggestion, RiskSummaryResponse, BenchmarkComparisonResponse, BenchmarkPoint, AnomalyAlert, AnomalyResponse } from '@g-fund/types';
+import type { AssetAllocationResponse, FundAssetClassNode, FundAssetDetail, RebalanceResponse, RebalanceSuggestion, RiskSummaryResponse, BenchmarkComparisonResponse, BenchmarkPoint, AnomalyAlert, AnomalyResponse, IndustryExposureItem, IndustryExposureResponse } from '@g-fund/types';
 
 type DbType = NodePgDatabase<typeof schema>;
 
@@ -571,5 +571,32 @@ export class DashboardService {
     alerts.sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity]);
 
     return { alerts, checkedAt: new Date().toISOString() };
+  }
+
+  async getIndustryExposure(): Promise<IndustryExposureResponse> {
+    const allocation = await this.getAssetAllocation();
+
+    if (allocation.fundDetails.length === 0) {
+      return { items: [], totalAmount: 0 };
+    }
+
+    const map = new Map<string, number>();
+    let totalAmount = 0;
+
+    for (const detail of allocation.fundDetails) {
+      const amount = parseFloat(detail.currentValue);
+      if (amount <= 0) continue;
+      totalAmount += amount;
+      const key = detail.level2Category !== '未分类' ? detail.level2Category : (detail.level1Category !== '未分类' ? detail.level1Category : '其他');
+      map.set(key, (map.get(key) ?? 0) + amount);
+    }
+
+    const items: IndustryExposureItem[] = Array.from(map, ([industry, amount]) => ({
+      industry,
+      amount: Math.round(amount * 100) / 100,
+      ratio: totalAmount > 0 ? Math.round((amount / totalAmount) * 10000) / 10000 : 0,
+    })).sort((a, b) => b.amount - a.amount);
+
+    return { items, totalAmount: Math.round(totalAmount * 100) / 100 };
   }
 }
