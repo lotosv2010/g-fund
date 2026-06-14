@@ -144,7 +144,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <Button
               type="text"
               icon={<OpenAIOutlined style={{ fontSize: 18 }} />}
-              onClick={openChatDrawer}
+              onClick={() => openChatDrawer()}
             />
           </Tooltip>
         </Header>

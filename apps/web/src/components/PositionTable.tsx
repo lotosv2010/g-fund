@@ -1,6 +1,6 @@
 "use client";
 import { Table, Typography, Button, Space, Tag } from "antd";
-import { ShoppingCartOutlined, TagOutlined, FileTextOutlined, EditOutlined, AlertOutlined } from "@ant-design/icons";
+import { ShoppingCartOutlined, TagOutlined, FileTextOutlined, EditOutlined, AlertOutlined, RobotOutlined } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table/interface";
 import type { PositionListItem } from "@g-fund/types";
 import {
@@ -35,9 +35,10 @@ interface PositionTableProps {
   onEditSnapshot?: (record: PositionListItem) => void;
   onPnlClick?: (fundCode: string, fundName: string) => void;
   onSignal?: (fundCode: string, fundName: string) => void;
+  onAiAnalysis?: (fundCode: string, fundName: string) => void;
 }
 
-export default function PositionTable({ data, loading, signals = [], funds = [], onBuy, onSell, onViewLog, onEditSnapshot, onPnlClick, onSignal }: PositionTableProps) {
+export default function PositionTable({ data, loading, signals = [], funds = [], onBuy, onSell, onViewLog, onEditSnapshot, onPnlClick, onSignal, onAiAnalysis }: PositionTableProps) {
   const totalCost = data.reduce((s, r) => s + parseFloat(r.costAmount), 0);
   const totalValue = data.reduce((s, r) => s + parseFloat(r.currentValue), 0);
   const totalPnl = totalValue - totalCost;
@@ -113,17 +114,22 @@ export default function PositionTable({ data, loading, signals = [], funds = [],
       title: "盈亏率", dataIndex: "pnlRate", width: 100, align: "right",
       render: (v) => <PnlCell value={`${(parseFloat(v) * 100).toFixed(2)}%`} raw={parseFloat(v)} />,
     },
-    ...(onBuy || onSell || onViewLog || onEditSnapshot || onSignal
+    ...(onBuy || onSell || onViewLog || onEditSnapshot || onSignal || onAiAnalysis
       ? [
           {
             title: "操作",
-            width: 350,
+            width: 400,
             fixed: "right" as const,
             render: (_: unknown, record: PositionListItem) => (
               <Space size={0}>
                 {onSignal && (
                   <Button type="link" size="small" icon={<AlertOutlined />} onClick={() => onSignal(record.fundCode, record.fundName)}>
                     信号
+                  </Button>
+                )}
+                {onAiAnalysis && (
+                  <Button type="link" size="small" icon={<RobotOutlined />} onClick={() => onAiAnalysis(record.fundCode, record.fundName)}>
+                    AI
                   </Button>
                 )}
                 {onBuy && (

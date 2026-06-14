@@ -7,6 +7,7 @@ import { positionsApi, transactionsApi, dailySnapshotsApi, stopLossTakeProfitApi
 import StatCards from "@/components/StatCards";
 import PnLChart from "@/components/PnLChart";
 import AssetAllocationCard from "@/components/AssetAllocationCard";
+import FundAllocationPie from "@/components/FundAllocationPie";
 import RecentTrades from "@/components/RecentTrades";
 import SyncPositionsButton from "@/components/SyncPositionsButton";
 import StopLossTakeProfitCard from "@/components/StopLossTakeProfitCard";
@@ -19,6 +20,7 @@ import MarketIndexBoard from "@/components/MarketIndexBoard";
 import RebalanceCard from "@/components/RebalanceCard";
 import RiskSummaryCard from "@/components/RiskSummaryCard";
 import IndustryExposureCard from "@/components/IndustryExposureCard";
+import ReturnAttributionCard from "@/components/ReturnAttributionCard";
 
 const { Title } = Typography;
 
@@ -280,13 +282,7 @@ export default function DashboardPage() {
           <StopLossTakeProfitCard data={signals} loading={signalLoading} />
         </Col>
         <Col xs={24} lg={8}>
-          <DcaEstimateCard
-            data={dcaData}
-            loading={dcaLoading}
-            snapshots={dcaSnapshots}
-            onSnapshotUpdate={loadDca}
-            nextDcaDate={nextDcaDate}
-          />
+          <StageProgressCard data={funds} loading={fundsLoading} />
         </Col>
         <Col xs={24} lg={8}>
           <RebalanceCard data={rebalance} loading={rebalanceLoading} />
@@ -300,7 +296,7 @@ export default function DashboardPage() {
         </Col>
         <Col xs={24} lg={8}>
           <div style={{ height: 400 }}>
-            <RiskSummaryCard data={riskSummary} loading={riskSummaryLoading} />
+            <FundAllocationPie data={positions} loading={posLoading} />
           </div>
         </Col>
         <Col xs={24} lg={8}>
@@ -311,10 +307,30 @@ export default function DashboardPage() {
       </Row>
       <Row gutter={[16, 16]} style={{ marginTop: 16 }} align="stretch">
         <Col xs={24} lg={8}>
-          <StageProgressCard data={funds} loading={fundsLoading} />
+          <div style={{ height: 400 }}>
+            <RiskSummaryCard data={riskSummary} loading={riskSummaryLoading} />
+          </div>
         </Col>
-        <Col xs={24} lg={16}>
+        <Col xs={24} lg={8}>
+          <DcaEstimateCard
+            data={dcaData}
+            loading={dcaLoading}
+            snapshots={dcaSnapshots}
+            onSnapshotUpdate={loadDca}
+            nextDcaDate={nextDcaDate}
+          />
+        </Col>
+        <Col xs={24} lg={8}>
           <RecentTrades data={transactions} loading={txLoading} />
+        </Col>
+      </Row>
+      <Row gutter={[16, 16]} style={{ marginTop: 16 }} align="stretch">
+        <Col xs={24}>
+          <ReturnAttributionCard
+            positions={positions}
+            benchmark={benchmark}
+            loading={posLoading || benchmarkLoading}
+          />
         </Col>
       </Row>
 

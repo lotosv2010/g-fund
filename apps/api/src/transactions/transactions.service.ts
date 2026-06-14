@@ -4,8 +4,10 @@ import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '@g-fund/db';
 import { DB } from '../db/db.module';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
+import { ImportTransactionRow, ImportResult, ImportError } from '@g-fund/types';
 import { FundsService } from '../funds/funds.service';
 import { TransactionConfirmationService } from './transaction-confirmation.service';
+import { CsvImportService } from './csv-import.service';
 
 type DbType = NodePgDatabase<typeof schema>;
 type TransactionRow = typeof schema.transactions.$inferSelect;
@@ -17,6 +19,7 @@ export class TransactionsService {
     @Inject(DB) private readonly db: DbType,
     private readonly fundsService: FundsService,
     private readonly confirmationService: TransactionConfirmationService,
+    private readonly csvImportService: CsvImportService,
   ) {}
 
   async findAll(fundCode?: string, type?: string, startDate?: string, endDate?: string): Promise<TransactionRow[]> {
@@ -90,6 +93,68 @@ export class TransactionsService {
     // 回滚后记录阶段变化
     const trigger = txRow.type === 'buy' ? 'rollback_buy' : 'rollback_sell';
     await this.recordStageChangeIfNeeded(txRow.fundCode, trigger);
+  }
+
+  async importFromCsv(content: string, format?: string): Promise<ImportResult> {
+    const rows = this.csvImportService.parseCsv(content, format);
+    const errors: ImportError[] = [];
+    const created: TransactionRow[] = [];
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      try {
+        const [fund] = await this.db
+          .select()
+          .from(schema.funds)
+          .where(eq(schema.funds.code, row.fundCode));
+
+        if (!fund) {
+          errors.push({
+            row: i + 2,
+            field: 'fundCode',
+            message: `基金 ${row.fundCode} 不存在，请先添加基金`,
+          });
+          continue;
+        }
+
+        const [txRow] = await this.db
+          .insert(schema.transactions)
+          .values({
+            fundCode: row.fundCode,
+            fundName: fund.name,
+            type: row.type,
+            amount: row.amount.toFixed(2),
+            shares: row.shares?.toFixed(4) ?? null,
+            price: row.price?.toFixed(4) ?? null,
+            tradeDate: row.tradeDate,
+            note: row.note ?? null,
+            status: 'pending',
+          })
+          .returning();
+
+        created.push(txRow);
+      } catch (err) {
+        errors.push({
+          row: i + 2,
+          field: 'unknown',
+          message: err instanceof Error ? err.message : '导入失败',
+        });
+      }
+    }
+
+    return {
+      total: rows.length,
+      succeeded: created.length,
+      failed: errors.length,
+      errors,
+      created: created.map(row => ({
+        ...row,
+        type: row.type as 'buy' | 'sell',
+        status: row.status as 'pending' | 'confirmed' | 'cancelled',
+        confirmedAt: row.confirmedAt?.toISOString() ?? null,
+        createdAt: row.createdAt.toISOString(),
+      })),
+    };
   }
 
   private async recordStageChangeIfNeeded(

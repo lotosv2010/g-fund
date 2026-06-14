@@ -22,3 +22,28 @@ export interface CreateTransactionDto {
   tradeDate: string;
   note?: string;
 }
+
+export interface ImportTransactionRow {
+  fundCode: string;
+  type: 'buy' | 'sell';
+  amount: number;
+  shares?: number;
+  price?: number;
+  tradeDate: string;
+  note?: string;
+}
+
+export interface ImportError {
+  row: number;
+  field: string;
+  message: string;
+  value?: unknown;
+}
+
+export interface ImportResult {
+  total: number;
+  succeeded: number;
+  failed: number;
+  errors: ImportError[];
+  created: Transaction[];
+}

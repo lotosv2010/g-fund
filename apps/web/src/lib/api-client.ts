@@ -3,7 +3,7 @@ import type {
   FundListItem, CreateFundDto, UpdateFundDto, FundCategory, ReorderFundDto,
   FundInfoPreview, SyncFundInfoResult,
   PositionListItem, SyncPositionsResult, UpsertPositionDto,
-  Transaction, CreateTransactionDto,
+  Transaction, CreateTransactionDto, ImportResult,
   DailyLog, CreateDailyLogDto, UpdateDailyLogDto, DailySnapshot,
   AppSetting, AiConfig, McpConfig,
   ChatSessionSummary, ChatSessionDetail, PersistChatMessageDto, ChatMessage,
@@ -60,6 +60,15 @@ export const transactionsApi = {
     http.get<Transaction[]>("/transactions", { params }).then((r) => r.data),
   create: (dto: CreateTransactionDto) =>
     http.post<Transaction>("/transactions", dto).then((r) => r.data),
+  import: (file: File, format?: string) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (format) formData.append('format', format);
+    return http.post<ImportResult>("/transactions/import", formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 60000,
+    }).then((r) => r.data);
+  },
   remove: (id: number) => http.delete(`/transactions/${id}`),
 };
 

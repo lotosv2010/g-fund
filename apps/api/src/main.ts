@@ -11,6 +11,12 @@ async function bootstrap() {
     new FastifyAdapter(),
   );
 
+  await app.register((await import('@fastify/multipart')).default, {
+    limits: {
+      fileSize: 10 * 1024 * 1024, // 10MB
+    },
+  });
+
   app.setGlobalPrefix('api');
   app.useGlobalPipes(new ValidationPipe({ transform: true, whitelist: true }));
   app.enableCors({

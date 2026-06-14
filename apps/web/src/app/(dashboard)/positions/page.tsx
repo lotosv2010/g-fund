@@ -1,10 +1,11 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import { Tabs, Typography, Flex, Button, Popconfirm, message, Form, Input, DatePicker, List, Card, Modal, Table, Tag } from "antd";
-import { PlusOutlined, EditOutlined, DeleteOutlined, ShoppingCartOutlined, FileAddOutlined, ReloadOutlined } from "@ant-design/icons";
+import { PlusOutlined, EditOutlined, DeleteOutlined, ShoppingCartOutlined, FileAddOutlined, ReloadOutlined, ImportOutlined } from "@ant-design/icons";
 import type { PositionListItem, FundListItem, Transaction, CreateTransactionDto, DailyLog, CreateDailyLogDto, UpsertPositionDto, StopLossTakeProfitSignal } from "@g-fund/types";
 import type { ColumnsType } from "antd/es/table/interface";
 import { positionsApi, transactionsApi, fundsApi, dailyLogsApi, settingsApi, stopLossTakeProfitApi } from "@/lib/api-client";
+import { useAppStore } from "@/store/useAppStore";
 import PositionTable from "@/components/PositionTable";
 import TransactionForm from "@/components/TransactionForm";
 import TransactionLogDrawer from "@/components/TransactionLogDrawer";
@@ -12,6 +13,7 @@ import FundProfitDrawer from "@/components/FundProfitDrawer";
 import SyncPositionsButton from "@/components/SyncPositionsButton";
 import PositionSnapshotModal from "@/components/PositionSnapshotModal";
 import PositionSignalDrawer from "@/components/PositionSignalDrawer";
+import ImportTransactionsModal from "@/components/ImportTransactionsModal";
 import { TargetPositionCard } from "../funds/components/target-position-card";
 import { SettingsModal } from "../funds/components/settings-modal";
 import dayjs from "dayjs";
@@ -20,6 +22,7 @@ const { Title, Text } = Typography;
 const { TextArea } = Input;
 
 export default function PositionsPage() {
+  const { openChatDrawer } = useAppStore();
   const [positions, setPositions] = useState<PositionListItem[]>([]);
   const [funds, setFunds] = useState<FundListItem[]>([]);
   const [signals, setSignals] = useState<StopLossTakeProfitSignal[]>([]);
@@ -52,6 +55,7 @@ export default function PositionsPage() {
   const [targetTotalPosition, setTargetTotalPosition] = useState<string>("0");
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
   const [settingsSubmitting, setSettingsSubmitting] = useState(false);
+  const [importModalOpen, setImportModalOpen] = useState(false);
 
   const [positionSearch, setPositionSearch] = useState("");
   const [logDateRange, setLogDateRange] = useState<[dayjs.Dayjs, dayjs.Dayjs] | null>(null);
@@ -241,6 +245,28 @@ export default function PositionsPage() {
     setSignalDrawerOpen(true);
   }
 
+  function handleAiAnalysis(fundCode: string, fundName: string) {
+    const position = positions.find((p) => p.fundCode === fundCode);
+    const pnl = position ? parseFloat(position.pnlAmount) : 0;
+    const pnlRate = position ? parseFloat(position.pnlRate) * 100 : 0;
+
+    openChatDrawer({
+      type: 'fund',
+      fundCode,
+      fundName,
+      message: `请对基金 ${fundName}（${fundCode}）进行深度分析：
+- 当前持仓：${position?.shares ?? 0} 份
+- 成本金额：¥${position?.costAmount ?? 0}
+- 当前市值：¥${position?.currentValue ?? 0}
+- 盈亏：${pnl >= 0 ? '+' : ''}¥${pnl.toFixed(2)}（${pnlRate >= 0 ? '+' : ''}${pnlRate.toFixed(2)}%）
+
+请给出：
+1. 估值分析（当前估值水平、历史分位）
+2. 风险评估（波动率、最大回撤、同类排名）
+3. 操作建议（继续持有/加仓/减仓/止损）`,
+    });
+  }
+
   function openTradeModal() {
     setTradeFundCode("");
     setTradeType("buy");
@@ -381,6 +407,7 @@ export default function PositionsPage() {
             onEditSnapshot={openEditSnapshot}
             onPnlClick={handlePnlClick}
             onSignal={handleSignal}
+            onAiAnalysis={handleAiAnalysis}
           />
         </>
       ),
@@ -483,6 +510,9 @@ export default function PositionsPage() {
             刷新
           </Button>
           <SyncPositionsButton onDone={() => loadPositions()} />
+          <Button icon={<ImportOutlined />} onClick={() => setImportModalOpen(true)}>
+            批量导入
+          </Button>
           <Button icon={<FileAddOutlined />} onClick={openCreateSnapshot}>
             建仓快照
           </Button>
@@ -583,6 +613,15 @@ export default function PositionsPage() {
         initialValue={parseFloat(targetTotalPosition)}
         onSubmit={handleSettingsSave}
         onCancel={() => setSettingsModalOpen(false)}
+      />
+
+      <ImportTransactionsModal
+        open={importModalOpen}
+        onClose={() => setImportModalOpen(false)}
+        onSuccess={() => {
+          loadPositions();
+          loadTxLogs();
+        }}
       />
     </>
   );

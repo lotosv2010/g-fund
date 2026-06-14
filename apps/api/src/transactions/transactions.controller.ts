@@ -1,5 +1,5 @@
-import { Controller, Get, Post, Delete, Body, Param, Query } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
+import { Controller, Get, Post, Delete, Body, Param, Query, Req } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiQuery, ApiConsumes } from '@nestjs/swagger';
 import { TransactionsService } from './transactions.service';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 
@@ -27,6 +27,22 @@ export class TransactionsController {
   @ApiOperation({ summary: '创建交易（买入/卖出）' })
   create(@Body() dto: CreateTransactionDto) {
     return this.transactionsService.create(dto);
+  }
+
+  @Post('import')
+  @ApiOperation({ summary: '批量导入交易（CSV）' })
+  @ApiConsumes('multipart/form-data')
+  async import(@Req() req: { file: () => Promise<{ toBuffer: () => Promise<Buffer>; fields: Record<string, unknown> }> }) {
+    const data = await req.file();
+    if (!data) {
+      throw new Error('请上传 CSV 文件');
+    }
+
+    const buffer = await data.toBuffer();
+    const content = buffer.toString('utf-8');
+    const format = data.fields?.format as string | undefined;
+
+    return this.transactionsService.importFromCsv(content, format);
   }
 
   @Delete(':id')

@@ -194,7 +194,7 @@ const SUGGESTION_GROUPS: ReadonlyArray<SuggestionGroup> = [
 
 export default function ChatDrawer() {
   const { modal } = App.useApp();
-  const { chatDrawerOpen, closeChatDrawer } = useAppStore();
+  const { chatDrawerOpen, chatContext, closeChatDrawer } = useAppStore();
   const {
     sessions,
     activeSessionId,
@@ -215,6 +215,7 @@ export default function ChatDrawer() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [renameTarget, setRenameTarget] = useState<{ id: number; title: string } | null>(null);
   const [renameInput, setRenameInput] = useState("");
+  const contextHandledRef = useRef(false);
 
   useEffect(() => {
     if (chatDrawerOpen) void loadSessions();
@@ -223,6 +224,16 @@ export default function ChatDrawer() {
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages.length, isStreaming]);
+
+  useEffect(() => {
+    if (chatDrawerOpen && chatContext?.message && !contextHandledRef.current) {
+      contextHandledRef.current = true;
+      void sendMessage(chatContext.message);
+    }
+    if (!chatDrawerOpen) {
+      contextHandledRef.current = false;
+    }
+  }, [chatDrawerOpen, chatContext, sendMessage]);
 
   const handleClose = () => {
     abort();
