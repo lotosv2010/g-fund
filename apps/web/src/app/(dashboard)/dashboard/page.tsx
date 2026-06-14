@@ -264,16 +264,15 @@ export default function DashboardPage() {
         />
       </div>
       <Row gutter={[16, 16]} style={{ marginTop: 16 }} align="stretch">
-        <Col xs={24} lg={8}>
-          <StageProgressCard data={funds} loading={fundsLoading} />
-        </Col>
         <Col xs={24} lg={16}>
-          <AssetAllocationCard data={assetAllocation} loading={allocLoading} />
+          <div style={{ height: 480 }}>
+            <PnLChart data={tradingSnapshots} benchmark={benchmark} loading={snapLoading || benchmarkLoading} />
+          </div>
         </Col>
-      </Row>
-      <Row gutter={[16, 16]} style={{ marginTop: 16 }} align="stretch">
-        <Col xs={24}>
-          <PnLChart data={tradingSnapshots} benchmark={benchmark} loading={snapLoading || benchmarkLoading} />
+        <Col xs={24} lg={8}>
+          <div style={{ height: 480 }}>
+            <AssetAllocationCard data={assetAllocation} loading={allocLoading} />
+          </div>
         </Col>
       </Row>
       <Row gutter={[16, 16]} style={{ marginTop: 16 }} align="stretch">
@@ -290,23 +289,34 @@ export default function DashboardPage() {
           />
         </Col>
         <Col xs={24} lg={8}>
-          <AlertTimeline data={signalHistory} loading={signalLoading} />
+          <RebalanceCard data={rebalance} loading={rebalanceLoading} />
         </Col>
       </Row>
       <Row gutter={[16, 16]} style={{ marginTop: 16 }} align="stretch">
         <Col xs={24} lg={8}>
-          <RebalanceCard data={rebalance} loading={rebalanceLoading} />
+          <div style={{ height: 400 }}>
+            <AlertTimeline data={signalHistory} loading={signalLoading} />
+          </div>
         </Col>
         <Col xs={24} lg={8}>
-          <RiskSummaryCard data={riskSummary} loading={riskSummaryLoading} />
+          <div style={{ height: 400 }}>
+            <RiskSummaryCard data={riskSummary} loading={riskSummaryLoading} />
+          </div>
         </Col>
         <Col xs={24} lg={8}>
-          <IndustryExposureCard data={industryExposure} loading={industryExposureLoading} />
+          <div style={{ height: 400 }}>
+            <IndustryExposureCard data={industryExposure} loading={industryExposureLoading} />
+          </div>
         </Col>
       </Row>
-      <div style={{ marginTop: 16 }}>
-        <RecentTrades data={transactions} loading={txLoading} />
-      </div>
+      <Row gutter={[16, 16]} style={{ marginTop: 16 }} align="stretch">
+        <Col xs={24} lg={8}>
+          <StageProgressCard data={funds} loading={fundsLoading} />
+        </Col>
+        <Col xs={24} lg={16}>
+          <RecentTrades data={transactions} loading={txLoading} />
+        </Col>
+      </Row>
 
       <TotalProfitDrawer
         open={totalProfitOpen}

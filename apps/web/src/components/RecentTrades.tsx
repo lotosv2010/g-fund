@@ -28,7 +28,7 @@ const columns: ColumnsType<Transaction> = [
 export default function RecentTrades({ data, loading }: RecentTradesProps) {
   if (loading) {
     return (
-      <Card title="最近交易">
+      <Card title="最近交易" style={{ height: "100%" }}>
         <Skeleton active paragraph={{ rows: 3 }} />
       </Card>
     );
@@ -37,7 +37,7 @@ export default function RecentTrades({ data, loading }: RecentTradesProps) {
   const recent = data.slice(0, 5);
 
   return (
-    <Card title="最近交易">
+    <Card title="最近交易" style={{ height: "100%" }}>
       {recent.length === 0 ? (
         <Empty description="暂无交易记录" />
       ) : (

@@ -56,17 +56,17 @@ export default function IndustryExposureCard({ data, loading }: IndustryExposure
     <Card
       title={<><PieChartOutlined /> 行业暴露</>}
       style={{ height: "100%" }}
-      styles={{ body: { padding: "12px 16px", display: "flex", flexDirection: "column", height: "100%" } }}
+      styles={{ body: { padding: "12px 16px", display: "flex", flexDirection: "column", height: "calc(100% - 56px)", overflow: "hidden" } }}
     >
       <div style={{ flex: 1, minHeight: 0 }}>
         <Pie
+          height={280}
           data={chartData}
           angleField="amount"
           colorField="industry"
           color={colors}
           radius={0.85}
           innerRadius={0.55}
-          autoFit
           legend={{
             position: "bottom",
             layout: "flex",

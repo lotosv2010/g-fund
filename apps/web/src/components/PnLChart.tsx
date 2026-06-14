@@ -72,8 +72,8 @@ export default function PnLChart({ data, benchmark, loading }: PnLChartProps) {
   const hasBenchmark = chartData.some((d) => d.benchmarkCumReturn !== null);
 
   return (
-    <Card title="盈亏曲线">
-      <ResponsiveContainer width="100%" height={280}>
+    <Card title="盈亏曲线" style={{ height: "100%" }} styles={{ body: { height: "calc(100% - 56px)", overflow: "hidden" } }}>
+      <ResponsiveContainer width="100%" height="100%">
         <ComposedChart data={chartData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
           <XAxis dataKey="date" tick={{ fontSize: 12 }} />

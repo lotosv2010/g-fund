@@ -548,21 +548,42 @@ export class DashboardService {
       }
     }
 
-    const signalSeen = new Set<string>();
+    const SIGNAL_PRIORITY: Record<string, number> = {
+      deep_loss: 0,
+      stop_loss: 1,
+      take_profit: 2,
+      warning: 3,
+    };
+
+    // 每只基金只保留优先级最高的一条信号
+    const bestSignalPerFund = new Map<string, typeof todaySignals[0]>();
     for (const signal of todaySignals) {
       if (!signal.message) continue;
-      const key = `${signal.fundCode}:${signal.signalType}`;
-      if (signalSeen.has(key)) continue;
-      signalSeen.add(key);
+      const existing = bestSignalPerFund.get(signal.fundCode);
+      const curPriority = SIGNAL_PRIORITY[signal.signalType] ?? 9;
+      const existPriority = existing ? (SIGNAL_PRIORITY[existing.signalType] ?? 9) : Infinity;
+      if (curPriority < existPriority) {
+        bestSignalPerFund.set(signal.fundCode, signal);
+      }
+    }
 
+    for (const signal of bestSignalPerFund.values()) {
       const position = positions.find((p) => p.fundCode === signal.fundCode);
-      const isStopLoss = signal.signalType === 'stop_loss' || signal.signalType === 'deep_loss';
+      let anomalyType: AnomalyAlert['type'];
+      if (signal.signalType === 'stop_loss' || signal.signalType === 'deep_loss') {
+        anomalyType = 'stop_loss';
+      } else if (signal.signalType === 'take_profit') {
+        anomalyType = 'take_profit';
+      } else {
+        const pnl = signal.pnlRate ? parseFloat(signal.pnlRate) : 0;
+        anomalyType = pnl < 0 ? 'stop_loss' : 'take_profit';
+      }
       alerts.push({
         fundCode: signal.fundCode,
         fundName: position?.fundName ?? signal.fundCode,
-        type: isStopLoss ? 'stop_loss' : 'take_profit',
+        type: anomalyType,
         severity: signal.level === 'red' ? 'danger' : signal.level === 'orange' ? 'warning' : 'info',
-        message: signal.message,
+        message: signal.message ?? '',
         value: signal.pnlRate ? parseFloat(signal.pnlRate) : undefined,
       });
     }

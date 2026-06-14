@@ -61,6 +61,7 @@ function CategoryChart({
       <div style={{ fontSize: 11, color: "#999", paddingLeft: 4, marginBottom: 2 }}>¥ (万元)</div>
       <div style={{ flex: 1, minHeight: 0 }}>
         <Column
+          height={250}
           data={chartData}
           xField="category"
           yField="amount"
@@ -258,16 +259,18 @@ export default function AssetAllocationCard({ data, loading }: AssetAllocationCa
     <Card
       title={<><PieChartOutlined /> 持仓分布</>}
       style={{ height: "100%" }}
-      styles={{ body: { padding: "12px 16px", display: "flex", flexDirection: "column", height: "100%" } }}
+      styles={{ body: { padding: "12px 16px", display: "flex", flexDirection: "column", height: "calc(100% - 56px)", overflow: "hidden" } }}
     >
       <style jsx global>{`
         .allocation-tabs .ant-tabs,
         .allocation-tabs .ant-tabs-content-holder,
         .allocation-tabs .ant-tabs-content,
+        .allocation-tabs .ant-tabs-tabpane,
         .allocation-tabs .ant-tabs-tabpane-active,
         .allocation-inner-tabs,
         .allocation-inner-tabs .ant-tabs-content-holder,
         .allocation-inner-tabs .ant-tabs-content,
+        .allocation-inner-tabs .ant-tabs-tabpane,
         .allocation-inner-tabs .ant-tabs-tabpane-active {
           height: 100%;
         }
@@ -276,7 +279,7 @@ export default function AssetAllocationCard({ data, loading }: AssetAllocationCa
           margin-bottom: 8px;
         }
       `}</style>
-      <div className="allocation-tabs" style={{ flex: 1, minHeight: 0 }}>
+      <div className="allocation-tabs" style={{ flex: 1, minHeight: 0, height: 0 }}>
         <Tabs items={tabItems} defaultActiveKey="aggressive" />
       </div>
     </Card>

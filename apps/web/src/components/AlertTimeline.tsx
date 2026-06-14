@@ -50,7 +50,7 @@ export default function AlertTimeline({ data, loading }: AlertTimelineProps) {
     <Card
       title={<><ClockCircleOutlined /> 预警时间线</>}
       style={{ height: "100%" }}
-      styles={{ body: { padding: "12px 16px", maxHeight: 400, overflow: "auto" } }}
+      styles={{ body: { padding: "12px 16px", height: "calc(100% - 56px)", overflow: "auto" } }}
     >
       {sorted.length === 0 ? (
         <Empty
