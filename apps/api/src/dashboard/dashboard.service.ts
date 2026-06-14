@@ -4,7 +4,7 @@ import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '@g-fund/db';
 import { DB } from '../db/db.module';
 import { McpService } from '../mcp/mcp.service';
-import type { AssetAllocationResponse, FundAssetClassNode, FundAssetDetail } from '@g-fund/types';
+import type { AssetAllocationResponse, FundAssetClassNode, FundAssetDetail, RebalanceResponse, RebalanceSuggestion } from '@g-fund/types';
 
 type DbType = NodePgDatabase<typeof schema>;
 
@@ -110,6 +110,64 @@ export class DashboardService {
 
   clearCache(): void {
     this.assetAllocationCache = null;
+  }
+
+  async getRebalanceSuggestion(): Promise<RebalanceResponse> {
+    const positions = await this.db.select().from(schema.positions);
+    if (positions.length === 0) return { totalValue: 0, suggestions: [] };
+
+    const fundCodes = positions.map((p) => p.fundCode);
+    const funds = await this.db
+      .select()
+      .from(schema.funds)
+      .where(inArray(schema.funds.code, fundCodes));
+    const fundMap = new Map(funds.map((f) => [f.code, f]));
+
+    const totalValue = positions.reduce((sum, p) => sum + parseFloat(p.currentValue ?? '0'), 0);
+    if (totalValue <= 0) return { totalValue: 0, suggestions: [] };
+
+    // 只取 targetRatio > 0 的基金
+    const eligible = positions.filter((p) => {
+      const ratio = parseFloat(fundMap.get(p.fundCode)?.targetRatio ?? '0');
+      return ratio > 0;
+    });
+    if (eligible.length === 0) return { totalValue, suggestions: [] };
+
+    const ratioSum = eligible.reduce(
+      (sum, p) => sum + parseFloat(fundMap.get(p.fundCode)!.targetRatio!),
+      0,
+    );
+
+    const MIN_AMOUNT = 100;
+
+    const suggestions: RebalanceSuggestion[] = [];
+    for (const pos of eligible) {
+      const fund = fundMap.get(pos.fundCode)!;
+      const rawRatio = parseFloat(fund.targetRatio!);
+      const normalizedRatio = (rawRatio / ratioSum) * 100;
+      const currentValue = parseFloat(pos.currentValue ?? '0');
+      const currentRatio = (currentValue / totalValue) * 100;
+      const targetValue = (normalizedRatio / 100) * totalValue;
+      const diff = targetValue - currentValue;
+
+      if (Math.abs(diff) < MIN_AMOUNT) continue;
+
+      suggestions.push({
+        fundCode: pos.fundCode,
+        fundName: pos.fundName,
+        currentValue,
+        targetValue,
+        currentRatio,
+        targetRatio: normalizedRatio,
+        deviation: currentRatio - normalizedRatio,
+        action: diff > 0 ? 'buy' : 'sell',
+        amount: Math.abs(diff),
+      });
+    }
+
+    suggestions.sort((a, b) => Math.abs(b.deviation) - Math.abs(a.deviation));
+
+    return { totalValue, suggestions };
   }
 
   private parseCategoryTree(result: unknown): FundAssetClassNode[] {

@@ -2,8 +2,8 @@
 
 ## REQ-016：再平衡建议
 
-- [ ] T16.1 按 targetRatio 与当前偏离计算调仓清单（卖谁 X 元 / 买谁 Y 元）
-- [ ] T16.2 Dashboard 卡片展示再平衡建议
+- [x] T16.1 按 targetRatio 与当前偏离计算调仓清单（卖谁 X 元 / 买谁 Y 元）
+- [x] T16.2 Dashboard 卡片展示再平衡建议
 
 ## REQ-017：组合风险简表
 

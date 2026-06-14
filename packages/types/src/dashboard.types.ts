@@ -22,3 +22,20 @@ export interface AssetAllocationResponse {
   categoryTree: FundAssetClassNode[];
   fundDetails: FundAssetDetail[];
 }
+
+export interface RebalanceSuggestion {
+  fundCode: string;
+  fundName: string;
+  currentValue: number;
+  targetValue: number;
+  currentRatio: number;
+  targetRatio: number;
+  deviation: number;
+  action: 'buy' | 'sell';
+  amount: number;
+}
+
+export interface RebalanceResponse {
+  totalValue: number;
+  suggestions: RebalanceSuggestion[];
+}
