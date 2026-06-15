@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Card, Row, Col, Skeleton, Typography, Tag, Space, Button, Drawer, Empty, Segmented, Modal, Checkbox, message, Tooltip as AntTooltip } from "antd";
+import { Card, Skeleton, Typography, Tag, Space, Button, Drawer, Empty, Segmented, Modal, Checkbox, message, Tooltip as AntTooltip } from "antd";
 import { SettingOutlined, ReloadOutlined, InfoCircleOutlined } from "@ant-design/icons";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import type { MarketIndexQuote, MarketIndexHistory } from "@g-fund/types";
@@ -38,7 +38,7 @@ function IndexCard({ quote, onClick }: { quote: MarketIndexQuote; onClick: () =>
     <Card
       hoverable
       onClick={onClick}
-      style={{ minWidth: 160, cursor: "pointer", flex: "1 1 160px", maxWidth: 220 }}
+      style={{ minWidth: 160, cursor: "pointer", flex: "0 0 auto", width: 175 }}
       styles={{ body: { padding: "10px 14px" } }}
     >
       <Space direction="vertical" size={2} style={{ width: "100%" }}>
@@ -120,7 +120,7 @@ function IndexDetailDrawer({
           {loading ? (
             <Skeleton active paragraph={{ rows: 4 }} />
           ) : chartData.length === 0 ? (
-            <Empty description="暂无历史数据" />
+            <Empty description="暂无历史数据，数据将在交易日自动积累" />
           ) : (
             <ResponsiveContainer width="100%" height={260}>
               <LineChart data={chartData}>
@@ -235,6 +235,8 @@ export default function MarketIndexBoard({ loading: externalLoading }: MarketInd
         setQuotes(data);
         setUpdatedAt(new Date());
       }
+      // 静默归档，积累历史数据
+      marketIndexApi.archive().catch(() => {});
     } catch {
       // silent
     } finally {
@@ -265,15 +267,13 @@ export default function MarketIndexBoard({ loading: externalLoading }: MarketInd
   if (isLoading) {
     return (
       <Card styles={{ body: { padding: "12px 16px" } }}>
-        <Row gutter={[12, 12]}>
-          {Array.from({ length: 6 }).map((_, i) => (
-            <Col key={i} flex="1 1 160px">
-              <Card style={{ minWidth: 160 }}>
-                <Skeleton active paragraph={false} />
-              </Card>
-            </Col>
+        <div style={{ display: "flex", gap: 12, overflowX: "auto", paddingBottom: 4 }}>
+          {Array.from({ length: 8 }).map((_, i) => (
+            <Card key={i} style={{ minWidth: 160, flex: "0 0 auto", width: 175 }}>
+              <Skeleton active paragraph={false} />
+            </Card>
           ))}
-        </Row>
+        </div>
       </Card>
     );
   }
@@ -314,7 +314,8 @@ export default function MarketIndexBoard({ loading: externalLoading }: MarketInd
         style={{
           display: "flex",
           gap: 12,
-          flexWrap: "wrap",
+          overflowX: "auto",
+          paddingBottom: 4,
         }}
       >
         {quotes.length > 0 ? (

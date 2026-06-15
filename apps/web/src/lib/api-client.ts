@@ -178,6 +178,8 @@ export const marketIndexApi = {
     http.get<MarketIndexQuote[]>("/market-index/realtime").then((r) => r.data),
   history: (code: string, days?: number) =>
     http.get<MarketIndexHistory[]>(`/market-index/${code}/history`, { params: days ? { days } : undefined }).then((r) => r.data),
+  archive: () =>
+    http.post<number>("/market-index/archive").then((r) => r.data),
   getWatchlist: () =>
     http.get<AppSetting>("/settings/watchlist_indices").then((r) => r.data).catch(() => null),
   setWatchlist: (indices: string[]) =>

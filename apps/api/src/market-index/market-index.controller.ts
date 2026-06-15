@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Query } from '@nestjs/common';
+import { Controller, Get, Post, Param, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { MarketIndexService } from './market-index.service';
 
@@ -13,6 +13,12 @@ export class MarketIndexController {
   async fetchRealtime(@Query('codes') codes?: string) {
     const indices = await this.service.resolveIndices(codes);
     return this.service.fetchRealtime(indices);
+  }
+
+  @Post('archive')
+  @ApiOperation({ summary: '归档今日指数数据到历史表' })
+  archiveToday() {
+    return this.service.archiveToday();
   }
 
   @Get(':code/history')

@@ -11,7 +11,12 @@ import { DEFAULT_INDICES } from './market-index.types';
 type DbType = NodePgDatabase<typeof schema>;
 
 function toStockCode(code: string): string {
-  return code.replace(/^sh/i, 'SH').replace(/^sz/i, 'SZ').replace(/^bj/i, 'SZ');
+  return code
+    .replace(/^sh/i, 'SH')
+    .replace(/^sz/i, 'SZ')
+    .replace(/^bj/i, 'SZ')
+    .replace(/^hk/i, 'HK')
+    .replace(/^us/i, 'US');
 }
 
 @Injectable()
@@ -37,10 +42,14 @@ export class MarketIndexService {
       const setting = await this.settingsService.get('watchlist_indices');
       const watchlist: unknown = JSON.parse(setting.value);
       if (Array.isArray(watchlist) && watchlist.length > 0) {
-        return (watchlist as string[]).map((c) => {
+        const saved = (watchlist as string[]).map((c) => {
           const found = DEFAULT_INDICES.find((d) => d.code === c);
           return found ?? { code: c, name: c };
         });
+        // 合并新增的默认指数，避免用户手动添加
+        const savedCodes = new Set(saved.map((s) => s.code));
+        const newDefaults = DEFAULT_INDICES.filter((d) => !savedCodes.has(d.code));
+        return [...saved, ...newDefaults];
       }
     } catch {
       // no watchlist configured, use defaults
@@ -121,32 +130,58 @@ export class MarketIndexService {
   }
 
   private async fetchFromStockApi(indices: IndexConfig[]): Promise<MarketIndexQuote[]> {
-    try {
-      const stockCodes = indices.map((i) => toStockCode(i.code));
-      const stockList = await stocks.auto.getStocks(stockCodes);
-      const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toISOString().split('T')[0];
 
-      const quotes: MarketIndexQuote[] = [];
-      for (const stock of stockList) {
-        const matched = indices.find((i) => toStockCode(i.code) === stock.code);
-        if (!matched) continue;
+    // 按市场分组，避免单组失败影响其他
+    const groups = this.groupByMarket(indices);
+    const settled = await Promise.allSettled(
+      groups.map((group) => this.fetchGroup(group, today)),
+    );
 
-        quotes.push({
-          indexCode: matched.code,
-          name: stock.name || matched.name,
-          close: stock.now,
-          changePct: stock.percent * 100,
-          turnover: 0,
-          tradeDate: today,
-        });
-      }
+    const quotes = settled
+      .filter((r): r is PromiseFulfilledResult<MarketIndexQuote[]> => r.status === 'fulfilled')
+      .flatMap((r) => r.value);
 
-      if (quotes.length > 0) return quotes;
-    } catch (err) {
-      this.logger.warn(`stock-api request failed: ${(err as Error).message}`);
-    }
-
+    if (quotes.length > 0) return quotes;
     return this.getFallbackFromDb(indices);
+  }
+
+  private groupByMarket(indices: IndexConfig[]): IndexConfig[][] {
+    const cn: IndexConfig[] = [];
+    const overseas: IndexConfig[] = [];
+    for (const idx of indices) {
+      const upper = idx.code.toUpperCase();
+      if (upper.startsWith('HK') || upper.startsWith('US')) {
+        overseas.push(idx);
+      } else {
+        cn.push(idx);
+      }
+    }
+    const groups: IndexConfig[][] = [];
+    if (cn.length > 0) groups.push(cn);
+    if (overseas.length > 0) groups.push(overseas);
+    return groups;
+  }
+
+  private async fetchGroup(indices: IndexConfig[], today: string): Promise<MarketIndexQuote[]> {
+    const stockCodes = indices.map((i) => toStockCode(i.code));
+    const stockList = await stocks.auto.getStocks(stockCodes);
+
+    const quotes: MarketIndexQuote[] = [];
+    for (const stock of stockList) {
+      const matched = indices.find((i) => toStockCode(i.code) === stock.code);
+      if (!matched) continue;
+
+      quotes.push({
+        indexCode: matched.code,
+        name: stock.name || matched.name,
+        close: stock.now,
+        changePct: stock.percent * 100,
+        turnover: 0,
+        tradeDate: today,
+      });
+    }
+    return quotes;
   }
 
   private async getFallbackFromDb(indices: IndexConfig[]): Promise<MarketIndexQuote[]> {

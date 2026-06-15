@@ -19,6 +19,11 @@ export const DEFAULT_INDICES: IndexConfig[] = [
   { code: 'sz399006', name: '创业板指' },
   { code: 'sh000688', name: '科创50' },
   { code: 'bj899050', name: '北证50' },
+  { code: 'hkHSI', name: '恒生指数' },
+  { code: 'hkHSTECH', name: '恒生科技' },
+  { code: 'usINX', name: '标普500' },
+  { code: 'usIXIC', name: '纳斯达克' },
+  { code: 'usDJI', name: '道琼斯' },
 ];
 
 export interface MarketIndexHistory {
