@@ -4,9 +4,7 @@ import { Table, Button, Space, Tag, Progress, Dropdown, Modal } from "antd";
 import { EditOutlined, FundOutlined, MoreOutlined, DeleteOutlined } from "@ant-design/icons";
 import {
   VALUATION_LEVEL_LABELS,
-  ASSET_TYPE_LABELS,
   type ValuationLevel,
-  type AssetType,
 } from "@g-fund/types";
 import { useRouter } from "next/navigation";
 import type { ColumnsType, SorterResult } from "antd/es/table/interface";
@@ -132,27 +130,9 @@ export function FundsTable({
       },
     },
     {
-      title: "资产类型",
-      dataIndex: "assetType",
-      width: 90,
-      align: "center",
-      sorter: (a, b) => (a.assetType ?? "").localeCompare(b.assetType ?? ""),
-      render: (v) => {
-        const type = (v ?? "equity") as AssetType;
-        const colors: Record<AssetType, string> = {
-          equity: "blue",
-          bond: "geekblue",
-          gold: "gold",
-          qdii: "magenta",
-          index: "cyan",
-        };
-        return <Tag color={colors[type]}>{ASSET_TYPE_LABELS[type]}</Tag>;
-      },
-    },
-    {
       title: "估值百分位",
       dataIndex: "valuationPercentile",
-      width: 100,
+      width: 130,
       align: "center",
       sorter: (a, b) => (parseFloat(a.valuationPercentile ?? "0") || 0) - (parseFloat(b.valuationPercentile ?? "0") || 0),
       render: (v) => {
@@ -230,7 +210,7 @@ export function FundsTable({
           columns={columns}
           dataSource={dataSource}
           loading={loading}
-          scroll={{ x: 1600 }}
+          scroll={{ x: 1530 }}
           pagination={{ pageSize: 50, showTotal: (t) => `共 ${t} 支` }}
           size="middle"
           onChange={onTableChange}
