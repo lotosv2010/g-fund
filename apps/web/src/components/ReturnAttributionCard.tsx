@@ -63,7 +63,19 @@ export default function ReturnAttributionCard({ positions, benchmark, loading }:
       }
     }
 
-    // 如果只有一种类型或没有类型，改为按基金名称分组
+    // type 不足 2 种时，尝试按 category 分组
+    if (typeGroups.size <= 1) {
+      typeGroups.clear();
+      for (const pos of positions) {
+        const cat = pos.category || '其他';
+        const group = typeGroups.get(cat) ?? { cost: 0, value: 0 };
+        group.cost += safeNum(pos.costAmount);
+        group.value += safeNum(pos.currentValue);
+        typeGroups.set(cat, group);
+      }
+    }
+
+    // category 也不足 2 种时，按基金名称分组
     let useFundName = typeGroups.size <= 1;
     if (useFundName) {
       typeGroups.clear();
@@ -184,7 +196,7 @@ export default function ReturnAttributionCard({ positions, benchmark, loading }:
         </Col>
         <Col xs={24} lg={12}>
           <Text strong style={{ marginBottom: 12, display: "block" }}>资产类型贡献</Text>
-          {attribution.typeContributions.length === 0 || attribution.typeContributions.every((item) => item.value === 0) ? (
+          {attribution.typeContributions.length === 0 ? (
             <Empty description="暂无收益差异" style={{ padding: "40px 0" }} />
           ) : (
             <ResponsiveContainer width="100%" height={220}>

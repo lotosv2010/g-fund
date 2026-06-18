@@ -37,6 +37,7 @@ export interface RebalanceSuggestion {
 
 export interface RebalanceResponse {
   totalValue: number;
+  targetTotalPosition: number;
   suggestions: RebalanceSuggestion[];
 }
 

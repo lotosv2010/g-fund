@@ -20,7 +20,7 @@ import MarketIndexBoard from "@/components/MarketIndexBoard";
 import RebalanceCard from "@/components/RebalanceCard";
 import RiskSummaryCard from "@/components/RiskSummaryCard";
 import IndustryExposureCard from "@/components/IndustryExposureCard";
-import ReturnAttributionCard from "@/components/ReturnAttributionCard";
+
 
 const { Title } = Typography;
 
@@ -134,10 +134,10 @@ export default function DashboardPage() {
     }
   }, []);
 
-  const loadAssetAllocation = useCallback(async () => {
+  const loadAssetAllocation = useCallback(async (refresh?: boolean) => {
     setAllocLoading(true);
     try {
-      const data = await dashboardApi.assetAllocation();
+      const data = await dashboardApi.assetAllocation(refresh);
       setAssetAllocation(data);
     } catch {
       // may not have data yet
@@ -246,7 +246,7 @@ export default function DashboardPage() {
       <Row justify="space-between" align="middle" style={{ marginBottom: 16 }}>
         <Title level={4} style={{ margin: 0 }}>总览</Title>
         <Space>
-          <SyncPositionsButton onDone={() => loadPositions()} />
+          <SyncPositionsButton onDone={() => { loadPositions(); loadAssetAllocation(true); }} />
         </Space>
       </Row>
       <Row gutter={[16, 16]} style={{ marginTop: 16 }} align="stretch">
@@ -322,15 +322,6 @@ export default function DashboardPage() {
         </Col>
         <Col xs={24} lg={8}>
           <RecentTrades data={transactions} loading={txLoading} />
-        </Col>
-      </Row>
-      <Row gutter={[16, 16]} style={{ marginTop: 16 }} align="stretch">
-        <Col xs={24}>
-          <ReturnAttributionCard
-            positions={positions}
-            benchmark={benchmark}
-            loading={posLoading || benchmarkLoading}
-          />
         </Col>
       </Row>
 

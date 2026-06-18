@@ -1,4 +1,4 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { DashboardService } from './dashboard.service';
 import type { AssetAllocationResponse, RebalanceResponse, RiskSummaryResponse, BenchmarkComparisonResponse, AnomalyResponse, IndustryExposureResponse } from '@g-fund/types';
@@ -10,7 +10,10 @@ export class DashboardController {
 
   @Get('asset-allocation')
   @ApiOperation({ summary: '获取持仓资产配置分类' })
-  async getAssetAllocation(): Promise<AssetAllocationResponse> {
+  async getAssetAllocation(@Query('refresh') refresh?: string): Promise<AssetAllocationResponse> {
+    if (refresh === 'true') {
+      this.service.clearCache();
+    }
     return this.service.getAssetAllocation();
   }
 

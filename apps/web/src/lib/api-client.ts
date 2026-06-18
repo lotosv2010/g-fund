@@ -159,8 +159,8 @@ export const chatApi = {
 };
 
 export const dashboardApi = {
-  assetAllocation: () =>
-    http.get<AssetAllocationResponse>("/dashboard/asset-allocation", { timeout: 30000 }).then((r) => r.data),
+  assetAllocation: (refresh?: boolean) =>
+    http.get<AssetAllocationResponse>("/dashboard/asset-allocation", { params: refresh ? { refresh: "true" } : undefined, timeout: 30000 }).then((r) => r.data),
   rebalance: () =>
     http.get<RebalanceResponse>("/dashboard/rebalance").then((r) => r.data),
   riskSummary: () =>

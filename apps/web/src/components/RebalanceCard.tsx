@@ -29,12 +29,13 @@ export default function RebalanceCard({ data, loading }: RebalanceCardProps) {
 
   const suggestions = data?.suggestions ?? [];
   const actionCount = suggestions.length;
+  const targetTotal = data?.targetTotalPosition ?? 0;
 
   return (
     <Card
       title={
         <>
-          <SwapOutlined /> 再平衡建议 <Tooltip title="当基金实际持仓比例偏离目标配置超过阈值时，生成买入/卖出建议以恢复平衡"><InfoCircleOutlined style={{ fontSize: 13, color: "#999" }} /></Tooltip>
+          <SwapOutlined /> 再平衡建议 <Tooltip title={`目标总仓位 ¥${formatAmount(targetTotal)}，基于各基金目标比例和目标金额生成建议`}><InfoCircleOutlined style={{ fontSize: 13, color: "#999" }} /></Tooltip>
           {actionCount > 0 && (
             <Tag color="blue" style={{ marginLeft: 8 }}>{actionCount}</Tag>
           )}
@@ -43,6 +44,15 @@ export default function RebalanceCard({ data, loading }: RebalanceCardProps) {
       style={{ height: "100%" }}
       styles={{ body: { padding: "12px 16px", maxHeight: 400, overflow: "auto" } }}
     >
+      {targetTotal > 0 && (
+        <div style={{ marginBottom: 8, padding: "4px 0" }}>
+          <Text type="secondary" style={{ fontSize: 12 }}>目标总仓位: </Text>
+          <Text strong style={{ fontSize: 13 }}>¥{formatAmount(targetTotal)}</Text>
+          {data?.totalValue != null && (
+            <Text type="secondary" style={{ fontSize: 12, marginLeft: 8 }}>当前: ¥{formatAmount(data.totalValue)}</Text>
+          )}
+        </div>
+      )}
       {suggestions.length === 0 ? (
         <Empty
           image={Empty.PRESENTED_IMAGE_SIMPLE}
