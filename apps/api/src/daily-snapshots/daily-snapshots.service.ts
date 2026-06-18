@@ -1,5 +1,5 @@
 import { Injectable, Inject, NotFoundException } from '@nestjs/common';
-import { eq, and, gte, lte, desc, inArray, SQL } from 'drizzle-orm';
+import { eq, ne, and, gte, lte, desc, inArray, SQL } from 'drizzle-orm';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '@g-fund/db';
 import { DB } from '../db/db.module';
@@ -66,14 +66,13 @@ export class DailySnapshotsService {
 
     const posRows = await this.db.select().from(schema.positions);
 
-    // 查昨日快照，用于计算 netBuyAmount
-    const yesterday = new Date(d);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
+    // 查最近一条快照（排除今天），用于计算 netBuyAmount
     const [prevRow] = await this.db
       .select()
       .from(schema.dailySnapshots)
-      .where(eq(schema.dailySnapshots.snapshotDate, yesterdayStr));
+      .where(ne(schema.dailySnapshots.snapshotDate, today))
+      .orderBy(desc(schema.dailySnapshots.snapshotDate))
+      .limit(1);
     const prevItems = (prevRow?.positionsSnapshot as PositionSnapshotItem[] | null) ?? [];
     const prevCostMap = new Map(prevItems.map((p) => [p.fundCode, parseFloat(p.costAmount)]));
 

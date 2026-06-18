@@ -41,10 +41,10 @@ export default function PnLChart({ data, benchmark, loading }: PnLChartProps) {
       return best.benchmarkCumReturn;
     }
 
+    const baseCost = sorted.length > 0 ? parseFloat(sorted[0].totalCost) : 0;
     return sorted.map((s) => {
       const totalValue = parseFloat(s.totalValue);
-      const totalCost = parseFloat(s.totalCost);
-      const portfolioCumReturn = totalCost > 0 ? (totalValue - totalCost) / totalCost : 0;
+      const portfolioCumReturn = baseCost > 0 ? (totalValue - baseCost) / baseCost : 0;
       const bm = nearestBenchmark(s.snapshotDate);
       return {
         date: s.snapshotDate.slice(5),
@@ -56,7 +56,7 @@ export default function PnLChart({ data, benchmark, loading }: PnLChartProps) {
 
   if (loading) {
     return (
-      <Card title={<span>盈亏曲线 <AntTooltip title="展示组合累计收益率曲线，可选对比基准（如沪深300）。收益率 = (当日市值 - 总成本) / 总成本 × 100%"><InfoCircleOutlined style={{ fontSize: 13, color: "#999" }} /></AntTooltip></span>} style={{ height: "100%" }}>
+      <Card title={<span>盈亏曲线 <AntTooltip title="展示组合累计收益率曲线，可选对比基准（如沪深300）。收益率 = (当日市值 - 首日成本) / 首日成本 × 100%"><InfoCircleOutlined style={{ fontSize: 13, color: "#999" }} /></AntTooltip></span>} style={{ height: "100%" }}>
         <Skeleton active paragraph={{ rows: 4 }} />
       </Card>
     );
@@ -64,7 +64,7 @@ export default function PnLChart({ data, benchmark, loading }: PnLChartProps) {
 
   if (chartData.length === 0) {
     return (
-      <Card title={<span>盈亏曲线 <AntTooltip title="展示组合累计收益率曲线，可选对比基准（如沪深300）。收益率 = (当日市值 - 总成本) / 总成本 × 100%"><InfoCircleOutlined style={{ fontSize: 13, color: "#999" }} /></AntTooltip></span>} style={{ height: "100%" }}>
+      <Card title={<span>盈亏曲线 <AntTooltip title="展示组合累计收益率曲线，可选对比基准（如沪深300）。收益率 = (当日市值 - 首日成本) / 首日成本 × 100%"><InfoCircleOutlined style={{ fontSize: 13, color: "#999" }} /></AntTooltip></span>} style={{ height: "100%" }}>
         <Empty description="暂无快照数据，请先生成快照" style={{ padding: "40px 0" }} />
       </Card>
     );
@@ -73,7 +73,7 @@ export default function PnLChart({ data, benchmark, loading }: PnLChartProps) {
   const hasBenchmark = chartData.some((d) => d.benchmarkCumReturn !== null);
 
   return (
-    <Card title={<span>盈亏曲线 <AntTooltip title="展示组合累计收益率曲线，可选对比基准（如沪深300）。收益率 = (当日市值 - 总成本) / 总成本 × 100%"><InfoCircleOutlined style={{ fontSize: 13, color: "#999" }} /></AntTooltip></span>} style={{ height: "100%" }} styles={{ body: { height: "calc(100% - 56px)", overflow: "hidden" } }}>
+    <Card title={<span>盈亏曲线 <AntTooltip title="展示组合累计收益率曲线，可选对比基准（如沪深300）。收益率 = (当日市值 - 首日成本) / 首日成本 × 100%"><InfoCircleOutlined style={{ fontSize: 13, color: "#999" }} /></AntTooltip></span>} style={{ height: "100%" }} styles={{ body: { height: "calc(100% - 56px)", overflow: "hidden" } }}>
       <ResponsiveContainer width="100%" height="100%">
         <ComposedChart data={chartData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
