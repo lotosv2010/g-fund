@@ -46,8 +46,8 @@ export default function TransactionForm({ funds, onSubmit, defaultFundCode, defa
       const price = values.price != null ? parseFloat(String(values.price)) : undefined;
       const amount = txType === "buy"
         ? String(values.amount)
-        : shares != null && price != null
-          ? (shares * price).toFixed(2)
+        : shares != null
+          ? (shares * (price ?? 0)).toFixed(2)
           : "0";
 
       await onSubmit({

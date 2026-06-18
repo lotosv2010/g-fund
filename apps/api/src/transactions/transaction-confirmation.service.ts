@@ -118,8 +118,10 @@ export class TransactionConfirmationService {
       return;
     }
 
-    const sellAmount = parseFloat(tx.amount);
-    const sellShares = sellAmount / nav;
+    // 优先使用 shares 字段，否则用 amount / nav 计算
+    const sellShares = tx.shares
+      ? parseFloat(tx.shares)
+      : parseFloat(tx.amount) / nav;
     const oldShares = parseFloat(existing.shares ?? '0');
 
     if (sellShares > oldShares) {
