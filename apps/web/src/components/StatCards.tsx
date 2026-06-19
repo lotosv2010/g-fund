@@ -25,7 +25,8 @@ export default function StatCards({ data, loading, latestSnapshot, prevSnapshot,
   const totalPnlRate = totalCost > 0 ? totalPnl / totalCost : 0;
   const isProfit = totalPnl >= 0;
 
-  const todayStr = new Date().toISOString().split("T")[0];
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   const isLatestToday = latestSnapshot?.snapshotDate === todayStr;
 
   const latestNetBuy = latestSnapshot?.positionsSnapshot

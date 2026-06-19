@@ -1,5 +1,5 @@
 import { Injectable, Inject, NotFoundException } from '@nestjs/common';
-import { eq, ne, and, gte, lte, desc, inArray, SQL } from 'drizzle-orm';
+import { eq, ne, and, gte, lte, desc, inArray, isNotNull, SQL } from 'drizzle-orm';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import * as schema from '@g-fund/db';
 import { DB } from '../db/db.module';
@@ -49,19 +49,23 @@ export class DailySnapshotsService {
   }
 
   async generate(): Promise<DailySnapshot> {
-    const d = new Date();
-    const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    // 从持仓表获取最新的 navDate 作为快照日期，而非使用服务器时钟
+    const [latestNav] = await this.db
+      .select({ navDate: schema.positions.navDate })
+      .from(schema.positions)
+      .where(isNotNull(schema.positions.navDate))
+      .orderBy(desc(schema.positions.navDate))
+      .limit(1);
 
-    // 周末不生成快照，返回最近一条已有快照
-    const dayOfWeek = d.getDay();
-    if (dayOfWeek === 0 || dayOfWeek === 6) {
+    const today = latestNav?.navDate;
+    if (!today) {
       const [recent] = await this.db
         .select()
         .from(schema.dailySnapshots)
         .orderBy(desc(schema.dailySnapshots.snapshotDate))
         .limit(1);
       if (recent) return toSnapshot(recent);
-      throw new Error('周末不生成快照，且暂无历史快照');
+      throw new Error('暂无持仓净值数据，且无历史快照');
     }
 
     const posRows = await this.db.select().from(schema.positions);

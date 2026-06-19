@@ -268,25 +268,9 @@ export class PositionsSyncService {
     });
 
     const items: SyncPositionItemResult[] = [];
-    const today = new Date().toISOString().slice(0, 10);
     for (let i = 0; i < positions.length; i++) {
       if (isCancelled()) return;
       const pos = positions[i];
-
-      // 持仓去重：今日已同步的基金跳过，但仍需尝试确认待确认交易
-      if (pos.navDate === today && pos.navUnit) {
-        await this.confirmPending(pos.fundCode, pos.navUnit);
-        const skipped: SyncPositionItemResult = {
-          fundCode: pos.fundCode,
-          fundName: pos.fundName,
-          oldValue: pos.currentValue ?? '0',
-          status: 'skipped',
-          reason: '今日已同步',
-        };
-        items.push(skipped);
-        subscriber.next({ type: 'item', index: i, total: positions.length, result: skipped });
-        continue;
-      }
 
       const argValue = codeArgIsArray ? [pos.fundCode] : pos.fundCode;
       let callResult = await this.mcp
@@ -303,6 +287,20 @@ export class PositionsSyncService {
       }
 
       const item = this.buildItem(pos, callResult);
+
+      // 持仓去重：MCP 返回的 navDate 与已存储的相同则跳过更新
+      if (item.status === 'success' && item.navDate && pos.navDate === item.navDate && pos.navUnit) {
+        const skipped: SyncPositionItemResult = {
+          ...item,
+          status: 'skipped',
+          reason: '净值日期未变化，跳过更新',
+        };
+        items.push(skipped);
+        if (item.navUnit) await this.confirmPending(pos.fundCode, item.navUnit);
+        subscriber.next({ type: 'item', index: i, total: positions.length, result: skipped });
+        continue;
+      }
+
       items.push(item);
 
       if (item.status === 'success' && item.newValue) {
